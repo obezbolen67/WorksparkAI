@@ -1,5 +1,6 @@
 // src/contexts/SettingsContext.tsx
 import { createContext, useState, useEffect, useContext, type ReactNode, useCallback } from 'react';
+import api from '../utils/api'; // Import the new api wrapper
 
 // Define a simple model type
 type Model = {
@@ -44,10 +45,8 @@ export const SettingsProvider = ({ children }: { children: ReactNode }) => {
     const currentToken = localStorage.getItem('fexo-token');
     if (currentToken) {
       try {
-        const res = await fetch(`${API_URL}/settings`, {
-          method: 'GET',
-          headers: { 'x-auth-token': currentToken },
-        });
+        // Use the new api wrapper. Token is added automatically.
+        const res = await api('/settings');
 
         if (!res.ok) throw new Error('Failed to load user');
         
@@ -69,6 +68,7 @@ export const SettingsProvider = ({ children }: { children: ReactNode }) => {
   }, [loadUser]);
 
   const apiAuthRequest = async (endpoint: 'login' | 'register', body: object) => {
+    // Auth requests don't use the token, so we use fetch directly here.
     const res = await fetch(`${API_URL}/auth/${endpoint}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -97,14 +97,12 @@ export const SettingsProvider = ({ children }: { children: ReactNode }) => {
   const updateSettings = async (settings: Partial<User>) => {
     if (!token) return;
     try {
-      const res = await fetch(`${API_URL}/settings`, {
+      // Use the new api wrapper.
+      const res = await api('/settings', {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-auth-token': token,
-        },
         body: JSON.stringify(settings),
       });
+
       if (!res.ok) throw new Error('Failed to update settings');
       const updatedUser = await res.json();
       setUser(updatedUser);

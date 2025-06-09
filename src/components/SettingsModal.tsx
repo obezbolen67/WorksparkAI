@@ -4,6 +4,7 @@ import { useSettings } from '../contexts/SettingsContext';
 import { useNotification } from '../contexts/NotificationContext';
 import '../css/SettingsModal.css';
 import { FiRefreshCw } from "react-icons/fi";
+import api from '../utils/api'; // Import the new api wrapper
 
 type Model = { id: string };
 
@@ -13,7 +14,7 @@ interface SettingsModalProps {
 }
 
 const SettingsModal = ({ isOpen, onClose }: SettingsModalProps) => {
-  const { user, models, setModels, updateSettings, token } = useSettings();
+  const { user, models, setModels, updateSettings } = useSettings();
   const { showNotification } = useNotification();
   
   const [apiKey, setApiKey] = useState(user?.apiKey || '');
@@ -56,13 +57,11 @@ const SettingsModal = ({ isOpen, onClose }: SettingsModalProps) => {
       // First, save the current credentials before fetching
       await updateSettings({ apiKey, baseUrl });
       
-      const response = await fetch('http://localhost:3001/api/models', {
+      // Use the new api wrapper. The token is added automatically.
+      const response = await api('/models', {
         method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          'x-auth-token': token || '' 
-        },
       });
+
       const data = await response.json();
       if (!response.ok) {
         throw new Error(data.error || 'Failed to fetch models.');

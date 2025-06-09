@@ -8,6 +8,38 @@
   overflow: hidden;
 }
 
+/* --- NEW: Loading Overlay and Spinner --- */
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.loading-overlay {
+  position: absolute;
+  inset: 0;
+  background-color: hsla(240, 5%, 13%, 0.7); /* Use main bg color with transparency */
+  backdrop-filter: blur(4px);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 10;
+  opacity: 0;
+  animation: fadeIn 0.3s ease forwards;
+}
+
+@keyframes fadeIn {
+  to { opacity: 1; }
+}
+
+.loading-spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid var(--border-color);
+  border-top-color: var(--primary-text-color);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+/* --- End of New Styles --- */
+
 /* FIXED: Removed justify-content: flex-end to allow normal top-to-bottom flow */
 .chat-content {
   flex-grow: 1; 

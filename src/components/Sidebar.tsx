@@ -1,11 +1,13 @@
 // src/components/Sidebar.tsx
 import { useState, useRef, useEffect } from 'react';
+import { NavLink, useNavigate } from 'react-router-dom';
 import '../css/Sidebar.css';
 import { FiEdit, FiSearch, FiSettings, FiLogOut } from 'react-icons/fi';
 import { BiLibrary } from 'react-icons/bi';
 import { HiOutlineDotsHorizontal } from 'react-icons/hi';
 import { TbLayoutSidebarLeftCollapse } from 'react-icons/tb';
 import { useSettings } from '../contexts/SettingsContext';
+import { useChat } from '../contexts/ChatContext';
 
 interface SidebarProps {
   onOpenSettings: () => void;
@@ -13,24 +15,20 @@ interface SidebarProps {
 
 const Sidebar = ({ onOpenSettings }: SidebarProps) => {
   const { user, logout } = useSettings();
+  const { chatList } = useChat(); // Get chat list from the new context
+  const navigate = useNavigate();
+  
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
-  // Close menu on outside click
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
         setIsMenuOpen(false);
       }
     };
-
-    if (isMenuOpen) {
-      document.addEventListener('mousedown', handleClickOutside);
-    }
-
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
+    if (isMenuOpen) document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [isMenuOpen]);
   
   const handleSettingsClick = () => {
@@ -46,17 +44,19 @@ const Sidebar = ({ onOpenSettings }: SidebarProps) => {
   return (
     <aside className="sidebar">
       <div className="sidebar-top">
-        <button className="sidebar-button">
+        <button className="sidebar-button collapse-button">
           <TbLayoutSidebarLeftCollapse size={20} />
-        </button>
-        <button className="sidebar-button new-chat-button">
-          <FiEdit size={20} />
-          <span>New Chat</span>
         </button>
       </div>
 
       <nav className="sidebar-nav">
         <ul>
+          <li>
+            <button className="sidebar-button new-chat-button" onClick={() => navigate('/')}>
+              <FiEdit size={20} />
+              <span>New Chat</span>
+            </button>
+          </li>
           <li><button className="sidebar-button"><FiSearch size={20} /><span>Search</span></button></li>
           <li><button className="sidebar-button"><BiLibrary size={20} /><span>Library</span></button></li>
         </ul>
@@ -67,9 +67,13 @@ const Sidebar = ({ onOpenSettings }: SidebarProps) => {
           <span>Recent</span>
         </div>
         <ul className="convo-list">
-          <li><a href="#">Article: The Future of AI</a></li>
-          <li><a href="#">Product Description Ideas</a></li>
-          <li><a href="#">Social Media Post Draft</a></li>
+          {chatList.map((chat) => (
+            <li key={chat._id}>
+              <NavLink to={`/c/${chat._id}`}>
+                {chat.title || 'Untitled Chat'}
+              </NavLink>
+            </li>
+          ))}
         </ul>
       </div>
 

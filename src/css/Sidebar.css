@@ -12,9 +12,9 @@
 
 .sidebar-top {
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-start; /* Align collapse button to the left */
   align-items: center;
-  padding: 1rem;
+  padding: 0.75rem 1rem;
 }
 
 .sidebar-button {
@@ -41,19 +41,29 @@
   font-weight: 500;
 }
 
+/* Specific class for the icon-only collapse button */
+.collapse-button {
+  width: auto;
+  padding: 10px;
+}
+
+/* Style for the relocated New Chat button */
 .new-chat-button {
-  flex-grow: 1;
-  margin-left: 8px;
+  border: 1px solid var(--border-color);
 }
 
 .sidebar-nav {
-  padding: 0 1rem;
+  padding: 0 1rem 1rem 1rem;
+  border-bottom: 1px solid var(--border-color);
 }
 
 .sidebar-nav ul {
   list-style: none;
   padding: 0;
   margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem; /* Space between nav items */
 }
 
 .sidebar-conversations {
@@ -95,6 +105,7 @@
 .sidebar-footer {
   padding: 1rem;
   margin-top: auto; /* Pushes footer to the bottom */
+  border-top: 1px solid var(--border-color);
 }
 
 /* User Profile Wrapper & Menu */
@@ -206,4 +217,9 @@
   justify-content: center;
   transition: background-color 0.2s, color 0.2s;
   pointer-events: none; /* Button inside a clickable parent */
+}
+
+.convo-list li a.active {
+  background-color: var(--button-hover-bg);
+  font-weight: 500;
 }

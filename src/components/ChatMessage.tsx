@@ -1,3 +1,4 @@
+// src/components/ChatMessage.tsx
 import { useState, useEffect, useRef } from 'react';
 import type { Message } from '../types';
 import '../css/ChatMessage.css';
@@ -27,7 +28,6 @@ const ChatMessage = ({ message, index, isEditing, isStreaming, onRegenerate, onC
   useEffect(() => {
     if (isEditing) {
       setEditedContent(message.content);
-      // Capture initial dimensions before editing
       if (messageContentRef.current && bubbleRef.current) {
         const contentRect = messageContentRef.current.getBoundingClientRect();
         const bubbleRect = bubbleRef.current.getBoundingClientRect();
@@ -37,7 +37,6 @@ const ChatMessage = ({ message, index, isEditing, isStreaming, onRegenerate, onC
         });
       }
     } else {
-      // Reset dimensions when not editing
       setInitialDimensions(null);
     }
   }, [isEditing, message.content]);
@@ -45,7 +44,6 @@ const ChatMessage = ({ message, index, isEditing, isStreaming, onRegenerate, onC
   useEffect(() => {
     const textarea = textareaRef.current;
     if (isEditing && textarea) {
-      // Set initial height to match original content
       if (initialDimensions) {
         textarea.style.height = `${initialDimensions.height}px`;
       }
@@ -58,7 +56,7 @@ const ChatMessage = ({ message, index, isEditing, isStreaming, onRegenerate, onC
         textarea.style.overflowY = scrollHeight > maxHeight ? 'auto' : 'hidden';
         textarea.focus();
         textarea.setSelectionRange(textarea.value.length, textarea.value.length);
-      }, 300); // Increased delay to allow for smooth transition
+      }, 300);
     }
   }, [editedContent, isEditing, initialDimensions]);
 
@@ -114,8 +112,9 @@ const ChatMessage = ({ message, index, isEditing, isStreaming, onRegenerate, onC
     );
   }
 
+  // Assistant Message
   return (
-    <div className={`chat-message-wrapper ${isUser ? 'user' : 'assistant'}`}>
+    <div className={`chat-message-wrapper assistant`}>
       <div className="chat-message-container">
         <div className="message-icon-col">
           {message.content || isStreaming ? (
