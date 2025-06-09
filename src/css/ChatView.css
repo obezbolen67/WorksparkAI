@@ -3,7 +3,9 @@
   flex-grow: 1;
   display: flex;
   flex-direction: column;
-  height: 100vh;
+  /* FIX: Use 100% to fill the parent container, which is correctly sized for mobile. */
+  /* This avoids the 100vh issue with browser UI. */
+  height: 100%;
   position: relative;
   overflow: hidden;
 }
@@ -40,7 +42,6 @@
 }
 /* --- End of New Styles --- */
 
-/* FIXED: Removed justify-content: flex-end to allow normal top-to-bottom flow */
 .chat-content {
   flex-grow: 1; 
   overflow-y: auto;
@@ -50,7 +51,6 @@
 
 .chat-messages-list {
   padding: 1rem 0;
-  /* FIXED: Allow messages to flow from top to bottom naturally */
   flex-grow: 1;
 }
 
@@ -59,10 +59,11 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: flex-end; /* Align content to the bottom */
+  /* FIX: Vertically center the welcome message in the available space. */
+  justify-content: center;
   text-align: center;
-  /* Position the content above the centered input area */
-  padding-bottom: calc(50vh + 5rem);
+  /* FIX: Nudge the message up slightly so it doesn't feel too low. */
+  padding-bottom: 15vh;
   box-sizing: border-box;
 }
 
@@ -85,39 +86,21 @@
 }
 
 .chat-input-area {
-  position: absolute;
-  left: 50%;
-  width: 100%;
-  max-width: 800px;
-  padding: 1rem 0 2rem 0;
+  /* --- FIX: Remove absolute positioning to keep the input in the document flow. --- */
+  /* This makes it behave like a normal footer element. */
+  flex-shrink: 0;
+  padding: 1rem 0 1.5rem 0;
   box-sizing: border-box;
-  transform: translateX(-50%);
-  /* --- UPDATED: Add opacity to transition and set initial state --- */
-  transition: bottom 0.6s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.5s cubic-bezier(0.4, 0, 0.2, 1);
   opacity: 0;
+  transition: opacity 0.5s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.chat-view.is-empty .chat-input-area {
-  bottom: 50%;
-  transform: translate(-50%, 50%);
-}
-
-.chat-view:not(.is-empty) .chat-input-area {
-  bottom: 0;
-  transform: translateX(-50%);
-}
-
-/* --- NEW: Animate input area in when ready --- */
-.chat-view.is-ready.is-empty .chat-input-area {
+/* --- FIX: Simplified animation logic. Fade in the input when the view is ready. --- */
+.chat-view.is-ready .chat-input-area {
   opacity: 1;
-  transition-delay: 0.2s; /* Stagger the input animation slightly after the text */
+  transition-delay: 0.2s;
 }
 
-/* Ensure input is also visible when a conversation is active */
-.chat-view:not(.is-empty) .chat-input-area {
-  opacity: 1;
-  transition-delay: 0s;
-}
 
 /* --- NEW: Responsive styles for Chat View --- */
 @media (max-width: 768px) {
@@ -128,6 +111,7 @@
 
   .chat-input-area {
     /* Make padding more mobile friendly */
+    /* The bottom padding provides a safe area from the browser's navigation bar. */
     padding: 0.5rem 0 1rem 0;
   }
 }

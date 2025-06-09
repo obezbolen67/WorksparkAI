@@ -25,3 +25,5 @@ dist-ssr
 
 context.py
 context.txt
+
+.env
