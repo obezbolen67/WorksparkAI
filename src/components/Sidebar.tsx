@@ -1,4 +1,4 @@
-import './Sidebar.css';
+import '../css/Sidebar.css';
 import { FiEdit, FiSearch } from 'react-icons/fi';
 import { BiLibrary } from 'react-icons/bi';
 import { HiOutlineDotsHorizontal } from 'react-icons/hi';

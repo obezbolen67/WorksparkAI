@@ -1,5 +1,5 @@
 import type { Message } from '../types';
-import './ChatMessage.css';
+import '../css/ChatMessage.css';
 import { RiRobot2Fill } from "react-icons/ri";
 
 const ChatMessage = ({ message }: { message: Message }) => {

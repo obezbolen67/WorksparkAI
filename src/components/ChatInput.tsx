@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { FiPlus, FiSend } from 'react-icons/fi';
 import { HiOutlineMicrophone } from "react-icons/hi2";
-import './ChatInput.css';
+import '../css/ChatInput.css';
 
 interface ChatInputProps {
   onSendMessage: (text: string) => void;

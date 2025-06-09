@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import type { Message } from '../types';
 import ChatInput from './ChatInput';
 import ChatMessage from './ChatMessage';
-import './ChatView.css';
+import '../css/ChatView.css';
 import { RiRobot2Fill } from "react-icons/ri";
 
 const ChatView = () => {
