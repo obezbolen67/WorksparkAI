@@ -63,9 +63,11 @@ const ChatInput = ({ onSendMessage }: ChatInputProps) => {
     }
   };
 
-  const handleInput = (e: React.FormEvent<HTMLTextAreaElement>) => {
+  // ----- THIS IS THE FIX -----
+  const handleInput = () => {
     adjustTextareaHeight();
   };
+  // -------------------------
 
   useEffect(() => {
     adjustTextareaHeight();
