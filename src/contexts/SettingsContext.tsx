@@ -1,6 +1,7 @@
 // src/contexts/SettingsContext.tsx
 import { createContext, useState, useEffect, useContext, type ReactNode, useCallback } from 'react';
-import api from '../utils/api'; // Import the new api wrapper
+// --- UPDATED: Import the base URL as well ---
+import api, { API_BASE_URL } from '../utils/api'; 
 
 // Define a simple model type
 type Model = {
@@ -16,12 +17,17 @@ type User = {
   selectedModel: string;
 };
 
+// --- NEW: Define Theme type ---
+type Theme = 'dark' | 'light';
+
 interface SettingsContextType {
   token: string | null;
   isAuthenticated: boolean;
   loading: boolean;
   user: User | null;
   models: Model[];
+  theme: Theme; // <-- ADDED
+  setTheme: (theme: Theme) => void; // <-- ADDED
   setModels: (models: Model[]) => void;
   loadUser: () => Promise<void>;
   login: (email: string, password: string) => Promise<void>;
@@ -32,7 +38,8 @@ interface SettingsContextType {
 
 const SettingsContext = createContext<SettingsContextType | undefined>(undefined);
 
-const API_URL = 'http://localhost:3001/api';
+// --- DELETED: This is no longer the source of truth ---
+// const API_URL = 'http://localhost:3001/api';
 
 export const SettingsProvider = ({ children }: { children: ReactNode }) => {
   const [token, setToken] = useState<string | null>(localStorage.getItem('fexo-token'));
@@ -40,6 +47,20 @@ export const SettingsProvider = ({ children }: { children: ReactNode }) => {
   const [loading, setLoading] = useState<boolean>(true);
   const [user, setUser] = useState<User | null>(null);
   const [models, setModels] = useState<Model[]>([]);
+  // --- NEW: Theme state initialized from localStorage or default to 'dark' ---
+  const [theme, setThemeState] = useState<Theme>(() => (localStorage.getItem('fexo-theme') as Theme) || 'dark');
+
+  // --- NEW: Effect to apply theme to the body ---
+  useEffect(() => {
+    const body = document.body;
+    body.setAttribute('data-theme', theme);
+    localStorage.setItem('fexo-theme', theme);
+  }, [theme]);
+  
+  // --- NEW: Wrapper function for setting theme ---
+  const setTheme = (newTheme: Theme) => {
+    setThemeState(newTheme);
+  };
 
   const loadUser = useCallback(async () => {
     const currentToken = localStorage.getItem('fexo-token');
@@ -69,7 +90,8 @@ export const SettingsProvider = ({ children }: { children: ReactNode }) => {
 
   const apiAuthRequest = async (endpoint: 'login' | 'register', body: object) => {
     // Auth requests don't use the token, so we use fetch directly here.
-    const res = await fetch(`${API_URL}/auth/${endpoint}`, {
+    // --- UPDATED: Use the imported API_BASE_URL ---
+    const res = await fetch(`${API_BASE_URL}/api/auth/${endpoint}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
@@ -116,7 +138,7 @@ export const SettingsProvider = ({ children }: { children: ReactNode }) => {
     <SettingsContext.Provider 
       value={{ 
         token, isAuthenticated, loading, user,
-        models, setModels,
+        models, setModels, theme, setTheme, // <-- ADDED theme and setTheme
         loadUser, login, register, logout, updateSettings
       }}
     >

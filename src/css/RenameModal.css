@@ -1,0 +1,118 @@
+/* src/css/RenameModal.css */
+.rename-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background-color: hsla(0, 0%, 0%, 0.6);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  opacity: 0;
+  animation: fadeIn 0.2s ease-out forwards;
+}
+
+.rename-modal-content {
+  background-color: var(--sidebar-bg-color);
+  padding: 1.5rem 2rem;
+  border-radius: 12px;
+  width: 90%;
+  max-width: 400px;
+  border: 1px solid var(--border-color);
+  color: var(--primary-text-color);
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
+  transform: scale(0.95);
+  opacity: 0;
+  animation: scaleIn 0.2s 0.05s ease-out forwards;
+}
+
+.rename-modal-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 2px solid var(--border-color);
+  margin-bottom: 1rem;
+}
+
+.rename-modal-icon {
+  color: var(--secondary-text-color);
+  flex-shrink: 0;
+}
+
+.rename-modal-content h3 {
+  margin: 0;
+  font-size: 1.125rem;
+  font-weight: 600;
+  text-align: left;
+}
+
+.rename-modal-content input {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+  background-color: var(--main-bg-color);
+  color: var(--primary-text-color);
+  font-size: 1rem;
+  box-sizing: border-box;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  margin-bottom: 1.5rem;
+}
+
+.rename-modal-content input:focus {
+  outline: none;
+  border-color: #19c37d;
+  box-shadow: 0 0 0 2px hsla(145, 63%, 42%, 0.3);
+}
+
+.rename-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
+.rename-modal-button {
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 9999px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s ease-in-out;
+  font-size: 0.875rem;
+  min-width: 80px;
+}
+
+.rename-modal-button.cancel {
+  background-color: var(--main-bg-color);
+  color: #ECECEC;
+  border: 1px solid var(--border-color);
+}
+.rename-modal-button.cancel:hover {
+  background-color: var(--button-hover-bg);
+}
+
+.rename-modal-button.save {
+  background-color: #ffffff;
+  color: #000000;
+}
+.rename-modal-button.save:hover {
+  background-color: #f0f0f0;
+}
+
+/* --- LIGHT THEME STYLES --- */
+[data-theme="light"] .rename-modal-content {
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
+}
+
+[data-theme="light"] .rename-modal-content input:focus {
+  box-shadow: 0 0 0 2px hsla(145, 63%, 42%, 0.4);
+}
+
+[data-theme="light"] .rename-modal-button.save {
+  background-color: var(--primary-text-color);
+  color: var(--main-bg-color);
+}
+
+[data-theme="light"] .rename-modal-button.save:hover {
+  background-color: #374151; /* Dark gray */
+}

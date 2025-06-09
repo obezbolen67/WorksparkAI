@@ -1,5 +1,5 @@
-// src/components/ChatView.tsx
-import { useEffect, useRef } from 'react';
+// 📁 src/components/ChatView.tsx
+import { useEffect, useRef, useState } from 'react';
 import type { Message } from '../types';
 import ChatInput from './ChatInput';
 import ChatMessage from './ChatMessage';
@@ -26,6 +26,16 @@ const ChatView = (props: ChatViewProps) => {
   
   const chatContentRef = useRef<HTMLDivElement>(null);
   const { showNotification } = useNotification();
+  // --- NEW: State to trigger initial animations ---
+  const [isReady, setIsReady] = useState(false);
+
+  useEffect(() => {
+    // Trigger animation shortly after the component mounts and is visible.
+    const timer = setTimeout(() => {
+      setIsReady(true);
+    }, 100); // A small delay to ensure styles are applied before class change
+    return () => clearTimeout(timer);
+  }, []);
 
   useEffect(() => {
     if (!isLoading && chatContentRef.current) {
@@ -40,7 +50,8 @@ const ChatView = (props: ChatViewProps) => {
   };
   
   return (
-    <main className={`chat-view ${messages.length === 0 ? 'is-empty' : ''}`}>
+    // --- UPDATED: Add 'is-ready' class for animation trigger ---
+    <main className={`chat-view ${messages.length === 0 ? 'is-empty' : ''} ${isReady ? 'is-ready' : ''}`}>
       {isLoading && (
         <div className="loading-overlay">
           <div className="loading-spinner"></div>

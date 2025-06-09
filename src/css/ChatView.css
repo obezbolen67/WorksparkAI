@@ -71,6 +71,17 @@
   font-weight: 400;
   color: var(--primary-text-color);
   margin: 0;
+  /* --- NEW: Initial state for animation --- */
+  opacity: 0;
+  transform: translateY(15px);
+  transition: opacity 0.5s cubic-bezier(0.4, 0, 0.2, 1), transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+  transition-delay: 0.1s;
+}
+
+/* --- NEW: Animation trigger for h1 text --- */
+.chat-view.is-ready.is-empty .empty-chat-container h1 {
+  opacity: 1;
+  transform: translateY(0);
 }
 
 .chat-input-area {
@@ -81,7 +92,9 @@
   padding: 1rem 0 2rem 0;
   box-sizing: border-box;
   transform: translateX(-50%);
-  transition: bottom 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+  /* --- UPDATED: Add opacity to transition and set initial state --- */
+  transition: bottom 0.6s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+  opacity: 0;
 }
 
 .chat-view.is-empty .chat-input-area {
@@ -92,4 +105,29 @@
 .chat-view:not(.is-empty) .chat-input-area {
   bottom: 0;
   transform: translateX(-50%);
+}
+
+/* --- NEW: Animate input area in when ready --- */
+.chat-view.is-ready.is-empty .chat-input-area {
+  opacity: 1;
+  transition-delay: 0.2s; /* Stagger the input animation slightly after the text */
+}
+
+/* Ensure input is also visible when a conversation is active */
+.chat-view:not(.is-empty) .chat-input-area {
+  opacity: 1;
+  transition-delay: 0s;
+}
+
+/* --- NEW: Responsive styles for Chat View --- */
+@media (max-width: 768px) {
+  .chat-view {
+    height: 100%; /* Take full height of the padded app-container */
+    width: 100%;
+  }
+
+  .chat-input-area {
+    /* Make padding more mobile friendly */
+    padding: 0.5rem 0 1rem 0;
+  }
 }

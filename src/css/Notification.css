@@ -26,3 +26,16 @@
     color: #f87171;
     border: 1px solid hsla(0, 84%, 60%, 0.5);
 }
+
+/* --- LIGHT THEME STYLES --- */
+[data-theme="light"] .notification-popup {
+  background-color: var(--sidebar-bg-color);
+  color: var(--primary-text-color);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+[data-theme="light"] .notification-popup.error {
+    background-color: #fef2f2; /* Light red */
+    color: #991b1b; /* Dark red text */
+    border-color: #fecaca; /* Red border */
+}

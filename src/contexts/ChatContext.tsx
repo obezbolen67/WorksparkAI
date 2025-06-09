@@ -19,7 +19,7 @@ interface ChatContextType {
   loadChat: (chatId: string) => void;
   clearChat: () => void;
   isLoadingChat: boolean;
-  isCreatingChat: boolean; // Added this property
+  isCreatingChat: boolean;
   sendMessage: (text: string) => Promise<void>;
   isStreaming: boolean;
   editingIndex: number | null;
@@ -27,6 +27,8 @@ interface ChatContextType {
   cancelEditing: () => void;
   saveAndSubmitEdit: (index: number, newContent: string) => Promise<void>;
   regenerateResponse: () => Promise<void>;
+  renameChat: (chatId: string, newTitle: string) => Promise<void>;
+  deleteChat: (chatId: string) => Promise<void>;
 }
 
 const ChatContext = createContext<ChatContextType | undefined>(undefined);
@@ -40,7 +42,7 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
   const [chatList, setChatList] = useState<ChatListItem[]>([]);
   const [activeChatId, setActiveChatId] = useState<string | null>(null);
   const [isLoadingChat, setIsLoadingChat] = useState(false);
-  const [isCreatingChat, setIsCreatingChat] = useState(false); // Added state
+  const [isCreatingChat, setIsCreatingChat] = useState(false);
   const [isStreaming, setIsStreaming] = useState(false);
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   
@@ -63,7 +65,7 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
   
   const streamAndSaveResponse = async (chatId: string, messageHistory: Message[]) => {
     setIsStreaming(true);
-    setMessages(prev => [...prev, { role: 'assistant', content: '' }]);
+    setMessages([...messageHistory, { role: 'assistant', content: '' }]);
     
     try {
       const response = await api(`/chats/${chatId}/stream`, {
@@ -99,19 +101,20 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
     } catch (error) {
         console.error("Streaming failed:", error);
         showNotification(error instanceof Error ? error.message : "Failed to get response.", "error");
-        setMessages(prev => prev.filter(m => m.content !== '')); // Remove empty assistant message
+        setMessages(messageHistory);
     } finally {
         setIsStreaming(false);
-        await loadChatList(); // Refresh list to get updated title/timestamp
+        await loadChatList();
     }
   };
   
   const sendMessage = async (text: string) => {
     const userMessage: Message = { role: 'user', content: text };
     
-    if (!activeChatId) { // New chat
-      setIsCreatingChat(true); // Set true
+    if (!activeChatId) { // This is a new chat
+      setIsCreatingChat(true);
       setMessages([userMessage]);
+
       try {
         const createChatResponse = await api('/chats', {
           method: 'POST',
@@ -121,21 +124,24 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
         if (!createChatResponse.ok) throw new Error('Failed to create chat session.');
 
         const newChat = await createChatResponse.json();
-        navigate(`/c/${newChat._id}`, { replace: true });
-        setActiveChatId(newChat._id);
         
-        setIsCreatingChat(false); // Set false before streaming
+        setActiveChatId(newChat._id);
+        navigate(`/c/${newChat._id}`, { replace: true });
+        
         await streamAndSaveResponse(newChat._id, [userMessage]);
       } catch (error) {
         console.error(error);
         showNotification('Could not start new chat.', 'error');
         setMessages([]);
-        setIsStreaming(false);
-        setIsCreatingChat(false); // Set false on error
+        setActiveChatId(null);
+        navigate('/', { replace: true });
+      } finally {
+        setIsCreatingChat(false);
       }
-    } else { // Existing chat
+    } else { // This is an existing chat
       const updatedMessages = [...messages, userMessage];
       setMessages(updatedMessages);
+
       await streamAndSaveResponse(activeChatId, updatedMessages);
     }
   };
@@ -171,25 +177,57 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
     const editedHistory = messages.slice(0, index + 1);
     editedHistory[index] = { ...editedHistory[index], content: newContent };
     
-    setMessages(editedHistory);
     setEditingIndex(null);
+    setMessages(editedHistory);
     
     await streamAndSaveResponse(activeChatId, editedHistory);
   };
   
   const regenerateResponse = async () => {
-    if (!activeChatId || messages.length === 0) return;
+    if (!activeChatId || messages.length < 2) return;
     const historyWithoutLastResponse = messages.slice(0, -1);
     
     setMessages(historyWithoutLastResponse);
     await streamAndSaveResponse(activeChatId, historyWithoutLastResponse);
   };
 
+  const renameChat = async (chatId: string, newTitle: string) => {
+    try {
+      const response = await api(`/chats/${chatId}`, {
+        method: 'PUT',
+        body: JSON.stringify({ title: newTitle }),
+      });
+      if (!response.ok) throw new Error('Failed to rename chat');
+      await loadChatList();
+      showNotification("Chat renamed!", "success");
+    } catch (error) {
+      console.error(error);
+      showNotification("Could not rename chat.", "error");
+      throw error;
+    }
+  };
+
+  const deleteChat = async (chatId: string) => {
+    try {
+      const response = await api(`/chats/${chatId}`, { method: 'DELETE' });
+      if (!response.ok) throw new Error('Failed to delete chat');
+      setChatList(prev => prev.filter(c => c._id !== chatId));
+      if (activeChatId === chatId) {
+        navigate('/', { replace: true });
+        clearChat();
+      }
+      showNotification("Chat deleted.", "success");
+    } catch (error) {
+      console.error(error);
+      showNotification("Could not delete chat.", "error");
+      throw error;
+    }
+  };
+
   const value = {
     messages, chatList, activeChatId, loadChat, clearChat, isLoadingChat,
-    isCreatingChat, // Added to context value
-    sendMessage, isStreaming, editingIndex, startEditing,
-    cancelEditing, saveAndSubmitEdit, regenerateResponse
+    isCreatingChat, sendMessage, isStreaming, editingIndex, startEditing,
+    cancelEditing, saveAndSubmitEdit, regenerateResponse, renameChat, deleteChat
   };
 
   return <ChatContext.Provider value={value}>{children}</ChatContext.Provider>;

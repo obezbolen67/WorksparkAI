@@ -1,0 +1,43 @@
+/* src/css/MobileHeader.css */
+.mobile-header {
+  display: none; /* Hidden by default, shown in media query */
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 56px;
+  background-color: var(--main-bg-color);
+  border-bottom: 1px solid var(--border-color);
+  padding: 0 1rem;
+  align-items: center;
+  justify-content: space-between;
+  z-index: 500;
+}
+
+.mobile-header-title {
+  font-weight: 600;
+  color: var(--primary-text-color);
+}
+
+.mobile-header-button {
+  background: none;
+  border: none;
+  color: var(--primary-text-color);
+  padding: 8px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.mobile-header-button:hover {
+  background-color: var(--button-hover-bg);
+}
+
+@media (max-width: 768px) {
+  .mobile-header {
+    display: flex;
+  }
+}

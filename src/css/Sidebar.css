@@ -8,13 +8,28 @@
   flex-direction: column;
   padding: 0;
   border-right: 1px solid var(--border-color);
+  transition: width 0.3s ease-in-out;
+  flex-shrink: 0; /* Prevent sidebar from shrinking */
+}
+
+/* --- NEW: Overlay for mobile view --- */
+.sidebar-overlay {
+  display: none;
 }
 
 .sidebar-top {
   display: flex;
-  justify-content: flex-start; /* Align collapse button to the left */
   align-items: center;
+  /* --- FIX: Default to left alignment for the desktop button --- */
+  justify-content: flex-start;
   padding: 0.75rem 1rem;
+  min-height: 56px; /* Match mobile header height */
+  box-sizing: border-box;
+}
+
+/* --- FIX: Explicitly hide the mobile close button on desktop --- */
+.mobile-close-button {
+  display: none;
 }
 
 .sidebar-button {
@@ -68,8 +83,26 @@
 
 .sidebar-conversations {
   flex-grow: 1;
-  padding: 1rem;
+  padding: 1rem 0.5rem; /* Adjusted padding */
   overflow-y: auto;
+}
+
+/* --- Custom Scrollbar for Conversation List --- */
+.sidebar-conversations::-webkit-scrollbar {
+  width: 6px;
+}
+
+.sidebar-conversations::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.sidebar-conversations::-webkit-scrollbar-thumb {
+  background-color: var(--border-color);
+  border-radius: 3px;
+}
+
+.sidebar-conversations::-webkit-scrollbar-thumb:hover {
+  background-color: var(--secondary-text-color);
 }
 
 .convos-header {
@@ -83,11 +116,24 @@
   list-style: none;
   padding: 0;
   margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px; /* Subtle space between items */
+}
+
+.convo-list li {
+  position: relative;
+  border-radius: 6px; /* Apply radius to the li for hover effect */
+  transition: background-color 0.2s;
+}
+
+.convo-list li:hover {
+  background-color: var(--button-hover-bg);
 }
 
 .convo-list li a {
   display: block;
-  padding: 8px 12px;
+  padding: 8px 36px 8px 12px; /* Make space on the right for menu trigger */
   border-radius: 6px;
   color: var(--primary-text-color);
   text-decoration: none;
@@ -95,12 +141,90 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+/* --- UPDATED: Dots Menu Trigger --- */
+.chat-item-menu-trigger {
+  position: absolute;
+  top: 50%;
+  right: 8px;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: var(--secondary-text-color);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* --- CHANGE: Make button always visible --- */
+  opacity: 1;
+  pointer-events: auto;
+  transition: background-color 0.2s, color 0.2s;
+}
+
+/* --- CHANGE: Highlight button on its own hover or when menu is active --- */
+.chat-item-menu-trigger:hover,
+.chat-item-menu-trigger.active {
+  background-color: var(--button-hover-bg);
+  color: var(--primary-text-color);
+}
+
+
+/* --- NEW: Context Menu for Chat Items --- */
+@keyframes menu-pop-in {
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.chat-item-actions-menu {
+  position: absolute;
+  top: 40px; /* Position below the item */
+  right: 8px;
+  width: 160px;
+  z-index: 20;
+  background-color: hsl(220, 13%, 15%);
+  border-radius: 10px;
+  border: 1px solid var(--border-color);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  padding: 6px;
+  opacity: 0;
+  transform: translateY(-10px) scale(0.95);
+  transform-origin: top right;
+  animation: menu-pop-in 0.15s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+.menu-action-button {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 8px 10px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  color: var(--primary-text-color);
+  font-size: 0.875rem;
+  border-radius: 6px;
   transition: background-color 0.2s;
 }
 
-.convo-list li a:hover {
+.menu-action-button:hover {
   background-color: var(--button-hover-bg);
 }
+
+.menu-action-button.destructive {
+  color: #f43f5e;
+}
+.menu-action-button.destructive:hover {
+  background-color: hsla(349, 89%, 60%, 0.1);
+  color: #be123c;
+}
+
 
 .sidebar-footer {
   padding: 1rem;
@@ -222,4 +346,72 @@
 .convo-list li a.active {
   background-color: var(--button-hover-bg);
   font-weight: 500;
+}
+
+/* --- LIGHT THEME STYLES --- */
+[data-theme="light"] .user-profile-menu,
+[data-theme="light"] .chat-item-actions-menu {
+  background-color: var(--sidebar-bg-color);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+[data-theme="light"] .menu-button {
+  color: var(--primary-text-color);
+}
+
+[data-theme="light"] .menu-button > svg {
+  color: var(--secondary-text-color);
+}
+
+
+/* --- RESPONSIVE STYLES --- */
+@media (max-width: 768px) {
+  .sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 100%;
+    z-index: 1100; /* Above overlay */
+    transform: translateX(-100%);
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    border-right: 1px solid var(--border-color);
+  }
+
+  .sidebar.mobile-open {
+    transform: translateX(0);
+    box-shadow: 4px 0px 15px -5px rgba(0,0,0,0.2);
+  }
+
+  .sidebar-overlay {
+    display: block;
+    position: fixed;
+    inset: 0;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 1050;
+    animation: fadeIn 0.3s ease-in-out;
+  }
+  
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+
+  /* --- FIX: Swap button visibility and alignment --- */
+  .sidebar-top {
+    justify-content: flex-end; /* Align mobile close button to the right */
+  }
+
+  .collapse-button {
+    display: none;
+  }
+  
+  .mobile-close-button {
+    display: flex;
+    width: auto;
+    padding: 10px;
+  }
+
+  .new-chat-button {
+    display: none; /* Hide desktop new chat button, as it's in the mobile header */
+  }
 }

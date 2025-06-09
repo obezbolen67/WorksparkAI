@@ -1,3 +1,4 @@
+/* src/css/ChatMessage.css */
 .chat-message-wrapper {
   padding: 1rem 0;
   position: relative;
@@ -248,4 +249,46 @@
   vertical-align: text-bottom;
   position: relative;
   top: -1px;
+}
+
+/* --- LIGHT THEME STYLES --- */
+[data-theme="light"] .assistant .message-content {
+  color: var(--primary-text-color);
+}
+
+[data-theme="light"] .streaming-cursor {
+  background-color: var(--primary-text-color);
+}
+
+[data-theme="light"] .user-message-bubble {
+  background-color: var(--assistant-message-bg);
+  color: var(--primary-text-color);
+}
+
+[data-theme="light"] .user.editing .user-message-bubble {
+  background-color: var(--main-bg-color);
+  border-color: var(--border-color);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+[data-theme="light"] .message-editor-content textarea {
+  color: var(--primary-text-color);
+}
+
+[data-theme="light"] .editor-button.cancel {
+  background-color: var(--button-hover-bg);
+  color: var(--primary-text-color);
+}
+
+[data-theme="light"] .editor-button.cancel:hover {
+  background-color: #d1d5db; /* A bit darker than hover bg */
+}
+
+[data-theme="light"] .editor-button.save {
+  background-color: var(--primary-text-color);
+  color: var(--main-bg-color);
+}
+
+[data-theme="light"] .editor-button.save:hover {
+  background-color: #374151; /* Dark gray */
 }

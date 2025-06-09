@@ -9,6 +9,7 @@ const AuthPage = () => {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const { login, register, isAuthenticated } = useSettings();
+  const [isFading, setIsFading] = useState(false);
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -35,16 +36,25 @@ const AuthPage = () => {
     }
   };
 
+  const handleToggleForm = () => {
+    setError(''); // Clear errors on toggle
+    setIsFading(true);
+    setTimeout(() => {
+      setIsLogin(prev => !prev);
+      setIsFading(false);
+    }, 300); // This duration should match the CSS transition
+  };
+
   return (
     <div className="auth-container">
-      {/* --- NEW: Animated Background Elements --- */}
+      {/* --- Animated Background Elements --- */}
       <div className="auth-background">
         <div className="circle circle-1"></div>
         <div className="circle circle-2"></div>
         <div className="circle circle-3"></div>
       </div>
       
-      <div className="auth-form-wrapper">
+      <div className={`auth-form-wrapper ${isFading ? 'fading' : ''}`}>
         <h1 className="auth-title">FexoAI</h1>
         <h2 className="auth-subtitle">{isLogin ? 'Welcome Back' : 'Create Account'}</h2>
         
@@ -77,7 +87,7 @@ const AuthPage = () => {
 
         <p className="auth-toggle">
           {isLogin ? "Don't have an account?" : 'Already have an account?'}
-          <button onClick={() => setIsLogin(!isLogin)}>
+          <button onClick={handleToggleForm}>
             {isLogin ? 'Register' : 'Login'}
           </button>
         </p>

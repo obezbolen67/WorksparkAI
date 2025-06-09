@@ -1,6 +1,6 @@
 // src/utils/api.ts
 
-const API_URL = 'http://localhost:3001/api';
+export const API_BASE_URL = import.meta.env.VITE_API_URL
 
 /**
  * A wrapper around the native `fetch` function that automatically adds
@@ -29,7 +29,8 @@ export const api = (endpoint: string, options: RequestInit = {}): Promise<Respon
     headers,
   };
   
-  return fetch(`${API_URL}${endpoint}`, config);
+  // --- UPDATED: Construct the full URL. If API_BASE_URL is '', it becomes a relative path. ---
+  return fetch(`${API_BASE_URL}/api${endpoint}`, config);
 };
 
 export default api;

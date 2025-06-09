@@ -1,5 +1,6 @@
 /* src/App.css */
 :root {
+  /* Default to dark theme */
   --sidebar-bg-color: #171717;
   --main-bg-color: #212121;
   --input-bg-color: #212121;
@@ -9,6 +10,29 @@
   --button-hover-bg: #2f2f2f;
   --assistant-message-bg: #2f2f2f;
 }
+
+[data-theme="dark"] {
+  --sidebar-bg-color: #171717;
+  --main-bg-color: #212121;
+  --input-bg-color: #212121;
+  --primary-text-color: #e5e5e5;
+  --secondary-text-color: #a0a0a0;
+  --border-color: hsl(0, 0%, 22%);
+  --button-hover-bg: #2f2f2f;
+  --assistant-message-bg: #2f2f2f;
+}
+
+[data-theme="light"] {
+  --sidebar-bg-color: #f4f4f5;
+  --main-bg-color: #ffffff;
+  --input-bg-color: #ffffff;
+  --primary-text-color: #111827;
+  --secondary-text-color: #6b7280;
+  --border-color: #e5e7eb;
+  --button-hover-bg: #e5e7eb;
+  --assistant-message-bg: #f4f4f5;
+}
+
 
 body {
   margin: 0;
@@ -23,4 +47,23 @@ body {
   width: 100vw;
   background-color: var(--main-bg-color);
   overflow: hidden; /* Prevent body scroll */
+}
+
+/* --- NEW: Responsive styles for the main container --- */
+@media (max-width: 768px) {
+  /* On mobile, the flex container itself doesn't need to do much,
+     as the sidebar is now position:fixed and out of the flow. */
+  .app-container {
+    padding-top: 56px; /* Space for the fixed mobile header */
+    height: 100vh; /* Use full viewport height */
+    box-sizing: border-box;
+  }
+}
+
+/* --- NEW: Full-screen loading background --- */
+.initial-loading-screen {
+  position: fixed;
+  inset: 0;
+  background-color: var(--main-bg-color);
+  z-index: 9999; /* Ensure it's on top */
 }
