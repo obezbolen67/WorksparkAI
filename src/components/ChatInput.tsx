@@ -1,3 +1,4 @@
+// src/components/ChatInput.tsx
 import { useState, useRef, useEffect } from 'react';
 import { FiPlus, FiSend } from 'react-icons/fi';
 import { HiOutlineMicrophone } from "react-icons/hi2";
@@ -10,6 +11,7 @@ interface ChatInputProps {
 const ChatInput = ({ onSendMessage }: ChatInputProps) => {
   const [text, setText] = useState('');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const hasText = text.trim().length > 0;
 
   const handleSend = () => {
     if (text.trim()) {
@@ -63,11 +65,9 @@ const ChatInput = ({ onSendMessage }: ChatInputProps) => {
     }
   };
 
-  // ----- THIS IS THE FIX -----
   const handleInput = () => {
     adjustTextareaHeight();
   };
-  // -------------------------
 
   useEffect(() => {
     adjustTextareaHeight();
@@ -96,20 +96,19 @@ const ChatInput = ({ onSendMessage }: ChatInputProps) => {
           onInput={handleInput}
           rows={1}
         />
-        <button className="chat-input-button">
-          <HiOutlineMicrophone size={20} />
-        </button>
-        <button
-          className={`chat-input-button send-button ${text.trim() ? 'active' : ''}`}
-          onClick={handleSend}
-          disabled={!text.trim()}
-        >
-          <FiSend size={20} />
-        </button>
+        <div className={`chat-input-actions ${hasText ? 'has-text' : ''}`}>
+          <button className="chat-input-button mic-button">
+            <HiOutlineMicrophone size={20} />
+          </button>
+          <button
+            className="chat-input-button send-button"
+            onClick={handleSend}
+            disabled={!hasText}
+          >
+            <FiSend size={20} />
+          </button>
+        </div>
       </div>
-      <p className="input-footer-text">
-        Fexo can make mistakes. Consider checking important information.
-      </p>
     </div>
   );
 };

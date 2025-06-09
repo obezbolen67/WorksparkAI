@@ -1,0 +1,28 @@
+/* src/css/Notification.css */
+.notification-popup {
+  position: fixed;
+  top: 20px;
+  left: 50%;
+  transform: translate(-50%, -150%); /* Start above the screen */
+  background-color: #424242;
+  color: #ECECEC;
+  padding: 0.75rem 1.5rem;
+  border-radius: 9999px; /* Pill shape */
+  font-weight: 500;
+  z-index: 2000; /* Above modals */
+  opacity: 0;
+  transition: transform 0.4s cubic-bezier(0.25, 1, 0.5, 1), opacity 0.4s ease;
+  pointer-events: none; /* Don't block clicks */
+  border: 1px solid var(--border-color);
+}
+
+.notification-popup.visible {
+  opacity: 1;
+  transform: translate(-50%, 0); /* Slide down into view */
+}
+
+.notification-popup.error {
+    background-color: hsla(0, 84%, 60%, 0.2);
+    color: #f87171;
+    border: 1px solid hsla(0, 84%, 60%, 0.5);
+}

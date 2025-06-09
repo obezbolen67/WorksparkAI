@@ -1,36 +1,35 @@
-/* src/components/Sidebar.css */
+/* src/css/Sidebar.css */
+
 .sidebar {
   width: 260px;
   background-color: var(--sidebar-bg-color);
   color: var(--primary-text-color);
   display: flex;
   flex-direction: column;
-  height: 100%;
-  padding: 8px;
-  box-sizing: border-box;
+  padding: 0;
+  border-right: 1px solid var(--border-color);
 }
 
 .sidebar-top {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding-bottom: 12px;
+  padding: 1rem;
 }
 
 .sidebar-button {
   background: none;
   border: none;
   color: var(--primary-text-color);
-  padding: 10px;
-  border-radius: 8px;
-  cursor: pointer;
   display: flex;
   align-items: center;
-  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  cursor: pointer;
   width: 100%;
   text-align: left;
+  transition: background-color 0.2s;
   font-size: 0.9rem;
-  transition: background-color 0.2s ease-in-out;
 }
 
 .sidebar-button:hover {
@@ -38,11 +37,17 @@
 }
 
 .sidebar-button span {
-  flex-grow: 1;
+  margin-left: 12px;
+  font-weight: 500;
 }
 
 .new-chat-button {
   flex-grow: 1;
+  margin-left: 8px;
+}
+
+.sidebar-nav {
+  padding: 0 1rem;
 }
 
 .sidebar-nav ul {
@@ -53,15 +58,15 @@
 
 .sidebar-conversations {
   flex-grow: 1;
+  padding: 1rem;
   overflow-y: auto;
-  margin-top: 20px;
 }
 
 .convos-header {
-  padding: 10px;
-  font-size: 0.75rem;
+  font-size: 0.8rem;
+  font-weight: 500;
   color: var(--secondary-text-color);
-  text-transform: uppercase;
+  padding: 0 12px 8px 12px;
 }
 
 .convo-list {
@@ -72,14 +77,15 @@
 
 .convo-list li a {
   display: block;
-  padding: 10px;
-  border-radius: 8px;
+  padding: 8px 12px;
+  border-radius: 6px;
   color: var(--primary-text-color);
   text-decoration: none;
   font-size: 0.9rem;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  transition: background-color 0.2s;
 }
 
 .convo-list li a:hover {
@@ -87,35 +93,105 @@
 }
 
 .sidebar-footer {
-  padding-top: 12px;
+  padding: 1rem;
+  margin-top: auto; /* Pushes footer to the bottom */
 }
 
+/* User Profile Wrapper & Menu */
+.user-profile-wrapper {
+  position: relative; /* Anchor for the absolute menu */
+}
+
+.user-profile-menu {
+  position: absolute;
+  bottom: calc(100% + 8px); /* Position above the profile bar with 8px gap */
+  left: 0;
+  right: 0;
+  background-color: hsl(220, 13%, 15%); /* Slightly lighter than sidebar bg */
+  border-radius: 12px;
+  border: 1px solid var(--border-color);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  padding: 0.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  z-index: 10;
+
+  /* Smooth transition properties */
+  opacity: 0;
+  transform: translateY(10px) scale(0.95);
+  transform-origin: bottom center;
+  pointer-events: none;
+  transition: opacity 0.2s cubic-bezier(0.4, 0, 0.2, 1), transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.user-profile-menu.open {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  pointer-events: auto;
+}
+
+.menu-button {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 10px 12px;
+  border: none;
+  background-color: transparent;
+  color: var(--primary-text-color);
+  font-size: 0.9rem;
+  font-weight: 500;
+  border-radius: 8px;
+  cursor: pointer;
+  text-align: left;
+  transition: background-color 0.2s ease;
+}
+
+.menu-button:hover {
+  background-color: var(--button-hover-bg);
+}
+
+.menu-button > svg {
+  flex-shrink: 0;
+  color: var(--secondary-text-color);
+}
+
+/* User Profile Bar (The part that's always visible) */
 .user-profile {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 10px;
+  gap: 12px;
+  padding: 8px;
   border-radius: 8px;
+  transition: background-color 0.2s ease;
+  cursor: pointer;
 }
+
 .user-profile:hover {
-    background-color: var(--button-hover-bg);
-    cursor: pointer;
+  background-color: var(--button-hover-bg);
 }
 
 .user-avatar {
   width: 32px;
   height: 32px;
   border-radius: 50%;
-  background-color: #7f56d9; /* A sample color */
+  background-color: #19c37d; /* Green accent */
+  color: var(--sidebar-bg-color);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-weight: bold;
+  font-weight: 600;
+  font-size: 1rem;
+  flex-shrink: 0;
 }
 
 .user-name {
   flex-grow: 1;
   font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .user-options-button {
@@ -123,4 +199,11 @@
   border: none;
   color: var(--secondary-text-color);
   cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.2s, color 0.2s;
+  pointer-events: none; /* Button inside a clickable parent */
 }

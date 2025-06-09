@@ -1,0 +1,173 @@
+/* src/css/AuthPage.css */
+
+/* --- Animated Background --- */
+@keyframes move {
+  0% { transform: translate(0, 0); }
+  25% { transform: translate(10vw, -15vh); }
+  50% { transform: translate(-20vw, 20vh); }
+  75% { transform: translate(15vw, 5vh); }
+  100% { transform: translate(0, 0); }
+}
+
+.auth-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  background-color: #111; /* Darker base for the glow */
+  position: relative;
+  overflow: hidden;
+}
+
+.auth-background {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.circle {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(100px);
+  opacity: 0.5;
+  animation: move 25s infinite alternate;
+}
+
+.circle-1 {
+  width: 300px;
+  height: 300px;
+  background: hsla(145, 63%, 42%, 0.6); /* Green */
+  top: 10vh;
+  left: 10vw;
+  animation-duration: 20s;
+}
+
+.circle-2 {
+  width: 400px;
+  height: 400px;
+  background: hsla(220, 50%, 30%, 0.5); /* Dark Blue */
+  bottom: 5vh;
+  right: 15vw;
+  animation-duration: 30s;
+  animation-delay: -5s;
+}
+
+.circle-3 {
+  width: 250px;
+  height: 250px;
+  background: hsla(180, 50%, 40%, 0.5); /* Teal */
+  top: 50vh;
+  left: 40vw;
+  animation-duration: 25s;
+  animation-delay: -10s;
+}
+
+/* --- Form Styles --- */
+.auth-form-wrapper {
+  background-color: rgba(23, 23, 23, 0.8); /* Use sidebar color with transparency */
+  backdrop-filter: blur(10px);
+  padding: 2.5rem 3rem;
+  border-radius: 16px;
+  width: 90%;
+  max-width: 400px;
+  border: 1px solid var(--border-color);
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
+  text-align: center;
+  position: relative; /* Ensure it's above the background */
+  z-index: 2;
+}
+
+.auth-title {
+  font-size: 2rem;
+  font-weight: 700;
+  margin: 0 0 0.5rem 0;
+  color: var(--primary-text-color);
+}
+
+.auth-subtitle {
+  font-size: 1.1rem;
+  font-weight: 400;
+  color: var(--secondary-text-color);
+  margin: 0 0 2rem 0;
+}
+
+.auth-form-group {
+  margin-bottom: 1.5rem;
+  text-align: left;
+}
+
+.auth-form-group label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-weight: 500;
+  font-size: 0.875rem;
+  color: var(--primary-text-color);
+}
+
+.auth-form-group input {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+  background-color: var(--main-bg-color);
+  color: var(--primary-text-color);
+  font-size: 1rem;
+  box-sizing: border-box;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.auth-form-group input:focus {
+  outline: none;
+  border-color: #19c37d; /* Green accent */
+  box-shadow: 0 0 0 2px hsla(145, 63%, 42%, 0.3); /* Green glow */
+}
+
+.auth-button {
+  width: 100%;
+  background-color: #19c37d; /* Green accent */
+  color: #000;
+  padding: 0.8rem 1.5rem;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 1rem;
+  transition: background-color 0.2s, transform 0.2s;
+  margin-top: 0.5rem;
+}
+
+.auth-button:hover {
+  background-color: #15a166; /* Darker green */
+  transform: translateY(-2px);
+}
+
+.auth-error {
+  background-color: hsla(0, 84%, 60%, 0.2);
+  color: #f87171;
+  border: 1px solid hsla(0, 84%, 60%, 0.5);
+  border-radius: 8px;
+  padding: 0.75rem;
+  margin-bottom: 1.5rem;
+  font-size: 0.9rem;
+}
+
+.auth-toggle {
+  margin-top: 2rem;
+  font-size: 0.9rem;
+  color: var(--secondary-text-color);
+}
+
+.auth-toggle button {
+  background: none;
+  border: none;
+  color: #2dd4bf; /* A light, complementary teal/green */
+  font-weight: 600;
+  cursor: pointer;
+  margin-left: 0.5rem;
+}
+
+.auth-toggle button:hover {
+  text-decoration: underline;
+}

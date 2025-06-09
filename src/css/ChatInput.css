@@ -1,3 +1,4 @@
+/* src/css/ChatInput.css */
 .chat-input-container {
   width: 100%;
   max-width: 800px;
@@ -8,13 +9,13 @@
 
 .chat-input-wrapper {
   display: flex;
-  align-items: flex-start; /* FIXED: Anchor to top so growth goes down */
+  align-items: center;
   background-color: var(--input-bg-color);
   border: 1px solid var(--border-color);
   border-radius: 16px;
   padding: 8px 12px;
   gap: 8px;
-  min-height: 50px; /* Ensure consistent minimum height */
+  min-height: 50px;
 }
 
 .chat-input {
@@ -27,15 +28,12 @@
   line-height: 1.5;
   resize: none;
   font-family: inherit;
-  
-  /* FIXED: Anchor the top and grow downward only */
-  margin-top: 10px; /* Match the original padding for alignment */
+  margin-top: 0;
   padding: 0;
   height: 24px;
   max-height: 120px;
   overflow: hidden;
   word-wrap: break-word;
-  vertical-align: top; /* Ensure top alignment */
 }
 
 .chat-input.scrollable {
@@ -73,32 +71,59 @@
   height: 36px;
   padding: 0;
   border-radius: 50%;
-  margin-top: 8px; /* Align with textarea top */
 }
 
-.chat-input-button:hover {
+.chat-input-button:hover:not(:disabled) {
   background-color: var(--button-hover-bg);
 }
 
+/* --- ANIMATION LOGIC --- */
+
+.chat-input-actions {
+  position: relative;
+  /* Start with width for one button */
+  width: 36px; 
+  height: 36px;
+  transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.chat-input-actions.has-text {
+  /* Expand to fit both buttons and a gap */
+  width: calc(36px + 8px + 36px); 
+}
+
+.mic-button {
+  position: absolute;
+  top: 0;
+  right: 0;
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.chat-input-actions.has-text .mic-button {
+  /* When text exists, slide the mic button to the left */
+  transform: translateX(calc(-100% - 8px));
+}
+
 .send-button {
-  background-color: var(--secondary-text-color);
+  position: absolute;
+  top: 0;
+  right: 0;
+  opacity: 0;
+  /* Start it off to the right and slightly smaller */
+  transform: translateX(50%) scale(0.7);
+  pointer-events: none;
+  transition: opacity 0.3s ease, transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  background-color: #c2c2d6;
   color: var(--input-bg-color);
 }
 
-.send-button.active {
-  background-color: #c2c2d6;
+.chat-input-actions.has-text .send-button {
+  opacity: 1;
+  /* Slide it into its final place and original size */
+  transform: translateX(0) scale(1);
+  pointer-events: auto;
 }
 
 .send-button:disabled {
   cursor: not-allowed;
-  opacity: 0.5;
-  background-color: var(--secondary-text-color);
-}
-
-.input-footer-text {
-  text-align: center;
-  font-size: 0.75rem;
-  color: var(--secondary-text-color);
-  margin-top: 8px;
-  padding: 0 1rem;
 }

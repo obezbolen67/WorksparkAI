@@ -1,0 +1,206 @@
+/* src/css/SettingsModal.css */
+
+/* --- OVERLAY & MODAL CONTAINER --- */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background-color: hsla(0, 0%, 0%, 0.5); /* Semi-transparent black */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  opacity: 0;
+  animation: fadeIn 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+.modal-content {
+  background-color: var(--sidebar-bg-color); /* Darker than main view */
+  padding: 1.5rem 2rem 2rem 2rem;
+  border-radius: 16px;
+  width: 90%;
+  max-width: 520px;
+  border: 1px solid var(--border-color);
+  color: var(--primary-text-color);
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3), 0 8px 10px -6px rgba(0, 0, 0, 0.3);
+  transform: scale(0.95);
+  opacity: 0;
+  animation: scaleIn 0.3s 0.1s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+/* --- ANIMATIONS --- */
+@keyframes fadeIn {
+  to { opacity: 1; }
+}
+@keyframes fadeOut {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+@keyframes scaleIn {
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+@keyframes scaleOut {
+  from {
+    transform: scale(1);
+    opacity: 1;
+  }
+  to {
+    transform: scale(0.95);
+    opacity: 0;
+  }
+}
+
+/* Closing animation states */
+.modal-overlay.closing {
+  animation: fadeOut 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+.modal-content.closing {
+  animation: scaleOut 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+
+/* --- HEADER --- */
+.modal-content h2 {
+  margin-top: 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+  text-align: center;
+  margin-bottom: 0.5rem;
+}
+
+.modal-content p {
+  color: var(--secondary-text-color);
+  font-size: 0.9rem;
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+/* --- FORM ELEMENTS --- */
+.form-group {
+  margin-bottom: 1.25rem;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-weight: 500;
+  font-size: 0.875rem;
+  color: var(--primary-text-color);
+}
+
+.form-group input,
+.form-group select {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+  background-color: var(--main-bg-color); /* Slightly lighter than modal bg */
+  color: var(--primary-text-color);
+  font-size: 1rem;
+  box-sizing: border-box;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.form-group input:focus,
+.form-group select:focus {
+  outline: none;
+  border-color: #19c37d; /* Green accent */
+  box-shadow: 0 0 0 2px hsla(145, 63%, 42%, 0.3); /* Green glow */
+}
+
+/* --- MODEL SELECTION ROW --- */
+.model-select-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.model-select-wrapper select {
+  flex-grow: 1;
+}
+
+.refresh-button {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  background-color: var(--main-bg-color);
+  border: 1px solid var(--border-color);
+  color: var(--primary-text-color);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.refresh-button:hover:not(:disabled) {
+  background-color: var(--button-hover-bg);
+  border-color: #19c37d; /* Green accent */
+}
+
+.refresh-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.refresh-button[disabled]:hover {
+  border-color: var(--border-color); /* Prevent hover effect when disabled */
+}
+
+/* --- ERROR TEXT --- */
+.error-text {
+  color: #f87171; /* A reddish error color */
+  font-size: 0.8rem;
+  margin-top: 0.5rem;
+  padding-left: 0.25rem;
+  text-align: left; /* Override centered paragraph style */
+}
+
+/* --- ACTION BUTTONS --- */
+.modal-actions {
+  margin-top: 2rem;
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem; /* Space between buttons */
+}
+
+/* Generic button style */
+.modal-button {
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 0.75rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease-in-out;
+  font-size: 0.9rem;
+}
+
+.modal-button:hover:not(:disabled) {
+  transform: scale(1.05);
+}
+
+/* Cancel button style (matches user message editor) */
+.modal-button-cancel {
+  background-color: var(--main-bg-color);
+  color: #ECECEC;
+  border: 1px solid var(--border-color);
+}
+
+.modal-button-cancel:hover {
+  background-color: var(--button-hover-bg);
+}
+
+/* Save button style (matches user message editor) */
+.modal-button-save {
+  background-color: #ffffff;
+  color: #000000;
+}
+
+.modal-button-save:hover {
+  background-color: #f0f0f0;
+}
