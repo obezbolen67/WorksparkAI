@@ -1,0 +1,104 @@
+.chat-input-container {
+  width: 100%;
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 0 1rem;
+  box-sizing: border-box;
+}
+
+.chat-input-wrapper {
+  display: flex;
+  align-items: flex-start; /* FIXED: Anchor to top so growth goes down */
+  background-color: var(--input-bg-color);
+  border: 1px solid var(--border-color);
+  border-radius: 16px;
+  padding: 8px 12px;
+  gap: 8px;
+  min-height: 50px; /* Ensure consistent minimum height */
+}
+
+.chat-input {
+  flex-grow: 1;
+  background: none;
+  border: none;
+  outline: none;
+  color: var(--primary-text-color);
+  font-size: 1rem;
+  line-height: 1.5;
+  resize: none;
+  font-family: inherit;
+  
+  /* FIXED: Anchor the top and grow downward only */
+  margin-top: 10px; /* Match the original padding for alignment */
+  padding: 0;
+  height: 24px;
+  max-height: 120px;
+  overflow: hidden;
+  word-wrap: break-word;
+  vertical-align: top; /* Ensure top alignment */
+}
+
+.chat-input.scrollable {
+  overflow-y: auto;
+}
+
+.chat-input::-webkit-scrollbar {
+  width: 6px;
+}
+
+.chat-input::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.chat-input::-webkit-scrollbar-thumb {
+  background-color: var(--border-color);
+  border-radius: 3px;
+}
+
+.chat-input::-webkit-scrollbar-thumb:hover {
+  background-color: var(--secondary-text-color);
+}
+
+.chat-input-button {
+  background: none;
+  border: none;
+  color: var(--secondary-text-color);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.2s ease-in-out;
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border-radius: 50%;
+  margin-top: 8px; /* Align with textarea top */
+}
+
+.chat-input-button:hover {
+  background-color: var(--button-hover-bg);
+}
+
+.send-button {
+  background-color: var(--secondary-text-color);
+  color: var(--input-bg-color);
+}
+
+.send-button.active {
+  background-color: #c2c2d6;
+}
+
+.send-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+  background-color: var(--secondary-text-color);
+}
+
+.input-footer-text {
+  text-align: center;
+  font-size: 0.75rem;
+  color: var(--secondary-text-color);
+  margin-top: 8px;
+  padding: 0 1rem;
+}

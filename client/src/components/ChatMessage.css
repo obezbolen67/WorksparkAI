@@ -1,0 +1,45 @@
+/* src/components/ChatMessage.css */
+.chat-message-wrapper {
+  padding: 1rem 0;
+}
+
+.chat-message-wrapper.assistant {
+  background-color: var(--assistant-message-bg);
+  border-top: 1px solid var(--border-color);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.chat-message-container {
+  max-width: 800px;
+  margin: 0 auto;
+  display: flex;
+  gap: 1rem;
+  padding: 0 1rem;
+}
+
+.avatar {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  flex-shrink: 0;
+}
+
+.user .avatar {
+  background-color: #7f56d9;
+  color: white;
+}
+
+.assistant .avatar {
+  background-color: #19c37d;
+  color: white;
+}
+
+.message-content {
+  padding-top: 4px;
+  line-height: 1.6;
+  white-space: pre-wrap; /* Renders newlines */
+}

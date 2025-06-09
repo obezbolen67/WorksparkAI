@@ -1,0 +1,26 @@
+/* src/App.css */
+:root {
+  --sidebar-bg-color: #171717;
+  --main-bg-color: #212121;
+  --input-bg-color: #212121;
+  --primary-text-color: #e5e5e5;
+  --secondary-text-color: #a0a0a0;
+  --border-color: hsl(0, 0%, 22%);
+  --button-hover-bg: #2f2f2f;
+  --assistant-message-bg: #2f2f2f;
+}
+
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  background-color: var(--main-bg-color);
+  color: var(--primary-text-color);
+}
+
+.app-container {
+  display: flex;
+  height: 100vh;
+  width: 100vw;
+  background-color: var(--main-bg-color);
+  overflow: hidden; /* Prevent body scroll */
+}

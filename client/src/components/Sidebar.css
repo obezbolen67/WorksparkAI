@@ -1,0 +1,126 @@
+/* src/components/Sidebar.css */
+.sidebar {
+  width: 260px;
+  background-color: var(--sidebar-bg-color);
+  color: var(--primary-text-color);
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: 8px;
+  box-sizing: border-box;
+}
+
+.sidebar-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 12px;
+}
+
+.sidebar-button {
+  background: none;
+  border: none;
+  color: var(--primary-text-color);
+  padding: 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  text-align: left;
+  font-size: 0.9rem;
+  transition: background-color 0.2s ease-in-out;
+}
+
+.sidebar-button:hover {
+  background-color: var(--button-hover-bg);
+}
+
+.sidebar-button span {
+  flex-grow: 1;
+}
+
+.new-chat-button {
+  flex-grow: 1;
+}
+
+.sidebar-nav ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.sidebar-conversations {
+  flex-grow: 1;
+  overflow-y: auto;
+  margin-top: 20px;
+}
+
+.convos-header {
+  padding: 10px;
+  font-size: 0.75rem;
+  color: var(--secondary-text-color);
+  text-transform: uppercase;
+}
+
+.convo-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.convo-list li a {
+  display: block;
+  padding: 10px;
+  border-radius: 8px;
+  color: var(--primary-text-color);
+  text-decoration: none;
+  font-size: 0.9rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.convo-list li a:hover {
+  background-color: var(--button-hover-bg);
+}
+
+.sidebar-footer {
+  padding-top: 12px;
+}
+
+.user-profile {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px;
+  border-radius: 8px;
+}
+.user-profile:hover {
+    background-color: var(--button-hover-bg);
+    cursor: pointer;
+}
+
+.user-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background-color: #7f56d9; /* A sample color */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+}
+
+.user-name {
+  flex-grow: 1;
+  font-weight: 500;
+}
+
+.user-options-button {
+  background: none;
+  border: none;
+  color: var(--secondary-text-color);
+  cursor: pointer;
+}

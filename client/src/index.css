@@ -1,0 +1,41 @@
+/* * {
+  outline: 1px solid red;
+} */
+
+/* Basic reset and font setup */
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* 
+  Remove default button styling to let components handle it.
+  This prevents conflicts with your custom .sidebar-button styles.
+*/
+button {
+  border: none;
+  margin: 0;
+  padding: 0;
+  width: auto;
+  overflow: visible;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  line-height: normal;
+  cursor: pointer;
+}
+
+/* Basic link styling */
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+/* Remove list styles */
+ul, ol {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
