@@ -1,13 +1,18 @@
 // src/components/SettingsModal.tsx
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useSettings } from '../contexts/SettingsContext';
 import { useNotification } from '../contexts/NotificationContext';
 import '../css/SettingsModal.css';
-// --- UPDATED: Import new icons ---
-import { FiRefreshCw, FiCpu, FiSliders, FiEye, FiEyeOff } from "react-icons/fi"; 
+import { FiRefreshCw, FiCpu, FiSliders, FiEye, FiEyeOff, FiMoreVertical } from "react-icons/fi"; 
 import api from '../utils/api';
+import Tooltip from './Tooltip'; // <-- ADDED
 
 type Model = { id: string };
+type Modality = 'text' | 'image';
+type ModelConfig = {
+  id: string;
+  modalities: Modality[];
+};
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -25,13 +30,15 @@ const SettingsModal = ({ isOpen, onClose }: SettingsModalProps) => {
   const [baseUrl, setBaseUrl] = useState(user?.baseUrl || '');
   const [selectedModel, setSelectedModel] = useState(user?.selectedModel || '');
   const [quickAccessModels, setQuickAccessModels] = useState<string[]>(user?.quickAccessModels || []);
+  const [modelConfigs, setModelConfigs] = useState<ModelConfig[]>(user?.modelConfigs || []);
   
   const [isFetching, setIsFetching] = useState(false);
   const [fetchError, setFetchError] = useState('');
   const [isClosing, setIsClosing] = useState(false);
-  
-  // --- NEW: State to manage API key visibility ---
   const [isApiKeyVisible, setIsApiKeyVisible] = useState(false);
+
+  const [openConfigMenuId, setOpenConfigMenuId] = useState<string | null>(null);
+  const configMenuRef = useRef<HTMLDivElement>(null);
 
 
   useEffect(() => {
@@ -40,15 +47,31 @@ const SettingsModal = ({ isOpen, onClose }: SettingsModalProps) => {
       setBaseUrl(user.baseUrl);
       setSelectedModel(user.selectedModel);
       setQuickAccessModels(user.quickAccessModels || []);
+      setModelConfigs(user.modelConfigs || []);
     }
   }, [user]);
 
-  // When the modal closes, ensure the API key is masked again for security
   useEffect(() => {
     if (!isOpen) {
       setIsApiKeyVisible(false);
+      setOpenConfigMenuId(null);
     }
   }, [isOpen]);
+  
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (configMenuRef.current && !configMenuRef.current.contains(event.target as Node)) {
+        setOpenConfigMenuId(null);
+      }
+    };
+    if (openConfigMenuId) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [openConfigMenuId]);
+
 
   if (!isOpen) return null;
   
@@ -65,11 +88,9 @@ const SettingsModal = ({ isOpen, onClose }: SettingsModalProps) => {
       setFetchError('API Key is required to fetch models.');
       return;
     }
-    
     setIsFetching(true);
     setFetchError('');
     setModels([]);
-
     try {
       await updateSettings({ apiKey, baseUrl });
       const response = await api('/models', { method: 'POST' });
@@ -93,7 +114,8 @@ const SettingsModal = ({ isOpen, onClose }: SettingsModalProps) => {
 
   const handleSave = async () => {
     try {
-      await updateSettings({ apiKey, baseUrl, selectedModel, quickAccessModels });
+      const configsToSave = modelConfigs.filter(config => quickAccessModels.includes(config.id));
+      await updateSettings({ apiKey, baseUrl, selectedModel, quickAccessModels, modelConfigs: configsToSave });
       showNotification('Settings Saved!');
       handleClose();
     } catch (err) {
@@ -108,6 +130,37 @@ const SettingsModal = ({ isOpen, onClose }: SettingsModalProps) => {
         : [...prev, modelId]
     );
   };
+  
+  const handleModalityChange = (modelId: string, modalityToToggle: Modality, isEnabled: boolean) => {
+    setModelConfigs(prevConfigs => {
+      const newConfigs = [...prevConfigs];
+      const configIndex = newConfigs.findIndex(c => c.id === modelId);
+
+      if (configIndex > -1) {
+        // Config exists, so we update it.
+        const configToUpdate = { ...newConfigs[configIndex] };
+        const modalitiesSet = new Set(configToUpdate.modalities);
+
+        if (isEnabled) {
+          modalitiesSet.add(modalityToToggle);
+        } else {
+          modalitiesSet.delete(modalityToToggle);
+        }
+        
+        configToUpdate.modalities = Array.from(modalitiesSet);
+        newConfigs[configIndex] = configToUpdate;
+      } else {
+        // No config, create a new one. 'text' is always default.
+        const newModalities: Modality[] = ['text'];
+        if (isEnabled) {
+          newModalities.push(modalityToToggle);
+        }
+        newConfigs.push({ id: modelId, modalities: newModalities });
+      }
+
+      return newConfigs;
+    });
+  };
 
   const renderGptTab = () => (
     <>
@@ -115,7 +168,6 @@ const SettingsModal = ({ isOpen, onClose }: SettingsModalProps) => {
       <p>Configure your connection to a compatible LLM provider.</p>
       <div className="form-group">
         <label htmlFor="apiKey">API Key</label>
-        {/* --- UPDATED: API Key input with visibility toggle --- */}
         <div className="input-wrapper">
           <input 
             id="apiKey" 
@@ -124,14 +176,15 @@ const SettingsModal = ({ isOpen, onClose }: SettingsModalProps) => {
             onChange={(e) => setApiKey(e.target.value)} 
             placeholder="Required: sk-..." 
           />
-          <button 
-            type="button"
-            className="visibility-toggle-btn"
-            onClick={() => setIsApiKeyVisible(prev => !prev)}
-            title={isApiKeyVisible ? "Hide API Key" : "Show API Key"}
-          >
-            {isApiKeyVisible ? <FiEyeOff size={18} /> : <FiEye size={18} />}
-          </button>
+          <Tooltip text={isApiKeyVisible ? "Hide API Key" : "Show API Key"}>
+            <button 
+              type="button"
+              className="visibility-toggle-btn"
+              onClick={() => setIsApiKeyVisible(prev => !prev)}
+            >
+              {isApiKeyVisible ? <FiEyeOff size={18} /> : <FiEye size={18} />}
+            </button>
+          </Tooltip>
         </div>
       </div>
       <div className="form-group">
@@ -148,28 +201,65 @@ const SettingsModal = ({ isOpen, onClose }: SettingsModalProps) => {
               <option>Click Refresh to load models</option>
             )}
           </select>
-          <button className="refresh-button" onClick={handleFetchModels} disabled={isFetching || !apiKey} title={!apiKey ? "API Key is required" : "Save credentials & Refresh models"}>
-            {isFetching ? '...' : <FiRefreshCw size={16} />}
-          </button>
+          <Tooltip text={!apiKey ? "API Key is required" : "Save credentials & Refresh models"}>
+            <button className="refresh-button" onClick={handleFetchModels} disabled={isFetching || !apiKey}>
+              {isFetching ? '...' : <FiRefreshCw size={16} />}
+            </button>
+          </Tooltip>
         </div>
         {fetchError && <p className="error-text">{fetchError}</p>}
       </div>
       {models.length > 0 && (
         <div className="form-group">
           <label>Quick Access Models</label>
-          <p className="description">Select which models appear in the top-of-screen selector.</p>
+          <p className="description">Select which models appear in the top-of-screen selector. You can configure modalities for selected models.</p>
           <div className="quick-access-list">
-            {models.map(model => (
-              <label key={model.id} className="quick-access-item">
-                <input 
-                  type="checkbox"
-                  checked={quickAccessModels.includes(model.id)}
-                  onChange={() => handleQuickAccessChange(model.id)}
-                />
-                <span className="checkbox-visual"></span>
-                <span className="model-name-text">{model.id}</span>
-              </label>
-            ))}
+            {models.map(model => {
+              const config = modelConfigs.find(c => c.id === model.id) || { modalities: ['text'] };
+              const hasImageModality = config.modalities.some(m => m === 'image');
+
+              return (
+              <div key={model.id} className="quick-access-row">
+                <label className="quick-access-item">
+                  <input 
+                    type="checkbox"
+                    checked={quickAccessModels.includes(model.id)}
+                    onChange={() => handleQuickAccessChange(model.id)}
+                  />
+                  <span className="checkbox-visual"></span>
+                  <span className="model-name-text">{model.id}</span>
+                </label>
+                
+                <div className="model-config-wrapper">
+                  <button
+                    className="model-config-button"
+                    onClick={() => setOpenConfigMenuId(openConfigMenuId === model.id ? null : model.id)}
+                    disabled={!quickAccessModels.includes(model.id)}
+                  >
+                    <FiMoreVertical size={16}/>
+                  </button>
+                  {openConfigMenuId === model.id && (
+                    <div className="model-config-menu" ref={configMenuRef}>
+                       <label className="config-menu-item">
+                          <input type="checkbox" checked disabled />
+                          <span className="checkbox-visual"></span>
+                          <span>Text</span>
+                       </label>
+                       <label className="config-menu-item">
+                          <input 
+                            type="checkbox" 
+                            checked={hasImageModality}
+                            onChange={(e) => handleModalityChange(model.id, 'image' as Modality, e.target.checked)}
+                          />
+                          <span className="checkbox-visual"></span>
+                          <span>Image</span>
+                       </label>
+                    </div>
+                  )}
+                </div>
+              </div>
+              );
+            })}
           </div>
         </div>
       )}
@@ -180,7 +270,6 @@ const SettingsModal = ({ isOpen, onClose }: SettingsModalProps) => {
     </>
   );
 
-  // ... (renderAppearanceTab and the return statement remain the same)
   const renderAppearanceTab = () => (
     <>
       <h3>Appearance</h3>

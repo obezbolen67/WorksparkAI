@@ -1,7 +1,8 @@
 // src/contexts/ChatContext.tsx
+
 import { createContext, useContext, useState, useCallback, useEffect, ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
-import type { Message } from '../types';
+import type { Message, Attachment } from '../types';
 import { useSettings } from './SettingsContext';
 import { useNotification } from './NotificationContext';
 import api from '../utils/api';
@@ -20,7 +21,8 @@ interface ChatContextType {
   clearChat: () => void;
   isLoadingChat: boolean;
   isCreatingChat: boolean;
-  sendMessage: (text: string) => Promise<void>;
+  isSending: boolean;
+  sendMessage: (text: string, attachments?: Attachment[]) => Promise<void>;
   isStreaming: boolean;
   editingIndex: number | null;
   startEditing: (index: number) => void;
@@ -44,6 +46,7 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
   const [isLoadingChat, setIsLoadingChat] = useState(false);
   const [isCreatingChat, setIsCreatingChat] = useState(false);
   const [isStreaming, setIsStreaming] = useState(false);
+  const [isSending, setIsSending] = useState(false);
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   
   const loadChatList = useCallback(async () => {
@@ -63,6 +66,23 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
     loadChatList();
   }, [loadChatList]);
   
+  // --- NEW ---
+  // A silent refresh function that doesn't trigger the main loading spinner.
+  // It's used to get the final state of messages (with attachment _ids) after sending.
+  const refreshChat = useCallback(async (id: string) => {
+    try {
+      const response = await api(`/chats/${id}`);
+      if (!response.ok) {
+        console.error(`Silent refresh for chat ${id} failed with status ${response.status}`);
+        return;
+      }
+      const data = await response.json();
+      setMessages(data.messages);
+    } catch (error) {
+      console.error(`Silent refresh for chat ${id} threw an error:`, error);
+    }
+  }, []);
+
   const streamAndSaveResponse = async (chatId: string, messageHistory: Message[]) => {
     setIsStreaming(true);
     setMessages([...messageHistory, { role: 'assistant', content: '' }]);
@@ -70,7 +90,9 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
     try {
       const response = await api(`/chats/${chatId}/stream`, {
         method: 'POST',
-        body: JSON.stringify({ messages: messageHistory }),
+        // FIX: The error "messagesFromClient is not defined" comes from the backend.
+        // This implies the backend expects a key named `messagesFromClient`.
+        body: JSON.stringify({ messagesFromClient: messageHistory }),
       });
       
       const reader = response.body?.getReader();
@@ -101,48 +123,78 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
     } catch (error) {
         console.error("Streaming failed:", error);
         showNotification(error instanceof Error ? error.message : "Failed to get response.", "error");
+        // FIX: On error, revert the UI by removing the optimistic assistant message.
         setMessages(messageHistory);
     } finally {
         setIsStreaming(false);
-        await loadChatList();
+        await loadChatList(); // Update sidebar with new updatedAt timestamp
+        
+        // --- FIX ---
+        // After the server has processed the message and saved the attachments,
+        // we silently refresh the chat state to get the final message list,
+        // which includes the `_id` for each new attachment. This makes images load.
+        if (chatId) {
+            await refreshChat(chatId);
+        }
     }
   };
   
-  const sendMessage = async (text: string) => {
-    const userMessage: Message = { role: 'user', content: text };
-    
-    if (!activeChatId) { // This is a new chat
-      setIsCreatingChat(true);
-      setMessages([userMessage]);
+  const sendMessage = async (text: string, attachments: Attachment[] = []) => {
+    if (isStreaming || isSending) return;
 
-      try {
+    const userMessage: Message = { role: 'user', content: text, attachments };
+    
+    // Capture state before optimistic update for rollback on error.
+    const originalMessages = messages;
+    setIsSending(true);
+    
+    try {
+      if (!activeChatId) { // This is a new chat
+        setIsCreatingChat(true);
+        setMessages([userMessage]);
+
         const createChatResponse = await api('/chats', {
           method: 'POST',
           body: JSON.stringify({ messages: [userMessage] }),
         });
 
-        if (!createChatResponse.ok) throw new Error('Failed to create chat session.');
+        if (!createChatResponse.ok) {
+            const errorData = await createChatResponse.json();
+            throw new Error(errorData.error || 'Failed to create chat session.');
+        }
 
         const newChat = await createChatResponse.json();
+        
+        // --- FIX ---
+        // Replace the optimistic message with the real one from the server.
+        // This ensures attachments in the first message have their `_id`.
+        setMessages(newChat.messages); 
         
         setActiveChatId(newChat._id);
         navigate(`/c/${newChat._id}`, { replace: true });
         
-        await streamAndSaveResponse(newChat._id, [userMessage]);
-      } catch (error) {
-        console.error(error);
-        showNotification('Could not start new chat.', 'error');
+        await streamAndSaveResponse(newChat._id, newChat.messages);
+
+      } else { // This is an existing chat
+        const updatedMessages = [...messages, userMessage];
+        setMessages(updatedMessages);
+
+        await streamAndSaveResponse(activeChatId, updatedMessages);
+      }
+    } catch (error) {
+      console.error(error);
+      showNotification(error instanceof Error ? error.message : 'Could not send message.', 'error');
+      // On error, revert to the state before the failed message was sent.
+      if (activeChatId) {
+        setMessages(originalMessages);
+      } else {
         setMessages([]);
         setActiveChatId(null);
         navigate('/', { replace: true });
-      } finally {
-        setIsCreatingChat(false);
       }
-    } else { // This is an existing chat
-      const updatedMessages = [...messages, userMessage];
-      setMessages(updatedMessages);
-
-      await streamAndSaveResponse(activeChatId, updatedMessages);
+    } finally {
+      setIsSending(false);
+      setIsCreatingChat(false);
     }
   };
 
@@ -174,8 +226,12 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
 
   const saveAndSubmitEdit = async (index: number, newContent: string) => {
     if (!activeChatId) return;
+
     const editedHistory = messages.slice(0, index + 1);
-    editedHistory[index] = { ...editedHistory[index], content: newContent };
+    editedHistory[index] = { 
+        ...editedHistory[index], 
+        content: newContent 
+    };
     
     setEditingIndex(null);
     setMessages(editedHistory);
@@ -226,7 +282,7 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
 
   const value = {
     messages, chatList, activeChatId, loadChat, clearChat, isLoadingChat,
-    isCreatingChat, sendMessage, isStreaming, editingIndex, startEditing,
+    isCreatingChat, isSending, sendMessage, isStreaming, editingIndex, startEditing,
     cancelEditing, saveAndSubmitEdit, regenerateResponse, renameChat, deleteChat
   };
 

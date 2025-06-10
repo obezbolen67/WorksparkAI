@@ -1,5 +1,6 @@
 // src/components/MobileHeader.tsx
 import { FiMenu, FiEdit } from 'react-icons/fi';
+import ModelSelector from './ModelSelector';
 import '../css/MobileHeader.css';
 
 interface MobileHeaderProps {
@@ -13,7 +14,10 @@ const MobileHeader = ({ onToggleSidebar, onNewChat }: MobileHeaderProps) => {
       <button className="mobile-header-button" onClick={onToggleSidebar} aria-label="Open menu">
         <FiMenu size={22} />
       </button>
-      <div className="mobile-header-title">FexoAI</div>
+      
+      {/* The static title is now replaced by the interactive ModelSelector */}
+      <ModelSelector />
+      
       <button className="mobile-header-button" onClick={onNewChat} aria-label="New chat">
         <FiEdit size={22} />
       </button>

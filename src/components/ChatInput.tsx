@@ -1,22 +1,81 @@
 // src/components/ChatInput.tsx
+
 import { useState, useRef, useEffect } from 'react';
-import { FiPlus, FiSend } from 'react-icons/fi';
+import { FiPlus, FiSend, FiX, FiImage, FiPaperclip } from 'react-icons/fi';
 import { HiOutlineMicrophone } from "react-icons/hi2";
+import { uploadFile } from '../utils/api';
+import type { Attachment } from '../types';
 import '../css/ChatInput.css';
+import Tooltip from './Tooltip'; // <-- ADDED
 
 interface ChatInputProps {
-  onSendMessage: (text: string) => void;
+  onSendMessage: (text: string, attachments: Attachment[]) => void;
+  isSending: boolean;
 }
 
-const ChatInput = ({ onSendMessage }: ChatInputProps) => {
+const ChatInput = ({ onSendMessage, isSending }: ChatInputProps) => {
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [text, setText] = useState('');
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const hasText = text.trim().length > 0;
+  const imageInputRef = useRef<HTMLInputElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const plusButtonRef = useRef<HTMLButtonElement>(null);
 
-  const handleSend = () => {
-    if (text.trim()) {
-      onSendMessage(text);
+  const hasContent = text.trim().length > 0 || selectedFiles.length > 0;
+
+  useEffect(() => {
+    if (!isMenuOpen) return;
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        menuRef.current && !menuRef.current.contains(event.target as Node) &&
+        plusButtonRef.current && !plusButtonRef.current.contains(event.target as Node)
+      ) {
+        setIsMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isMenuOpen]);
+
+  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (event.target.files) {
+      const files = Array.from(event.target.files).slice(0, 5);
+      setSelectedFiles(prev => [...prev, ...files]);
+    }
+    event.target.value = '';
+  };
+  
+  // --- THIS IS THE FIX ---
+  // The function now accepts a ref whose `.current` property can be null.
+  const triggerFileInput = (ref: React.RefObject<HTMLInputElement | null>) => {
+    // We add a null check before calling .click()
+    if (ref.current) {
+      ref.current.click();
+    }
+    setIsMenuOpen(false); // Close menu after selection
+  };
+
+  const removeFile = (fileToRemove: File) => {
+    setSelectedFiles(prev => prev.filter(file => file !== fileToRemove));
+  };
+
+  const handleSend = async () => {
+    if (!hasContent || isSending) return;
+    try {
+      const uploadPromises = selectedFiles.map(file => uploadFile(file));
+      const uploadResults = await Promise.all(uploadPromises);
+      const newAttachments: Attachment[] = uploadResults.map(result => result.file);
+      onSendMessage(text, newAttachments);
       setText('');
+      setSelectedFiles([]);
+    } catch (error) {
+      console.error("Failed to upload files and send message:", error);
+      alert((error as Error).message || 'An error occurred during upload.');
     }
   };
 
@@ -30,7 +89,6 @@ const ChatInput = ({ onSendMessage }: ChatInputProps) => {
   const adjustTextareaHeight = () => {
     const textarea = textareaRef.current;
     if (!textarea) return;
-
     const hiddenDiv = document.createElement('div');
     hiddenDiv.style.position = 'absolute';
     hiddenDiv.style.visibility = 'hidden';
@@ -43,16 +101,12 @@ const ChatInput = ({ onSendMessage }: ChatInputProps) => {
     hiddenDiv.style.border = 'none';
     hiddenDiv.style.wordWrap = 'break-word';
     hiddenDiv.style.whiteSpace = 'pre-wrap';
-    
     hiddenDiv.textContent = text || '\u200B';
-    
     document.body.appendChild(hiddenDiv);
     const contentHeight = hiddenDiv.scrollHeight;
     document.body.removeChild(hiddenDiv);
-
     const baseHeight = 24;
     const maxHeight = 120;
-    
     if (contentHeight <= baseHeight) {
       textarea.style.height = `${baseHeight}px`;
       textarea.classList.remove('scrollable');
@@ -65,14 +119,8 @@ const ChatInput = ({ onSendMessage }: ChatInputProps) => {
     }
   };
 
-  const handleInput = () => {
-    adjustTextareaHeight();
-  };
-
-  useEffect(() => {
-    adjustTextareaHeight();
-  }, [text]);
-
+  const handleInput = () => { adjustTextareaHeight(); };
+  useEffect(() => { adjustTextareaHeight(); }, [text]);
   useEffect(() => {
     if (!text && textareaRef.current) {
       textareaRef.current.style.height = '24px';
@@ -82,10 +130,47 @@ const ChatInput = ({ onSendMessage }: ChatInputProps) => {
 
   return (
     <div className="chat-input-container">
+      {selectedFiles.length > 0 && (
+        <div className="attachment-preview-area">
+          {selectedFiles.map((file, index) => (
+            <div key={index} className="attachment-thumbnail">
+              <img src={URL.createObjectURL(file)} alt={file.name} />
+              <Tooltip text={`Remove ${file.name}`}>
+                <button onClick={() => removeFile(file)} className="remove-attachment-btn">
+                  <FiX size={14} />
+                </button>
+              </Tooltip>
+            </div>
+          ))}
+        </div>
+      )}
+
       <div className="chat-input-wrapper">
-        <button className="chat-input-button">
+        <input type="file" ref={imageInputRef} onChange={handleFileSelect} multiple accept="image/*" style={{ display: 'none' }} />
+        <input type="file" ref={fileInputRef} onChange={handleFileSelect} multiple style={{ display: 'none' }} />
+        
+        <button
+          ref={plusButtonRef}
+          className="chat-input-button"
+          onClick={() => setIsMenuOpen(prev => !prev)}
+          disabled={isSending}
+        >
           <FiPlus size={20} />
         </button>
+        
+        {isMenuOpen && (
+          <div ref={menuRef} className="context-menu">
+            <button className="context-menu-button" onClick={() => triggerFileInput(imageInputRef)}>
+              <FiImage size={20} className="menu-button-icon" />
+              <span>Attach Image</span>
+            </button>
+            <button className="context-menu-button" onClick={() => triggerFileInput(fileInputRef)}>
+              <FiPaperclip size={20} className="menu-button-icon" />
+              <span>Attach File</span>
+            </button>
+          </div>
+        )}
+        
         <textarea
           ref={textareaRef}
           className="chat-input"
@@ -95,17 +180,18 @@ const ChatInput = ({ onSendMessage }: ChatInputProps) => {
           onKeyDown={handleKeyDown}
           onInput={handleInput}
           rows={1}
+          disabled={isSending}
         />
-        <div className={`chat-input-actions ${hasText ? 'has-text' : ''}`}>
-          <button className="chat-input-button mic-button">
+        <div className={`chat-input-actions ${hasContent ? 'has-text' : ''}`}>
+          <button className="chat-input-button mic-button" disabled={isSending}>
             <HiOutlineMicrophone size={20} />
           </button>
           <button
             className="chat-input-button send-button"
             onClick={handleSend}
-            disabled={!hasText}
+            disabled={!hasContent || isSending}
           >
-            <FiSend size={20} />
+            {isSending ? <div className="button-spinner"></div> : <FiSend size={20} />}
           </button>
         </div>
       </div>

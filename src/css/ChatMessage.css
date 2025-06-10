@@ -11,7 +11,57 @@
   padding: 0 1rem;
 }
 
-/* --- Action Buttons (Shared) --- */
+/* --- UPDATED: Attachment Layout --- */
+.message-attachments {
+  display: flex; /* Use flexbox for a compact layout */
+  flex-wrap: wrap; /* Allow items to wrap to the next line */
+  gap: 8px;
+}
+
+/* Add space between images and text if both exist */
+.message-content > .message-attachments:not(:only-child) {
+  margin-bottom: 8px;
+}
+
+.attachment-image-wrapper {
+  display: block; /* Make the anchor a block for proper layout */
+  /* Give thumbnails a uniform square size */
+  width: 72px;
+  height: 72px;
+  flex-shrink: 0; /* Prevent flexbox from squishing the item */
+  border-radius: 12px; /* Apply radius to the wrapper for clipping */
+  overflow: hidden; /* Ensures the image respects the border-radius */
+}
+
+.attachment-image-wrapper img {
+  width: 100%;
+  height: 100%; /* Make image fill the square wrapper */
+  object-fit: cover; /* Prevent image distortion */
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  border: 1px solid var(--border-color);
+  display: block;
+}
+
+.attachment-image-wrapper:hover img {
+  transform: scale(1.05);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+}
+
+.attachment-file-link {
+  display: block;
+  padding: 8px 12px;
+  background-color: var(--button-hover-bg);
+  border-radius: 8px;
+  text-decoration: none;
+  color: var(--secondary-text-color);
+  font-size: 0.9rem;
+  text-align: center;
+  border: 1px solid var(--border-color);
+}
+/* --- End of Updated Styles --- */
+
+
 .message-actions {
   display: flex;
   gap: 0.5rem;
@@ -44,24 +94,16 @@
   color: var(--primary-text-color);
 }
 
-/* --- Streaming chunk animation --- */
 .streaming-chunk {
   opacity: 0;
   animation: streamFadeIn 0.4s ease-out forwards;
 }
 
 @keyframes streamFadeIn {
-  0% {
-    opacity: 0;
-    transform: translateY(4px);
-  }
-  100% {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  0% { opacity: 0; transform: translateY(4px); }
+  100% { opacity: 1; transform: translateY(0); }
 }
 
-/* --- Assistant (Left-aligned) Message Styles --- */
 .assistant .message-content-wrapper {
   flex-grow: 1;
   position: relative;
@@ -82,14 +124,13 @@
   bottom: 0;
 }
 
-/* --- User (Right-aligned) Message Styles --- */
+/* --- UPDATED: User message container now stacks items vertically and aligns them to the right. --- */
 .user .chat-message-container {
-  justify-content: flex-end;
-  align-items: center;
-  gap: 0.75rem;
+  flex-direction: column; /* Stack bubble and actions vertically */
+  align-items: flex-end;   /* Push items to the right edge */
+  gap: 0.5rem;             /* Space between bubble and actions */
 }
 
-/* --- User Message Bubble with Smooth Transitions --- */
 .user-message-bubble {
   background-color: #2f2f2f;
   color: #ECECEC;
@@ -99,7 +140,7 @@
   line-height: 1.6;
   white-space: pre-wrap;
   flex-grow: 0;
-  order: 1;
+  /* order: 1; /* <-- No longer needed */
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   transform-origin: center;
   overflow: hidden;
@@ -107,7 +148,6 @@
   min-height: 26px;
 }
 
-/* Size transition from original message to edit mode */
 .user.editing .user-message-bubble {
   background-color: #424242;
   border-radius: 1.25rem;
@@ -123,6 +163,9 @@
 .user .message-content {
   transition: opacity 0.15s ease-in-out;
   min-height: inherit;
+  display: flex;
+  flex-direction: column; /* Stack attachments and text */
+  gap: 4px;
 }
 
 .user.editing .message-content {
@@ -131,7 +174,6 @@
   pointer-events: none;
 }
 
-/* --- Editor Content Styles --- */
 .message-editor-content {
   opacity: 0;
   transform: translateY(10px);
@@ -165,7 +207,6 @@
   margin: 0;
 }
 
-/* Smooth height transition for textarea */
 .user.editing .message-editor-content textarea {
   height: var(--initial-height, auto);
 }
@@ -220,10 +261,12 @@
   transform: scale(1.05);
 }
 
+/* --- UPDATED: User message actions are now positioned underneath the bubble. --- */
 .user .message-actions {
   position: static;
-  order: 2;
+  /* order: 2; /* <-- No longer needed */
   transition: opacity 0.2s ease-in-out, transform 0.2s ease-in-out;
+  /* padding-top: 4px; /* <-- No longer needed */
 }
 
 .user.editing .message-actions {
@@ -232,11 +275,8 @@
   pointer-events: none;
 }
 
-/* --- Streaming Cursor Styles --- */
 @keyframes blink {
-  50% {
-    opacity: 0;
-  }
+  50% { opacity: 0; }
 }
 
 .streaming-cursor {
@@ -250,15 +290,8 @@
   top: -1px;
 }
 
-/* --- LIGHT THEME STYLES --- */
-[data-theme="light"] .assistant .message-content {
-  color: var(--primary-text-color);
-}
-
-[data-theme="light"] .streaming-cursor {
-  background-color: var(--primary-text-color);
-}
-
+[data-theme="light"] .assistant .message-content,
+[data-theme="light"] .streaming-cursor,
 [data-theme="light"] .streaming-chunk {
   color: var(--primary-text-color);
 }
@@ -284,7 +317,7 @@
 }
 
 [data-theme="light"] .editor-button.cancel:hover {
-  background-color: #d1d5db; /* A bit darker than hover bg */
+  background-color: #d1d5db;
 }
 
 [data-theme="light"] .editor-button.save {
@@ -293,5 +326,28 @@
 }
 
 [data-theme="light"] .editor-button.save:hover {
-  background-color: #374151; /* Dark gray */
+  background-color: #374151;
+}
+
+/* --- NEW: Styles for image placeholders --- */
+.attachment-image-wrapper.loading,
+.attachment-image-wrapper.error {
+  /* It inherits the width/height from the base class now */
+  background-color: var(--button-hover-bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--secondary-text-color);
+  font-size: 0.8rem;
+  padding: 8px;
+  box-sizing: border-box;
+  text-align: center;
+  line-height: 1.2;
+  border: 1px solid var(--border-color);
+}
+
+.attachment-image-wrapper.error {
+  background-color: rgba(239, 68, 68, 0.1);
+  color: #f87171;
+  border-color: rgba(239, 68, 68, 0.3);
 }

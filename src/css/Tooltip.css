@@ -1,0 +1,38 @@
+/* src/css/Tooltip.css */
+
+.tooltip-container {
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+}
+
+/* UPDATED: Changed to position: fixed */
+.tooltip-content {
+  position: fixed; /* Use fixed positioning to escape clipping contexts */
+  
+  /* The 'top' and 'left' will be set by inline styles from the component */
+  
+  background-color: var(--tooltip-bg-color);
+  color: var(--tooltip-text-color);
+  padding: 6px 12px;
+  border-radius: 9999px; /* Pill shape */
+  
+  font-size: 0.8rem;
+  font-weight: 500;
+  font-family: inherit;
+  white-space: nowrap;
+  
+  z-index: 9999; /* Ensure it's on top of everything */
+  
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease-out, transform 0.2s ease-out;
+  
+  /* UPDATED: Start slightly higher for the downward animation */
+  transform: translateY(-4px);
+}
+
+.tooltip-content.visible {
+  opacity: 1;
+  transform: translateY(0);
+}

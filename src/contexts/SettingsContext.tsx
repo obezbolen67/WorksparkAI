@@ -6,6 +6,12 @@ type Model = {
   id: string;
 };
 
+// --- NEW: Define the structure for model configurations ---
+type ModelConfig = {
+  id: string;
+  modalities: ('text' | 'image')[];
+};
+
 type User = {
   _id: string;
   email: string;
@@ -13,6 +19,7 @@ type User = {
   baseUrl: string;
   selectedModel: string;
   quickAccessModels?: string[];
+  modelConfigs?: ModelConfig[]; // --- Add new field to User type ---
 };
 
 type Theme = 'dark' | 'light';
@@ -77,19 +84,15 @@ export const SettingsProvider = ({ children }: { children: ReactNode }) => {
     loadUser();
   }, [loadUser]);
 
-  // --- NEW: useEffect to fetch models automatically after user is loaded ---
   useEffect(() => {
     const fetchModelsOnLoad = async () => {
-      // Only proceed if we have a user and an API key.
       if (user && user.apiKey) {
         try {
-          // Use the same API call as the settings modal
           const res = await api('/models', { method: 'POST' });
           if (res.ok) {
             const data = await res.json();
             setModels(data);
           } else {
-            // If the key is invalid on load, just clear the models.
             console.error('Failed to auto-load models on startup.');
             setModels([]);
           }
@@ -99,10 +102,8 @@ export const SettingsProvider = ({ children }: { children: ReactNode }) => {
         }
       }
     };
-
     fetchModelsOnLoad();
-  }, [user]); // This effect depends on the user object. It runs when `user` is set.
-  // --- END OF NEW LOGIC ---
+  }, [user]);
 
   const apiAuthRequest = async (endpoint: 'login' | 'register', body: object) => {
     const res = await fetch(`${API_BASE_URL}/api/auth/${endpoint}`, {
@@ -127,7 +128,7 @@ export const SettingsProvider = ({ children }: { children: ReactNode }) => {
     setToken(null);
     setIsAuthenticated(false);
     setUser(null);
-    setModels([]); // Also clear models on logout
+    setModels([]);
     setLoading(false);
   };
 

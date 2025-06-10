@@ -10,6 +10,7 @@ import { useSettings } from '../contexts/SettingsContext';
 import { useChat } from '../contexts/ChatContext';
 import ConfirmationModal from './ConfirmationModal';
 import RenameModal from './RenameModal';
+import Tooltip from './Tooltip'; // <-- ADDED
 
 // Add new component imports and their CSS
 import '../css/ConfirmationModal.css';
@@ -20,9 +21,12 @@ interface SidebarProps {
   // --- NEW PROPS FOR MOBILE ---
   isMobileOpen: boolean;
   onClose: () => void;
+  // --- NEW PROPS FOR COLLAPSE ---
+  isCollapsed: boolean;
+  onToggleCollapse: () => void;
 }
 
-const Sidebar = ({ onOpenSettings, isMobileOpen, onClose }: SidebarProps) => {
+const Sidebar = ({ onOpenSettings, isMobileOpen, onClose, isCollapsed, onToggleCollapse }: SidebarProps) => {
   const { user, logout } = useSettings();
   const { chatList, renameChat, deleteChat, activeChatId } = useChat();
   const navigate = useNavigate();
@@ -123,14 +127,15 @@ const Sidebar = ({ onOpenSettings, isMobileOpen, onClose }: SidebarProps) => {
       {/* --- NEW: Overlay for mobile --- */}
       {isMobileOpen && <div className="sidebar-overlay" onClick={onClose}></div>}
       
-      {/* Conditionally add 'mobile-open' class */}
-      <aside className={`sidebar ${isMobileOpen ? 'mobile-open' : ''}`}>
+      {/* Conditionally add 'mobile-open' and 'is-collapsed' classes */}
+      <aside className={`sidebar ${isMobileOpen ? 'mobile-open' : ''} ${isCollapsed ? 'is-collapsed' : ''}`}>
         <div className="sidebar-top">
           {/* --- NEW: Close button for mobile --- */}
           <button className="sidebar-button mobile-close-button" onClick={onClose} aria-label="Close menu">
             <FiX size={24} />
           </button>
-          <button className="sidebar-button collapse-button">
+          {/* --- UPDATED: Collapse button is now functional --- */}
+          <button className="sidebar-button collapse-button" onClick={onToggleCollapse}>
             <TbLayoutSidebarLeftCollapse size={20} />
           </button>
         </div>
@@ -158,18 +163,19 @@ const Sidebar = ({ onOpenSettings, isMobileOpen, onClose }: SidebarProps) => {
                 <NavLink to={`/c/${chat._id}`} onClick={handleNavLinkClick}>
                   {chat.title || 'Untitled Chat'}
                 </NavLink>
-                {/* --- UPDATED: Dots menu trigger --- */}
-                <button
-                  className={`chat-item-menu-trigger ${openMenuId === chat._id ? 'active' : ''}`}
-                  title="More options"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    setOpenMenuId(openMenuId === chat._id ? null : chat._id);
-                  }}
-                >
-                  <HiOutlineDotsHorizontal size={16} />
-                </button>
+                {/* --- UPDATED: Dots menu trigger with Tooltip (className removed) --- */}
+                <Tooltip text="More options">
+                  <button
+                    className={`chat-item-menu-trigger ${openMenuId === chat._id ? 'active' : ''}`}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setOpenMenuId(openMenuId === chat._id ? null : chat._id);
+                    }}
+                  >
+                    <HiOutlineDotsHorizontal size={16} />
+                  </button>
+                </Tooltip>
                 {/* --- UPDATED: Context Menu --- */}
                 {openMenuId === chat._id && (
                   <div className="chat-item-actions-menu" ref={menuRef}>

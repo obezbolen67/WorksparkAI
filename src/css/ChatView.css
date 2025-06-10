@@ -7,6 +7,16 @@
   width: 100%;
   overflow: hidden;
   background-color: var(--main-bg-color);
+  /* 
+    --- Animation & Layout Variables ---
+    These variables control the "empty chat" layout and animation.
+  */
+  /* Controls how high the input is in an empty chat. 45vh is slightly above center. */
+  --empty-chat-input-position-bottom: 45vh; 
+  /* Controls the speed of the layout transition */
+  --chat-layout-transition-duration: 0.6s;
+  /* Controls the easing of the layout transition */
+  --chat-layout-transition-timing: cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .chat-view-header {
@@ -19,25 +29,10 @@
 
 .chat-view {
   flex-grow: 1;
+  position: relative; /* This is the anchor for the absolute-positioned input area */
+  overflow: hidden;
   display: flex;
   flex-direction: column;
-  position: relative; 
-  overflow: hidden;
-}
-
-.chat-view-spacer-top,
-.chat-view-spacer-bottom {
-  transition: flex-grow 0.6s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.chat-view-container.is-empty .chat-view-spacer-top,
-.chat-view-container.is-empty .chat-view-spacer-bottom {
-  flex-grow: 1;
-}
-
-.chat-view-container:not(.is-empty) .chat-view-spacer-top,
-.chat-view-container:not(.is-empty) .chat-view-spacer-bottom {
-  flex-grow: 0;
 }
 
 @keyframes spin {
@@ -71,23 +66,25 @@
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-}
-
-.chat-view-container:not(.is-empty) .chat-content {
-  flex-grow: 1;
+  flex-grow: 1; /* The scrollable area should take up all available space. */
+  /* Add padding to prevent the last message from being hidden by the input area */
+  padding-bottom: 150px; /* A generous value to clear the input area */
+  box-sizing: border-box;
 }
 
 .chat-messages-list {
   padding: 1rem 0;
 }
 
+/* --- UPDATED: Styles for the "empty chat" message --- */
 .empty-chat-container {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: flex-end;
   text-align: center;
-  padding-bottom: 2rem;
+  margin-bottom: 1.5rem; /* The fixed gap between the text and the input box */
+}
+
+/* --- NEW: Hide the "empty chat" message when there are messages --- */
+.chat-view-container:not(.is-empty) .empty-chat-container {
+  display: none;
 }
 
 .empty-chat-container h1 {
@@ -106,30 +103,48 @@
   transition-delay: 0.1s;
 }
 
+/* --- UPDATED: The chat input area is now a flex container --- */
 .chat-input-area {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0; /* Aligned to the bottom of its relative parent (.chat-view) */
+  
+  /* Flexbox properties to stack the h1 and the ChatInput component */
+  display: flex;
+  flex-direction: column;
+  align-items: center; /* Centers the ChatInput component horizontally */
+  
   width: 100%;
   max-width: 800px;
   padding: 1rem 0 2rem 0;
   box-sizing: border-box;
   margin: 0 auto;
-  flex-shrink: 0;
   z-index: 5;
+
   opacity: 0;
-  transition: opacity 0.5s cubic-bezier(0.4, 0, 0.2, 1);
-  position: relative;
+  transform: translateY(0); /* Default position is at the bottom */
+  
+  transition: opacity 0.5s cubic-bezier(0.4, 0, 0.2, 1),
+              transform var(--chat-layout-transition-duration) var(--chat-layout-transition-timing);
 }
 
 .chat-view-container.is-ready .chat-input-area {
   opacity: 1;
-  transition-delay: 0.2s;
+  transition-delay: 0.2s, 0s; /* Delay opacity animation, but not transform */
 }
 
-/* --- UPDATED: Scroll to bottom button styles --- */
+/* When the chat is empty, translate the entire input area upwards */
+.chat-view-container.is-empty .chat-input-area {
+  transform: translateY(calc(-1 * var(--empty-chat-input-position-bottom)));
+}
+
 .scroll-to-bottom {
   position: absolute;
-  bottom: calc(100% + 0.75rem);
+  bottom: 100%; /* Position above the input area */
   left: 50%;
   z-index: 10;
+  margin-bottom: 0.75rem; /* Space between button and input box */
   
   display: flex;
   align-items: center;
@@ -137,7 +152,6 @@
   width: 38px;
   height: 38px;
   
-  /* UPDATED: Use the main background color for a solid, opaque look */
   background-color: var(--main-bg-color); 
   border: 1px solid var(--border-color);
   color: var(--primary-text-color);
@@ -152,7 +166,6 @@
 }
 
 .scroll-to-bottom:hover {
-  /* UPDATED: Use another opaque color (like the border color) for the hover state */
   background-color: var(--border-color);
   transform: translateX(-50%) translateY(-2px);
 }
@@ -168,29 +181,27 @@
     transform: translateX(-50%) translateY(0);
   }
 }
-/* --- End of updated styles --- */
 
 @media (max-width: 768px) {
+  .chat-view-header {
+    display: none;
+  }
+
   .chat-view-container:not(.is-empty) .chat-input-area {
     position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
     background-color: var(--main-bg-color);
     border-top: 1px solid var(--border-color);
     padding: 0.5rem 1rem max(1rem, env(safe-area-inset-bottom));
+    max-width: none;
+    transform: translateY(0) !important;
   }
   
-  .chat-view-container:not(.is-empty) .chat-content {
+  .chat-content {
     padding-bottom: 100px;
   }
   
   .chat-input-area {
     max-width: none;
     padding: 0.5rem 1rem 1rem 1rem;
-  }
-
-  .empty-chat-container {
-    padding-bottom: 1.5rem;
   }
 }

@@ -11,8 +11,9 @@ import '../css/MobileHeader.css';
 
 const MainAppLayout = () => {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  // --- NEW STATE FOR MOBILE SIDEBAR ---
   const [isMobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+  // --- NEW: State for sidebar collapse ---
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const navigate = useNavigate();
 
   return (
@@ -30,9 +31,11 @@ const MainAppLayout = () => {
       <div className="app-container">
         <Sidebar 
           onOpenSettings={() => setIsSettingsOpen(true)} 
-          // --- NEW PROPS ---
           isMobileOpen={isMobileSidebarOpen}
           onClose={() => setMobileSidebarOpen(false)}
+          // --- NEW PROPS for collapse functionality ---
+          isCollapsed={isSidebarCollapsed}
+          onToggleCollapse={() => setIsSidebarCollapsed(prev => !prev)}
         />
         {/* Outlet renders either the empty ChatPage or ChatPage with a chatId */}
         <Outlet />

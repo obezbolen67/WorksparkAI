@@ -4,6 +4,7 @@ import './App.css';
 import './css/SettingsModal.css';
 import './css/Notification.css'; 
 import './css/AuthPage.css';
+import './css/Tooltip.css'; // <-- ADDED
 
 import PrivateRoute from './routing/PrivateRoute';
 import MainAppLayout from './pages/MainAppLayout';

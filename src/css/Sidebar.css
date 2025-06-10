@@ -8,8 +8,14 @@
   flex-direction: column;
   padding: 0;
   border-right: 1px solid var(--border-color);
-  transition: width 0.3s ease-in-out;
+  /* --- UPDATED: Animate the width for collapse/expand --- */
+  transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   flex-shrink: 0; /* Prevent sidebar from shrinking */
+}
+
+/* --- NEW: Collapsed state for the sidebar --- */
+.sidebar.is-collapsed {
+  width: 80px;
 }
 
 /* --- NEW: Overlay for mobile view --- */
@@ -20,16 +26,17 @@
 .sidebar-top {
   display: flex;
   align-items: center;
-  /* --- FIX: Default to left alignment for the desktop button --- */
-  justify-content: flex-start;
+  /* --- UPDATED: Always push the visible button to the right --- */
+  justify-content: flex-end;
   padding: 0.75rem 1rem;
-  min-height: 56px; /* Match mobile header height */
+  min-height: 56px;
   box-sizing: border-box;
 }
 
-/* --- FIX: Explicitly hide the mobile close button on desktop --- */
-.mobile-close-button {
-  display: none;
+/* --- NEW: Center the content of the top bar when collapsed --- */
+.sidebar.is-collapsed .sidebar-top {
+  justify-content: center;
+  padding: 0.75rem 0; /* Remove horizontal padding for true centering */
 }
 
 .sidebar-button {
@@ -43,8 +50,13 @@
   cursor: pointer;
   width: 100%;
   text-align: left;
-  transition: background-color 0.2s;
+  transition: background-color 0.2s, padding 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   font-size: 0.9rem;
+}
+
+/* --- FIX: Hide mobile-only button on desktop --- */
+.mobile-close-button {
+  display: none;
 }
 
 .sidebar-button:hover {
@@ -54,6 +66,17 @@
 .sidebar-button span {
   margin-left: 12px;
   font-weight: 500;
+  /* --- NEW: Animate text hiding --- */
+  transition: opacity 0.2s ease, width 0.3s cubic-bezier(0.4, 0, 0.2, 1), margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+/* --- NEW: Hide text when sidebar is collapsed --- */
+.sidebar.is-collapsed .sidebar-button span {
+  opacity: 0;
+  width: 0;
+  margin-left: 0;
 }
 
 /* Specific class for the icon-only collapse button */
@@ -62,9 +85,22 @@
   padding: 10px;
 }
 
+/* --- NEW: Rotate icon on collapse --- */
+.collapse-button svg {
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.sidebar.is-collapsed .collapse-button svg {
+  transform: rotate(180deg);
+}
+
 /* Style for the relocated New Chat button */
 .new-chat-button {
   border: 1px solid var(--border-color);
+}
+
+/* --- NEW: Center the new chat icon when collapsed --- */
+.sidebar.is-collapsed .new-chat-button {
+  justify-content: center;
 }
 
 .sidebar-nav {
@@ -85,6 +121,14 @@
   flex-grow: 1;
   padding: 1rem 0.5rem; /* Adjusted padding */
   overflow-y: auto;
+  /* --- NEW: Animate opacity for fade effect --- */
+  transition: opacity 0.2s ease 0.1s;
+}
+
+/* --- NEW: Hide conversation list when collapsed --- */
+.sidebar.is-collapsed .sidebar-conversations {
+  opacity: 0;
+  pointer-events: none;
 }
 
 /* --- Custom Scrollbar for Conversation List --- */
@@ -121,19 +165,22 @@
   gap: 2px; /* Subtle space between items */
 }
 
+/* --- UPDATED: Use Flexbox for layout --- */
 .convo-list li {
   position: relative;
   border-radius: 6px; /* Apply radius to the li for hover effect */
   transition: background-color 0.2s;
+  display: flex;
+  align-items: center;
 }
 
 .convo-list li:hover {
   background-color: var(--button-hover-bg);
 }
 
+/* --- UPDATED: Adjust NavLink for Flexbox --- */
 .convo-list li a {
-  display: block;
-  padding: 8px 36px 8px 12px; /* Make space on the right for menu trigger */
+  padding: 8px 12px;
   border-radius: 6px;
   color: var(--primary-text-color);
   text-decoration: none;
@@ -141,14 +188,16 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  /* Make the link grow to fill space */
+  flex-grow: 1;
+  min-width: 0; /* Critical for text-overflow in flex */
 }
 
-/* --- UPDATED: Dots Menu Trigger --- */
+/* --- REMOVED the absolute positioning wrapper class --- */
+
+
+/* --- UPDATED: Dots Menu Trigger (now a flex item) --- */
 .chat-item-menu-trigger {
-  position: absolute;
-  top: 50%;
-  right: 8px;
-  transform: translateY(-50%);
   background: none;
   border: none;
   color: var(--secondary-text-color);
@@ -158,13 +207,14 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  /* --- CHANGE: Make button always visible --- */
   opacity: 1;
   pointer-events: auto;
   transition: background-color 0.2s, color 0.2s;
+  /* Add spacing and prevent shrinking */
+  flex-shrink: 0;
+  margin-right: 8px;
 }
 
-/* --- CHANGE: Highlight button on its own hover or when menu is active --- */
 .chat-item-menu-trigger:hover,
 .chat-item-menu-trigger.active {
   background-color: var(--button-hover-bg);
@@ -241,8 +291,8 @@
   position: absolute;
   bottom: calc(100% + 8px); /* Position above the profile bar with 8px gap */
   left: 0;
-  right: 0;
-  background-color: hsl(220, 13%, 15%); /* Slightly lighter than sidebar bg */
+  width: 228px; /* UPDATED: Set a fixed width that won't collapse. (260px sidebar - 32px padding) */
+  background-color: var(--sidebar-bg-color); /* Slightly lighter than sidebar bg */
   border-radius: 12px;
   border: 1px solid var(--border-color);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
@@ -299,8 +349,14 @@
   gap: 12px;
   padding: 8px;
   border-radius: 8px;
-  transition: background-color 0.2s ease;
+  transition: background-color 0.2s ease, justify-content 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   cursor: pointer;
+}
+
+/* --- UPDATED: Center avatar when collapsed & remove gaps/spacing --- */
+.sidebar.is-collapsed .user-profile {
+  justify-content: center;
+  gap: 0;
 }
 
 .user-profile:hover {
@@ -327,6 +383,14 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  /* --- NEW: Add transition for hiding name --- */
+  transition: opacity 0.2s ease, width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* --- NEW: Hide name when collapsed --- */
+.sidebar.is-collapsed .user-name {
+  opacity: 0;
+  width: 0;
 }
 
 .user-options-button {
@@ -339,9 +403,17 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: background-color 0.2s, color 0.2s;
+  transition: background-color 0.2s, color 0.2s, opacity 0.3s ease;
   pointer-events: none; /* Button inside a clickable parent */
 }
+
+/* --- UPDATED: Hide dots button when collapsed and remove its size --- */
+.sidebar.is-collapsed .user-options-button {
+  opacity: 0;
+  width: 0;
+  padding: 0;
+}
+
 
 .convo-list li a.active {
   background-color: var(--button-hover-bg);
@@ -396,11 +468,7 @@
     to { opacity: 1; }
   }
 
-  /* --- FIX: Swap button visibility and alignment --- */
-  .sidebar-top {
-    justify-content: flex-end; /* Align mobile close button to the right */
-  }
-
+  /* --- UPDATED: Swap button visibility on mobile --- */
   .collapse-button {
     display: none;
   }
@@ -411,7 +479,42 @@
     padding: 10px;
   }
 
-  .new-chat-button {
-    display: none; /* Hide desktop new chat button, as it's in the mobile header */
+  /*
+    --- FIX: Force expanded styles on mobile, even if the sidebar was collapsed on desktop.
+    These rules override the ".is-collapsed" styles specifically for mobile screen sizes.
+  */
+  .sidebar.is-collapsed {
+    width: 260px;
+  }
+
+  .sidebar.is-collapsed .sidebar-top {
+    justify-content: flex-end; /* Push close button to the right */
+    padding: 0.75rem 1rem;    /* Restore original padding */
+  }
+
+  .sidebar.is-collapsed .sidebar-button span,
+  .sidebar.is-collapsed .user-name {
+    opacity: 1;
+    width: auto;
+  }
+
+  .sidebar.is-collapsed .sidebar-button span {
+    margin-left: 12px;
+  }
+
+  .sidebar.is-collapsed .sidebar-conversations {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .sidebar.is-collapsed .user-profile {
+    justify-content: flex-start;
+    gap: 12px;
+  }
+
+  .sidebar.is-collapsed .user-options-button {
+    opacity: 1;
+    width: auto;
+    padding: 4px;
   }
 }
