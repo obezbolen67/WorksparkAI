@@ -2,7 +2,6 @@
 import { useState, useEffect, useRef } from 'react';
 import type { Message } from '../types';
 import '../css/ChatMessage.css';
-import { RiRobot2Fill } from "react-icons/ri";
 import { FiCopy, FiRefreshCw, FiEdit } from 'react-icons/fi';
 
 interface ChatMessageProps {
@@ -16,6 +15,42 @@ interface ChatMessageProps {
   onSaveEdit: (index: number, newContent: string) => void;
   onCancelEdit: () => void;
 }
+
+const AnimatedStreamingText = ({ content, isStreaming }: { content: string; isStreaming: boolean }) => {
+  const [previousContent, setPreviousContent] = useState('');
+  const [animationKey, setAnimationKey] = useState(0);
+
+  useEffect(() => {
+    if (isStreaming && content.length > previousContent.length) {
+      setPreviousContent(content);
+      setAnimationKey(prev => prev + 1); // Force re-render of animated portion
+    } else if (!isStreaming) {
+      setPreviousContent(content);
+    }
+  }, [content, isStreaming, previousContent.length]);
+
+  if (!isStreaming || !content) {
+    return <span>{content}</span>;
+  }
+
+  // Split content into stable part and new part
+  const stableContent = previousContent;
+  const newContent = content.slice(previousContent.length);
+
+  return (
+    <span>
+      <span>{stableContent}</span>
+      {newContent && (
+        <span 
+          key={animationKey}
+          className="streaming-chunk"
+        >
+          {newContent}
+        </span>
+      )}
+    </span>
+  );
+};
 
 const ChatMessage = ({ message, index, isEditing, isStreaming, onRegenerate, onCopy, onStartEdit, onSaveEdit, onCancelEdit }: ChatMessageProps) => {
   const isUser = message.role === 'user';
@@ -116,16 +151,12 @@ const ChatMessage = ({ message, index, isEditing, isStreaming, onRegenerate, onC
   return (
     <div className={`chat-message-wrapper assistant`}>
       <div className="chat-message-container">
-        <div className="message-icon-col">
-          {message.content || isStreaming ? (
-            <div className="avatar">
-              <RiRobot2Fill size={20} />
-            </div>
-          ) : null}
-        </div>
         <div className="message-content-wrapper">
           <div className="message-content">
-            {message.content}
+            <AnimatedStreamingText 
+              content={message.content} 
+              isStreaming={isStreaming} 
+            />
             {isStreaming && <span className="streaming-cursor"></span>}
             {!message.content && !isStreaming && '\u00A0'}
           </div>

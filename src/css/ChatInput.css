@@ -112,9 +112,10 @@
   /* Start it off to the right and slightly smaller */
   transform: translateX(50%) scale(0.7);
   pointer-events: none;
-  transition: opacity 0.3s ease, transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  background-color: #c2c2d6;
-  color: var(--input-bg-color);
+  transition: opacity 0.3s ease, transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.2s ease;
+  /* UPDATED: Default dark-theme style */
+  background-color: #FFFFFF;
+  color: #2f2f2f;
 }
 
 .chat-input-actions.has-text .send-button {
@@ -126,4 +127,17 @@
 
 .send-button:disabled {
   cursor: not-allowed;
+  background-color: #c2c2d6; /* Revert to a disabled-looking color */
+}
+
+/* --- LIGHT THEME STYLES --- */
+[data-theme="light"] .send-button {
+  /* UPDATED: Light-theme style */
+  background-color: var(--primary-text-color);
+  color: var(--main-bg-color);
+}
+
+[data-theme="light"] .send-button:disabled {
+  background-color: #e0e0e0;
+  color: #a0a0a0;
 }

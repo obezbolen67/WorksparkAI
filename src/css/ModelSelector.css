@@ -1,0 +1,122 @@
+/* src/css/ModelSelector.css */
+.model-selector {
+  position: relative;
+  display: inline-block;
+  font-family: inherit;
+}
+
+.model-selector-placeholder {
+  height: 38px;
+  width: 150px; /* Approximate width */
+}
+
+.model-selector-button {
+  background: none;
+  border: none;
+  color: var(--primary-text-color);
+  font-size: 1.1rem;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.model-selector-button:hover {
+  background-color: var(--button-hover-bg);
+}
+
+/* --- DELETED this class as it's no longer used --- */
+/*
+.model-selector-button .model-selector-current { ... }
+*/
+
+.model-selector-button svg {
+  color: var(--secondary-text-color);
+  transition: transform 0.2s ease;
+}
+
+.model-selector-button svg.open {
+  transform: rotate(180deg);
+}
+
+.model-selector-dropdown {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  width: 320px;
+  background-color: var(--modal-bg-color);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+  padding: 0.5rem;
+  z-index: 100;
+  opacity: 0;
+  animation: fadeInDropdown 0.2s ease forwards;
+}
+
+@keyframes fadeInDropdown {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
+.model-item {
+  display: flex;
+  align-items: center;
+  padding: 0.75rem;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  gap: 1rem;
+}
+
+.model-item:hover {
+  background-color: var(--button-hover-bg);
+}
+
+.model-item-icon {
+  color: var(--secondary-text-color);
+  flex-shrink: 0;
+}
+
+.model-item.selected .model-item-icon {
+  color: var(--primary-text-color);
+}
+
+.model-item-details {
+  display: flex;
+  flex-direction: column;
+  flex-grow: 1;
+}
+
+.model-item-name {
+  color: var(--primary-text-color);
+  font-weight: 500;
+}
+
+.model-item-description {
+  color: var(--secondary-text-color);
+  font-size: 0.875rem;
+}
+
+.model-item-check {
+  color: var(--primary-text-color);
+  flex-shrink: 0;
+}
+
+.model-item-empty {
+  padding: 1rem;
+  text-align: center;
+  color: var(--secondary-text-color);
+  font-size: 0.9rem;
+}

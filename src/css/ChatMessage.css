@@ -44,25 +44,24 @@
   color: var(--primary-text-color);
 }
 
+/* --- Streaming chunk animation --- */
+.streaming-chunk {
+  opacity: 0;
+  animation: streamFadeIn 0.4s ease-out forwards;
+}
+
+@keyframes streamFadeIn {
+  0% {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 /* --- Assistant (Left-aligned) Message Styles --- */
-.assistant .message-icon-col {
-  width: 30px;
-  margin-right: 1rem;
-  flex-shrink: 0;
-  padding-top: 4px;
-}
-
-.assistant .avatar {
-  width: 30px;
-  height: 30px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background-color: #19c37d;
-  color: white;
-}
-
 .assistant .message-content-wrapper {
   flex-grow: 1;
   position: relative;
@@ -258,6 +257,10 @@
 
 [data-theme="light"] .streaming-cursor {
   background-color: var(--primary-text-color);
+}
+
+[data-theme="light"] .streaming-chunk {
+  color: var(--primary-text-color);
 }
 
 [data-theme="light"] .user-message-bubble {

@@ -1,16 +1,45 @@
 /* src/css/ChatView.css */
+
+.chat-view-container {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  width: 100%;
+  overflow: hidden;
+  background-color: var(--main-bg-color);
+}
+
+.chat-view-header {
+  display: flex;
+  justify-content: center;
+  padding: 1rem;
+  flex-shrink: 0;
+  z-index: 5;
+}
+
 .chat-view {
   flex-grow: 1;
   display: flex;
   flex-direction: column;
-  /* FIX: Use 100% to fill the parent container, which is correctly sized for mobile. */
-  /* This avoids the 100vh issue with browser UI. */
-  height: 100%;
-  position: relative;
+  position: relative; 
   overflow: hidden;
 }
 
-/* --- NEW: Loading Overlay and Spinner --- */
+.chat-view-spacer-top,
+.chat-view-spacer-bottom {
+  transition: flex-grow 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.chat-view-container.is-empty .chat-view-spacer-top,
+.chat-view-container.is-empty .chat-view-spacer-bottom {
+  flex-grow: 1;
+}
+
+.chat-view-container:not(.is-empty) .chat-view-spacer-top,
+.chat-view-container:not(.is-empty) .chat-view-spacer-bottom {
+  flex-grow: 0;
+}
+
 @keyframes spin {
   to { transform: rotate(360deg); }
 }
@@ -18,7 +47,7 @@
 .loading-overlay {
   position: absolute;
   inset: 0;
-  background-color: hsla(240, 5%, 13%, 0.7); /* Use main bg color with transparency */
+  background-color: hsla(240, 5%, 13%, 0.7);
   backdrop-filter: blur(4px);
   display: flex;
   justify-content: center;
@@ -26,10 +55,6 @@
   z-index: 10;
   opacity: 0;
   animation: fadeIn 0.3s ease forwards;
-}
-
-@keyframes fadeIn {
-  to { opacity: 1; }
 }
 
 .loading-spinner {
@@ -40,31 +65,29 @@
   border-radius: 50%;
   animation: spin 1s linear infinite;
 }
-/* --- End of New Styles --- */
 
 .chat-content {
-  flex-grow: 1; 
+  width: 100%;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
 }
 
-.chat-messages-list {
-  padding: 1rem 0;
+.chat-view-container:not(.is-empty) .chat-content {
   flex-grow: 1;
 }
 
+.chat-messages-list {
+  padding: 1rem 0;
+}
+
 .empty-chat-container {
-  flex-grow: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
-  /* FIX: Vertically center the welcome message in the available space. */
-  justify-content: center;
+  justify-content: flex-end;
   text-align: center;
-  /* FIX: Nudge the message up slightly so it doesn't feel too low. */
-  padding-bottom: 15vh;
-  box-sizing: border-box;
+  padding-bottom: 2rem;
 }
 
 .empty-chat-container h1 {
@@ -72,46 +95,102 @@
   font-weight: 400;
   color: var(--primary-text-color);
   margin: 0;
-  /* --- NEW: Initial state for animation --- */
   opacity: 0;
   transform: translateY(15px);
   transition: opacity 0.5s cubic-bezier(0.4, 0, 0.2, 1), transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.chat-view-container.is-ready.is-empty .empty-chat-container h1 {
+  opacity: 1;
+  transform: translateY(0);
   transition-delay: 0.1s;
 }
 
-/* --- NEW: Animation trigger for h1 text --- */
-.chat-view.is-ready.is-empty .empty-chat-container h1 {
-  opacity: 1;
-  transform: translateY(0);
-}
-
 .chat-input-area {
-  /* --- FIX: Remove absolute positioning to keep the input in the document flow. --- */
-  /* This makes it behave like a normal footer element. */
-  flex-shrink: 0;
-  padding: 1rem 0 1.5rem 0;
+  width: 100%;
+  max-width: 800px;
+  padding: 1rem 0 2rem 0;
   box-sizing: border-box;
+  margin: 0 auto;
+  flex-shrink: 0;
+  z-index: 5;
   opacity: 0;
   transition: opacity 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
 }
 
-/* --- FIX: Simplified animation logic. Fade in the input when the view is ready. --- */
-.chat-view.is-ready .chat-input-area {
+.chat-view-container.is-ready .chat-input-area {
   opacity: 1;
   transition-delay: 0.2s;
 }
 
+/* --- UPDATED: Scroll to bottom button styles --- */
+.scroll-to-bottom {
+  position: absolute;
+  bottom: calc(100% + 0.75rem);
+  left: 50%;
+  z-index: 10;
+  
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  
+  /* UPDATED: Use the main background color for a solid, opaque look */
+  background-color: var(--main-bg-color); 
+  border: 1px solid var(--border-color);
+  color: var(--primary-text-color);
+  border-radius: 50%;
+  cursor: pointer;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+  
+  opacity: 0;
+  transform: translateX(-50%) translateY(10px);
+  animation: fadeInBottomButton 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  transition: background-color 0.2s ease, transform 0.2s ease;
+}
 
-/* --- NEW: Responsive styles for Chat View --- */
+.scroll-to-bottom:hover {
+  /* UPDATED: Use another opaque color (like the border color) for the hover state */
+  background-color: var(--border-color);
+  transform: translateX(-50%) translateY(-2px);
+}
+
+.scroll-to-bottom svg {
+  width: 22px;
+  height: 22px;
+}
+
+@keyframes fadeInBottomButton {
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+/* --- End of updated styles --- */
+
 @media (max-width: 768px) {
-  .chat-view {
-    height: 100%; /* Take full height of the padded app-container */
-    width: 100%;
+  .chat-view-container:not(.is-empty) .chat-input-area {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background-color: var(--main-bg-color);
+    border-top: 1px solid var(--border-color);
+    padding: 0.5rem 1rem max(1rem, env(safe-area-inset-bottom));
+  }
+  
+  .chat-view-container:not(.is-empty) .chat-content {
+    padding-bottom: 100px;
+  }
+  
+  .chat-input-area {
+    max-width: none;
+    padding: 0.5rem 1rem 1rem 1rem;
   }
 
-  .chat-input-area {
-    /* Make padding more mobile friendly */
-    /* The bottom padding provides a safe area from the browser's navigation bar. */
-    padding: 0.5rem 0 1rem 0;
+  .empty-chat-container {
+    padding-bottom: 1.5rem;
   }
 }

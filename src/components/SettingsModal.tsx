@@ -3,8 +3,8 @@ import { useState, useEffect } from 'react';
 import { useSettings } from '../contexts/SettingsContext';
 import { useNotification } from '../contexts/NotificationContext';
 import '../css/SettingsModal.css';
-// --- CORRECTED IMPORT (THIRD TIME'S THE CHARM) ---
-import { FiRefreshCw, FiCpu, FiSliders } from "react-icons/fi"; 
+// --- UPDATED: Import new icons ---
+import { FiRefreshCw, FiCpu, FiSliders, FiEye, FiEyeOff } from "react-icons/fi"; 
 import api from '../utils/api';
 
 type Model = { id: string };
@@ -24,18 +24,31 @@ const SettingsModal = ({ isOpen, onClose }: SettingsModalProps) => {
   const [apiKey, setApiKey] = useState(user?.apiKey || '');
   const [baseUrl, setBaseUrl] = useState(user?.baseUrl || '');
   const [selectedModel, setSelectedModel] = useState(user?.selectedModel || '');
+  const [quickAccessModels, setQuickAccessModels] = useState<string[]>(user?.quickAccessModels || []);
   
   const [isFetching, setIsFetching] = useState(false);
   const [fetchError, setFetchError] = useState('');
   const [isClosing, setIsClosing] = useState(false);
+  
+  // --- NEW: State to manage API key visibility ---
+  const [isApiKeyVisible, setIsApiKeyVisible] = useState(false);
+
 
   useEffect(() => {
     if (user) {
       setApiKey(user.apiKey);
       setBaseUrl(user.baseUrl);
       setSelectedModel(user.selectedModel);
+      setQuickAccessModels(user.quickAccessModels || []);
     }
   }, [user]);
+
+  // When the modal closes, ensure the API key is masked again for security
+  useEffect(() => {
+    if (!isOpen) {
+      setIsApiKeyVisible(false);
+    }
+  }, [isOpen]);
 
   if (!isOpen) return null;
   
@@ -80,12 +93,20 @@ const SettingsModal = ({ isOpen, onClose }: SettingsModalProps) => {
 
   const handleSave = async () => {
     try {
-      await updateSettings({ apiKey, baseUrl, selectedModel });
+      await updateSettings({ apiKey, baseUrl, selectedModel, quickAccessModels });
       showNotification('Settings Saved!');
       handleClose();
     } catch (err) {
       showNotification('Failed to save settings.', 'error');
     }
+  };
+  
+  const handleQuickAccessChange = (modelId: string) => {
+    setQuickAccessModels(prev => 
+      prev.includes(modelId)
+        ? prev.filter(id => id !== modelId)
+        : [...prev, modelId]
+    );
   };
 
   const renderGptTab = () => (
@@ -94,14 +115,31 @@ const SettingsModal = ({ isOpen, onClose }: SettingsModalProps) => {
       <p>Configure your connection to a compatible LLM provider.</p>
       <div className="form-group">
         <label htmlFor="apiKey">API Key</label>
-        <input id="apiKey" value={apiKey} onChange={(e) => setApiKey(e.target.value)} placeholder="Required: sk-..." />
+        {/* --- UPDATED: API Key input with visibility toggle --- */}
+        <div className="input-wrapper">
+          <input 
+            id="apiKey" 
+            type={isApiKeyVisible ? 'text' : 'password'}
+            value={apiKey} 
+            onChange={(e) => setApiKey(e.target.value)} 
+            placeholder="Required: sk-..." 
+          />
+          <button 
+            type="button"
+            className="visibility-toggle-btn"
+            onClick={() => setIsApiKeyVisible(prev => !prev)}
+            title={isApiKeyVisible ? "Hide API Key" : "Show API Key"}
+          >
+            {isApiKeyVisible ? <FiEyeOff size={18} /> : <FiEye size={18} />}
+          </button>
+        </div>
       </div>
       <div className="form-group">
         <label htmlFor="baseUrl">Base URL (optional)</label>
         <input id="baseUrl" type="text" value={baseUrl} onChange={(e) => setBaseUrl(e.target.value)} placeholder="e.g., https://api.groq.com/openai/v1" />
       </div>
       <div className="form-group">
-        <label htmlFor="model">Model</label>
+        <label htmlFor="model">Default Model</label>
         <div className="model-select-wrapper">
           <select id="model" value={selectedModel} onChange={(e) => setSelectedModel(e.target.value)} disabled={models.length === 0}>
             {models.length > 0 ? (
@@ -116,6 +154,25 @@ const SettingsModal = ({ isOpen, onClose }: SettingsModalProps) => {
         </div>
         {fetchError && <p className="error-text">{fetchError}</p>}
       </div>
+      {models.length > 0 && (
+        <div className="form-group">
+          <label>Quick Access Models</label>
+          <p className="description">Select which models appear in the top-of-screen selector.</p>
+          <div className="quick-access-list">
+            {models.map(model => (
+              <label key={model.id} className="quick-access-item">
+                <input 
+                  type="checkbox"
+                  checked={quickAccessModels.includes(model.id)}
+                  onChange={() => handleQuickAccessChange(model.id)}
+                />
+                <span className="checkbox-visual"></span>
+                <span className="model-name-text">{model.id}</span>
+              </label>
+            ))}
+          </div>
+        </div>
+      )}
       <div className="modal-actions">
         <button className="modal-button modal-button-cancel" onClick={handleClose}>Cancel</button>
         <button className="modal-button modal-button-save" onClick={handleSave}>Save & Close</button>
@@ -123,6 +180,7 @@ const SettingsModal = ({ isOpen, onClose }: SettingsModalProps) => {
     </>
   );
 
+  // ... (renderAppearanceTab and the return statement remain the same)
   const renderAppearanceTab = () => (
     <>
       <h3>Appearance</h3>
@@ -161,7 +219,6 @@ const SettingsModal = ({ isOpen, onClose }: SettingsModalProps) => {
             <span>GPT</span>
           </button>
           <button className={`settings-tab-button ${activeTab === 'Appearance' ? 'active' : ''}`} onClick={() => setActiveTab('Appearance')}>
-            {/* --- CORRECTED USAGE --- */}
             <FiSliders size={18} />
             <span>Appearance</span>
           </button>

@@ -1,23 +1,20 @@
 // src/contexts/SettingsContext.tsx
 import { createContext, useState, useEffect, useContext, type ReactNode, useCallback } from 'react';
-// --- UPDATED: Import the base URL as well ---
 import api, { API_BASE_URL } from '../utils/api'; 
 
-// Define a simple model type
 type Model = {
   id: string;
 };
 
-// Define the User type matching our backend model
 type User = {
   _id: string;
   email: string;
   apiKey: string;
   baseUrl: string;
   selectedModel: string;
+  quickAccessModels?: string[];
 };
 
-// --- NEW: Define Theme type ---
 type Theme = 'dark' | 'light';
 
 interface SettingsContextType {
@@ -26,8 +23,9 @@ interface SettingsContextType {
   loading: boolean;
   user: User | null;
   models: Model[];
-  theme: Theme; // <-- ADDED
-  setTheme: (theme: Theme) => void; // <-- ADDED
+  selectedModel: string;
+  theme: Theme;
+  setTheme: (theme: Theme) => void;
   setModels: (models: Model[]) => void;
   loadUser: () => Promise<void>;
   login: (email: string, password: string) => Promise<void>;
@@ -38,26 +36,20 @@ interface SettingsContextType {
 
 const SettingsContext = createContext<SettingsContextType | undefined>(undefined);
 
-// --- DELETED: This is no longer the source of truth ---
-// const API_URL = 'http://localhost:3001/api';
-
 export const SettingsProvider = ({ children }: { children: ReactNode }) => {
   const [token, setToken] = useState<string | null>(localStorage.getItem('fexo-token'));
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(true);
   const [user, setUser] = useState<User | null>(null);
   const [models, setModels] = useState<Model[]>([]);
-  // --- NEW: Theme state initialized from localStorage or default to 'dark' ---
   const [theme, setThemeState] = useState<Theme>(() => (localStorage.getItem('fexo-theme') as Theme) || 'dark');
 
-  // --- NEW: Effect to apply theme to the body ---
   useEffect(() => {
     const body = document.body;
     body.setAttribute('data-theme', theme);
     localStorage.setItem('fexo-theme', theme);
   }, [theme]);
   
-  // --- NEW: Wrapper function for setting theme ---
   const setTheme = (newTheme: Theme) => {
     setThemeState(newTheme);
   };
@@ -66,11 +58,8 @@ export const SettingsProvider = ({ children }: { children: ReactNode }) => {
     const currentToken = localStorage.getItem('fexo-token');
     if (currentToken) {
       try {
-        // Use the new api wrapper. Token is added automatically.
         const res = await api('/settings');
-
         if (!res.ok) throw new Error('Failed to load user');
-        
         const userData = await res.json();
         setUser(userData);
         setIsAuthenticated(true);
@@ -88,9 +77,34 @@ export const SettingsProvider = ({ children }: { children: ReactNode }) => {
     loadUser();
   }, [loadUser]);
 
+  // --- NEW: useEffect to fetch models automatically after user is loaded ---
+  useEffect(() => {
+    const fetchModelsOnLoad = async () => {
+      // Only proceed if we have a user and an API key.
+      if (user && user.apiKey) {
+        try {
+          // Use the same API call as the settings modal
+          const res = await api('/models', { method: 'POST' });
+          if (res.ok) {
+            const data = await res.json();
+            setModels(data);
+          } else {
+            // If the key is invalid on load, just clear the models.
+            console.error('Failed to auto-load models on startup.');
+            setModels([]);
+          }
+        } catch (err) {
+          console.error('Error auto-loading models:', err);
+          setModels([]);
+        }
+      }
+    };
+
+    fetchModelsOnLoad();
+  }, [user]); // This effect depends on the user object. It runs when `user` is set.
+  // --- END OF NEW LOGIC ---
+
   const apiAuthRequest = async (endpoint: 'login' | 'register', body: object) => {
-    // Auth requests don't use the token, so we use fetch directly here.
-    // --- UPDATED: Use the imported API_BASE_URL ---
     const res = await fetch(`${API_BASE_URL}/api/auth/${endpoint}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -113,18 +127,17 @@ export const SettingsProvider = ({ children }: { children: ReactNode }) => {
     setToken(null);
     setIsAuthenticated(false);
     setUser(null);
+    setModels([]); // Also clear models on logout
     setLoading(false);
   };
 
   const updateSettings = async (settings: Partial<User>) => {
     if (!token) return;
     try {
-      // Use the new api wrapper.
       const res = await api('/settings', {
         method: 'PUT',
         body: JSON.stringify(settings),
       });
-
       if (!res.ok) throw new Error('Failed to update settings');
       const updatedUser = await res.json();
       setUser(updatedUser);
@@ -138,7 +151,8 @@ export const SettingsProvider = ({ children }: { children: ReactNode }) => {
     <SettingsContext.Provider 
       value={{ 
         token, isAuthenticated, loading, user,
-        models, setModels, theme, setTheme, // <-- ADDED theme and setTheme
+        models, setModels, theme, setTheme,
+        selectedModel: user?.selectedModel || '',
         loadUser, login, register, logout, updateSettings
       }}
     >

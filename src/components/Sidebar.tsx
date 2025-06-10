@@ -3,8 +3,7 @@ import { useState, useRef, useEffect } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import '../css/Sidebar.css';
 // Add FiX for the close button
-import { FiEdit, FiSearch, FiSettings, FiLogOut, FiEdit2, FiTrash, FiX } from 'react-icons/fi';
-import { BiLibrary } from 'react-icons/bi';
+import { FiEdit, FiSettings, FiLogOut, FiEdit2, FiTrash, FiX } from 'react-icons/fi';
 import { HiOutlineDotsHorizontal } from 'react-icons/hi';
 import { TbLayoutSidebarLeftCollapse } from 'react-icons/tb';
 import { useSettings } from '../contexts/SettingsContext';
@@ -145,14 +144,12 @@ const Sidebar = ({ onOpenSettings, isMobileOpen, onClose }: SidebarProps) => {
                 <span>New Chat</span>
               </button>
             </li>
-            <li><button className="sidebar-button"><FiSearch size={20} /><span>Search</span></button></li>
-            <li><button className="sidebar-button"><BiLibrary size={20} /><span>Library</span></button></li>
           </ul>
         </nav>
 
         <div className="sidebar-conversations">
           <div className="convos-header">
-            <span>Recent</span>
+            <span>Chats</span>
           </div>
           <ul className="convo-list">
             {chatList.map((chat) => (
