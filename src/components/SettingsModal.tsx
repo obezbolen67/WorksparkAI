@@ -3,12 +3,12 @@ import { useState, useEffect, useRef } from 'react';
 import { useSettings } from '../contexts/SettingsContext';
 import { useNotification } from '../contexts/NotificationContext';
 import '../css/SettingsModal.css';
-import { FiRefreshCw, FiCpu, FiSliders, FiEye, FiEyeOff, FiMoreVertical } from "react-icons/fi"; 
+import { FiRefreshCw, FiCpu, FiSliders, FiEye, FiEyeOff, FiMoreVertical, FiTerminal } from "react-icons/fi"; 
 import api from '../utils/api';
-import Tooltip from './Tooltip'; // <-- ADDED
+import Tooltip from './Tooltip';
 
 type Model = { id: string };
-type Modality = 'text' | 'image';
+type Modality = 'text' | 'image' | 'code';
 type ModelConfig = {
   id: string;
   modalities: Modality[];
@@ -216,7 +216,9 @@ const SettingsModal = ({ isOpen, onClose }: SettingsModalProps) => {
           <div className="quick-access-list">
             {models.map(model => {
               const config = modelConfigs.find(c => c.id === model.id) || { modalities: ['text'] };
-              const hasImageModality = config.modalities.some(m => m === 'image');
+              const hasImageModality = config.modalities.some(modality => modality === 'image');
+              const hasCodeModality = config.modalities.some(modality => modality === 'code');
+
 
               return (
               <div key={model.id} className="quick-access-row">
@@ -249,10 +251,20 @@ const SettingsModal = ({ isOpen, onClose }: SettingsModalProps) => {
                           <input 
                             type="checkbox" 
                             checked={hasImageModality}
-                            onChange={(e) => handleModalityChange(model.id, 'image' as Modality, e.target.checked)}
+                            onChange={(e) => handleModalityChange(model.id, 'image', e.target.checked)}
                           />
                           <span className="checkbox-visual"></span>
                           <span>Image</span>
+                       </label>
+                       <label className="config-menu-item">
+                          <input 
+                            type="checkbox" 
+                            checked={hasCodeModality}
+                            onChange={(e) => handleModalityChange(model.id, 'code', e.target.checked)}
+                          />
+                          <span className="checkbox-visual"></span>
+                          <FiTerminal size={14} style={{ marginRight: '6px' }}/>
+                          <span>Code</span>
                        </label>
                     </div>
                   )}

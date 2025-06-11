@@ -1,0 +1,212 @@
+/* src/css/CodeAnalysisBlock.css */
+.code-analysis-container {
+  background-color: var(--button-hover-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  margin-bottom: 0.75rem;
+  overflow: hidden;
+  transition: all 0.3s ease-in-out;
+}
+
+.analysis-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem 1rem;
+  cursor: pointer;
+  user-select: none;
+}
+
+.code-analysis-container.expanded {
+  background-color: var(--assistant-message-bg);
+}
+
+.analysis-header:hover {
+  background-color: var(--main-bg-color);
+}
+
+.code-analysis-container.expanded .analysis-header {
+  background-color: transparent;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.status {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--secondary-text-color);
+}
+
+.status svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* Processing state styles */
+.code-analysis-container.processing .status {
+  color: #8b5cf6;
+}
+[data-theme="light"] .code-analysis-container.processing .status {
+  color: #7c3aed;
+}
+
+.processing-icon {
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 1; }
+}
+
+/* Executing state styles */
+.code-analysis-container.executing .status {
+  color: #3b82f6;
+}
+[data-theme="light"] .code-analysis-container.executing .status {
+  color: #2563eb;
+}
+
+/* Completed state styles */
+.code-analysis-container.completed .status {
+  color: #22c55e;
+}
+[data-theme="light"] .code-analysis-container.completed .status {
+  color: #166534;
+}
+
+/* Error state styles */
+.code-analysis-container.error .status {
+  color: #ef4444;
+}
+[data-theme="light"] .code-analysis-container.error .status {
+  color: #b91c1c;
+}
+
+/* Spinner animation */
+.spinner-icon {
+  animation: spin 1s linear infinite;
+}
+@keyframes spin { 
+  to { transform: rotate(360deg); }
+}
+
+/* Chevron icon */
+.chevron-icon {
+  color: var(--secondary-text-color);
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.code-analysis-container.expanded .chevron-icon {
+  transform: rotate(180deg);
+}
+
+/* Analysis content */
+.analysis-content {
+  padding: 0.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  animation: fadeInContent 0.5s ease;
+}
+
+@keyframes fadeInContent {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.analysis-section {
+  background-color: var(--main-bg-color);
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+  overflow: hidden;
+}
+
+.analysis-section-title {
+  padding: 0.3rem 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--secondary-text-color);
+  border-bottom: 1px solid var(--border-color);
+  background-color: var(--button-hover-bg);
+}
+
+/* Code wrapper and cursor */
+.code-wrapper {
+  position: relative;
+}
+
+.streaming-cursor {
+  display: inline-block;
+  width: 8px;
+  height: 1.2em;
+  background-color: var(--primary-text-color);
+  animation: blink 1s infinite;
+  vertical-align: text-bottom;
+}
+
+.streaming-cursor.code {
+  position: absolute;
+  /* Adjust based on your syntax highlighter's padding */
+  bottom: 0.75rem; 
+  right: 1rem;
+  height: 1.4em;
+  width: 2px;
+}
+
+/* Output text styles */
+.analysis-output-text {
+  padding: 0.75rem;
+  font-family: var(--font-mono, monospace);
+  font-size: 0.875rem;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  color: var(--primary-text-color);
+  max-height: 300px;
+  overflow-y: auto;
+  margin: 0;
+  min-height: 2.5rem;
+  position: relative;
+}
+
+.analysis-output-text .streaming-cursor {
+  margin-left: 2px;
+}
+
+@keyframes blink {
+  0%, 50% { opacity: 1; }
+  51%, 100% { opacity: 0; }
+}
+
+/* Error output styles */
+.analysis-output-text.error {
+  color: #f87171;
+}
+[data-theme="light"] .analysis-output-text.error {
+  color: #b91c1c;
+}
+
+/* Ensure syntax highlighter fills the space */
+.analysis-section pre, .analysis-section code {
+  margin: 0;
+  background: transparent !important;
+  padding-bottom: 2rem !important; /* Ensure space for cursor */
+}
+
+/* Scrollbar styling for output */
+.analysis-output-text::-webkit-scrollbar {
+  width: 6px;
+}
+.analysis-output-text::-webkit-scrollbar-track {
+  background: var(--button-hover-bg);
+  border-radius: 3px;
+}
+.analysis-output-text::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  border-radius: 3px;
+}
+.analysis-output-text::-webkit-scrollbar-thumb:hover {
+  background: var(--secondary-text-color);
+}

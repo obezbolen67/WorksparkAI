@@ -1,4 +1,4 @@
-/* src/App.css */
+/* src/css/App.css */
 :root {
   /* Default to dark theme */
   --sidebar-bg-color: #171717;
@@ -16,6 +16,8 @@
 
 [data-theme="dark"] {
   --sidebar-bg-color: #171717;
+  --code-block-header: #171717;;
+  --code-block-bg: rgb(212, 212, 212);
   --main-bg-color: #212121;
   --input-bg-color: #212121;
   --primary-text-color: #e5e5e5;
@@ -34,6 +36,8 @@
   --input-bg-color: #ffffff;
   --primary-text-color: #111827;
   --secondary-text-color: #6b7280;
+  --code-block-header: #171717;;
+  --code-text: #ffffff;
   --border-color: #e5e7eb;
   --button-hover-bg: #f4f4f5; /* Changed from #ffffff */
   --assistant-message-bg: #f4f4f5;
@@ -75,4 +79,35 @@ body {
   inset: 0;
   background-color: var(--main-bg-color);
   z-index: 9999; /* Ensure it's on top */
+}
+
+
+/* --- UPDATED: New bouncing loader animation --- */
+@keyframes bouncing-loader {
+  to {
+    opacity: 0.1;
+    transform: translateY(-1rem);
+  }
+}
+
+.bouncing-loader {
+  display: flex;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.bouncing-loader > div {
+  width: 1rem;
+  height: 1rem;
+  background: var(--primary-text-color);
+  border-radius: 50%;
+  animation: bouncing-loader 0.6s infinite alternate;
+}
+
+.bouncing-loader > div:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.bouncing-loader > div:nth-child(3) {
+  animation-delay: 0.4s;
 }

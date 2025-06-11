@@ -35,9 +35,21 @@
   flex-direction: column;
 }
 
-@keyframes spin {
-  to { transform: rotate(360deg); }
+/* --- UPDATED: Making the fade less prominent --- */
+.chat-view::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  /* Reduced height to make the fade area smaller */
+  height: 100px; 
+  /* Adjusted gradient to make the solid part smaller and the fade more subtle */
+  background: linear-gradient(to top, var(--main-bg-color) 20%, transparent 100%);
+  pointer-events: none; /* Allows clicks and scrolling to pass through */
+  z-index: 4; /* Position it just below the input area */
 }
+
 
 .loading-overlay {
   position: absolute;
@@ -50,15 +62,6 @@
   z-index: 10;
   opacity: 0;
   animation: fadeIn 0.3s ease forwards;
-}
-
-.loading-spinner {
-  width: 40px;
-  height: 40px;
-  border: 4px solid var(--border-color);
-  border-top-color: var(--primary-text-color);
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
 }
 
 .chat-content {
@@ -185,6 +188,11 @@
 @media (max-width: 768px) {
   .chat-view-header {
     display: none;
+  }
+  
+  /* --- On mobile, use a solid bar instead of a gradient --- */
+  .chat-view::after {
+      display: none;
   }
 
   .chat-view-container:not(.is-empty) .chat-input-area {

@@ -1,5 +1,5 @@
 // src/contexts/NotificationContext.tsx
-import { createContext, useState, useRef, useContext, type ReactNode } from 'react';
+import { createContext, useState, useRef, useContext, type ReactNode, useCallback, useMemo } from 'react';
 
 interface NotificationContextType {
   showNotification: (message: string, type?: 'success' | 'error') => void;
@@ -16,7 +16,7 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
   const [notificationType, setNotificationType] = useState<'success' | 'error'>('success');
   const timeoutRef = useRef<number | null>(null);
 
-  const showNotification = (message: string, type: 'success' | 'error' = 'success') => {
+  const showNotification = useCallback((message: string, type: 'success' | 'error' = 'success') => {
     if (timeoutRef.current) {
       clearTimeout(timeoutRef.current);
     }
@@ -28,9 +28,14 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
     timeoutRef.current = window.setTimeout(() => {
       setIsNotificationVisible(false);
     }, 2500);
-  };
+  }, []);
 
-  const value = { showNotification, notificationMessage, isNotificationVisible, notificationType };
+  const value = useMemo(() => ({ 
+    showNotification, 
+    notificationMessage, 
+    isNotificationVisible, 
+    notificationType 
+  }), [showNotification, notificationMessage, isNotificationVisible, notificationType]);
 
   return (
     <NotificationContext.Provider value={value}>

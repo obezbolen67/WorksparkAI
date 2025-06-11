@@ -11,32 +11,26 @@
   padding: 0 1rem;
 }
 
-/* --- UPDATED: Attachment Layout --- */
+/* Attachment Layout */
 .message-attachments {
-  display: flex; /* Use flexbox for a compact layout */
-  flex-wrap: wrap; /* Allow items to wrap to the next line */
+  display: flex;
+  flex-wrap: wrap;
   gap: 8px;
 }
 
-/* Add space between images and text if both exist */
-.message-content > .message-attachments:not(:only-child) {
-  margin-bottom: 8px;
-}
-
 .attachment-image-wrapper {
-  display: block; /* Make the anchor a block for proper layout */
-  /* Give thumbnails a uniform square size */
+  display: block;
   width: 72px;
   height: 72px;
-  flex-shrink: 0; /* Prevent flexbox from squishing the item */
-  border-radius: 12px; /* Apply radius to the wrapper for clipping */
-  overflow: hidden; /* Ensures the image respects the border-radius */
+  flex-shrink: 0;
+  border-radius: 12px;
+  overflow: hidden;
 }
 
 .attachment-image-wrapper img {
   width: 100%;
-  height: 100%; /* Make image fill the square wrapper */
-  object-fit: cover; /* Prevent image distortion */
+  height: 100%;
+  object-fit: cover;
   cursor: pointer;
   transition: transform 0.2s ease, box-shadow 0.2s ease;
   border: 1px solid var(--border-color);
@@ -59,8 +53,6 @@
   text-align: center;
   border: 1px solid var(--border-color);
 }
-/* --- End of Updated Styles --- */
-
 
 .message-actions {
   display: flex;
@@ -94,28 +86,145 @@
   color: var(--primary-text-color);
 }
 
-.streaming-chunk {
-  opacity: 0;
-  animation: streamFadeIn 0.4s ease-out forwards;
-}
-
-@keyframes streamFadeIn {
-  0% { opacity: 0; transform: translateY(4px); }
-  100% { opacity: 1; transform: translateY(0); }
-}
-
 .assistant .message-content-wrapper {
   flex-grow: 1;
   position: relative;
   padding-bottom: 32px;
 }
 
-.assistant .message-content {
-  padding-top: 2px;
+/* Base Message Content Styles */
+.message-content {
   line-height: 1.6;
   white-space: pre-wrap;
-  color: #d1d5db;
+  word-wrap: break-word;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.assistant .message-content {
+  color: var(--primary-text-color); /* Use variable for easy theming */
   flex-grow: 1;
+}
+
+/* --- Markdown Element Styling (Dark Theme is default) --- */
+.message-content > :first-child { margin-top: 0; }
+.message-content > :last-child { margin-bottom: 0; }
+.message-content p, .message-content ul, .message-content ol, .message-content blockquote,
+.message-content pre, .message-content table, .message-content h1, .message-content h2,
+.message-content h3 {
+  margin: 0;
+}
+
+.message-content h1, .message-content h2, .message-content h3 {
+  font-weight: 600;
+  line-height: 1.3;
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: 0.3em;
+}
+.message-content h1 { font-size: 1.6em; }
+.message-content h2 { font-size: 1.4em; }
+.message-content h3 { font-size: 1.2em; }
+
+.message-content ul, .message-content ol {
+  padding-left: 1.75rem;
+}
+
+.message-content li > p { display: inline; }
+
+.message-content blockquote {
+  padding: 0 1em;
+  color: var(--secondary-text-color);
+  border-left: 0.25em solid var(--border-color);
+}
+
+.message-content a {
+  color: #60a5fa;
+  text-decoration: underline;
+}
+.message-content a:hover { color: #93c5fd; }
+
+.message-content table {
+  width: auto;
+  max-width: 100%;
+  border-collapse: collapse;
+  border: 1px solid var(--border-color);
+}
+.message-content th, .message-content td {
+  padding: 8px 12px;
+  border: 1px solid var(--border-color);
+}
+.message-content thead { background-color: hsl(0, 0%, 15%); }
+.message-content tr:nth-child(2n) { background-color: hsl(0, 0%, 12%); }
+
+/* Inline code */
+.message-content code:not([class*="language-"]) {
+  color: #f472b6;
+  padding: 0.2em 0.4em;
+  margin: 0;
+  font-size: 85%;
+  border-radius: 6px;
+  font-family: var(--font-mono, monospace);
+  white-space: pre-wrap;
+}
+
+/* --- Code Block Styling (Dark Theme is default) --- */
+.code-block-wrapper {
+  background-color: #0d1117;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid var(--border-color);
+}
+
+.code-block-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px 12px;
+  font-size: 0.55rem;
+  line-height: 1;
+  background-color: var(--code-block-header);
+  color: var(--secondary-text-color);
+}
+
+.language-name {
+  text-transform: lowercase;
+  font-family: var(--font-mono, monospace);
+}
+
+.copy-code-button {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: none;
+  border: none;
+  color: var(--secondary-text-color);
+  cursor: pointer;
+  padding: 4px 6px;
+  border-radius: 6px;
+  transition: background-color 0.2s, color 0.2s;
+  font-family: inherit;
+  font-size: 0.8rem;
+}
+
+.copy-code-button:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+  color: var(--primary-text-color);
+}
+
+.code-block-wrapper > div {
+  margin: 0 !important;
+  border-radius: 0 !important;
+  font-family: var(--font-mono, monospace) !important;
+  font-size: 0.9rem !important;
+  line-height: 1.5 !important;
+  white-space: pre-wrap !important;
+  word-break: break-all !important;
+}
+.code-block-wrapper code {
+  font-family: inherit !important;
+  white-space: inherit !important;
+  word-break: inherit !important;
 }
 
 .assistant .message-actions {
@@ -124,11 +233,11 @@
   bottom: 0;
 }
 
-/* --- UPDATED: User message container now stacks items vertically and aligns them to the right. --- */
+/* User Message Styling */
 .user .chat-message-container {
-  flex-direction: column; /* Stack bubble and actions vertically */
-  align-items: flex-end;   /* Push items to the right edge */
-  gap: 0.5rem;             /* Space between bubble and actions */
+  flex-direction: column; 
+  align-items: flex-end;   
+  gap: 0.5rem;             
 }
 
 .user-message-bubble {
@@ -137,17 +246,18 @@
   padding: 0.6rem 1rem;
   border-radius: 1.25rem;
   max-width: 80%;
-  line-height: 1.6;
-  white-space: pre-wrap;
   flex-grow: 0;
-  /* order: 1; /* <-- No longer needed */
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  transform-origin: center;
   overflow: hidden;
   position: relative;
   min-height: 26px;
 }
 
+.user .message-content {
+  min-height: inherit;
+}
+
+/* Editing state and other styles... (unchanged) */
 .user.editing .user-message-bubble {
   background-color: #424242;
   border-radius: 1.25rem;
@@ -159,140 +269,59 @@
   width: max(var(--initial-width, auto), 300px);
   min-height: var(--initial-height, 26px);
 }
+.user.editing .message-content { opacity: 0; position: absolute; pointer-events: none; }
+.message-editor-content { opacity: 0; transform: translateY(10px); transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); transition-delay: 0.1s; display: flex; flex-direction: column; gap: 1rem; width: 100%; min-height: var(--initial-height, 26px); }
+.user.editing .message-editor-content { opacity: 1; transform: translateY(0); }
+.message-editor-content textarea { background: transparent; border: none; outline: none; resize: none; color: #ECECEC; font-family: inherit; font-size: 1rem; line-height: 1.6; width: 100%; min-height: 26px; transition: height 0.3s cubic-bezier(0.4, 0, 0.2, 1); padding: 0; margin: 0; }
+.user.editing .message-editor-content textarea { height: var(--initial-height, auto); }
+.editor-actions { display: flex; justify-content: flex-end; gap: 0.75rem; opacity: 0; transform: translateY(10px); transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); transition-delay: 0.2s; margin-top: 0.5rem; }
+.user.editing .editor-actions { opacity: 1; transform: translateY(0); }
+.editor-button { border: none; padding: 0.5rem 1rem; border-radius: 0.75rem; font-weight: 500; cursor: pointer; transition: all 0.2s ease-in-out; transform: scale(0.95); }
+.user.editing .editor-button { transform: scale(1); }
+.editor-button.cancel { background-color: #212121; color: #ECECEC; }
+.editor-button.cancel:hover { background-color: #3a3a3a; transform: scale(1.05); }
+.editor-button.save { background-color: #ffffff; color: #000000; }
+.editor-button.save:hover { background-color: #f0f0f0; transform: scale(1.05); }
+.user .message-actions { position: static; transition: opacity 0.2s ease-in-out, transform 0.2s ease-in-out; }
+.user.editing .message-actions { opacity: 0; transform: scale(0.8); pointer-events: none; }
 
-.user .message-content {
-  transition: opacity 0.15s ease-in-out;
-  min-height: inherit;
-  display: flex;
-  flex-direction: column; /* Stack attachments and text */
-  gap: 4px;
-}
+@keyframes blink { 50% { opacity: 0; } }
 
-.user.editing .message-content {
-  opacity: 0;
-  position: absolute;
-  pointer-events: none;
-}
-
-.message-editor-content {
-  opacity: 0;
-  transform: translateY(10px);
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  transition-delay: 0.1s;
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-  width: 100%;
-  min-height: var(--initial-height, 26px);
-}
-
-.user.editing .message-editor-content {
-  opacity: 1;
-  transform: translateY(0);
-}
-
-.message-editor-content textarea {
-  background: transparent;
-  border: none;
-  outline: none;
-  resize: none;
-  color: #ECECEC;
-  font-family: inherit;
-  font-size: 1rem;
-  line-height: 1.6;
-  width: 100%;
-  min-height: 26px;
-  transition: height 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  padding: 0;
-  margin: 0;
-}
-
-.user.editing .message-editor-content textarea {
-  height: var(--initial-height, auto);
-}
-
-.editor-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 0.75rem;
-  opacity: 0;
-  transform: translateY(10px);
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  transition-delay: 0.2s;
-  margin-top: 0.5rem;
-}
-
-.user.editing .editor-actions {
-  opacity: 1;
-  transform: translateY(0);
-}
-
-.editor-button {
-  border: none;
-  padding: 0.5rem 1rem;
-  border-radius: 0.75rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s ease-in-out;
-  transform: scale(0.95);
-}
-
-.user.editing .editor-button {
-  transform: scale(1);
-}
-
-.editor-button.cancel {
-  background-color: #212121;
-  color: #ECECEC;
-}
-
-.editor-button.cancel:hover {
-  background-color: #3a3a3a;
-  transform: scale(1.05);
-}
-
-.editor-button.save {
-  background-color: #ffffff;
-  color: #000000;
-}
-
-.editor-button.save:hover {
-  background-color: #f0f0f0;
-  transform: scale(1.05);
-}
-
-/* --- UPDATED: User message actions are now positioned underneath the bubble. --- */
-.user .message-actions {
-  position: static;
-  /* order: 2; /* <-- No longer needed */
-  transition: opacity 0.2s ease-in-out, transform 0.2s ease-in-out;
-  /* padding-top: 4px; /* <-- No longer needed */
-}
-
-.user.editing .message-actions {
-  opacity: 0;
-  transform: scale(0.8);
-  pointer-events: none;
-}
-
-@keyframes blink {
-  50% { opacity: 0; }
-}
-
+/* --- THIS IS THE FINAL FIX --- */
+/* Changed display to 'block' and removed the now-ignored 'vertical-align' property. */
 .streaming-cursor {
-  display: inline-block;
+  display: block;
   width: 2px;
   height: 1em;
-  background-color: #d1d5db;
+  background-color: var(--secondary-text-color);
   animation: blink 1s infinite;
-  vertical-align: text-bottom;
   position: relative;
   top: -1px;
+  margin-top: 4px; /* Optional: add a little space above the cursor */
 }
 
+.chat-message-wrapper.assistant .message-content:has(.code-analysis-container.executing) {
+  animation: gentlePulse 2s ease-in-out infinite;
+}
+
+@keyframes gentlePulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.9;
+  }
+}
+
+/* Image Placeholders */
+.attachment-image-wrapper.loading,
+.attachment-image-wrapper.error { background-color: var(--button-hover-bg); display: flex; align-items: center; justify-content: center; color: var(--secondary-text-color); font-size: 0.8rem; padding: 8px; box-sizing: border-box; text-align: center; line-height: 1.2; border: 1px solid var(--border-color); }
+.attachment-image-wrapper.error { background-color: rgba(239, 68, 68, 0.1); color: #f87171; border-color: rgba(239, 68, 68, 0.3); }
+
+/* --- THEME OVERRIDES --- */
+
 [data-theme="light"] .assistant .message-content,
-[data-theme="light"] .streaming-cursor,
-[data-theme="light"] .streaming-chunk {
+[data-theme="light"] .streaming-cursor {
   color: var(--primary-text-color);
 }
 
@@ -317,7 +346,7 @@
 }
 
 [data-theme="light"] .editor-button.cancel:hover {
-  background-color: #d1d5db;
+  background-color: #e5e7eb;
 }
 
 [data-theme="light"] .editor-button.save {
@@ -329,25 +358,55 @@
   background-color: #374151;
 }
 
-/* --- NEW: Styles for image placeholders --- */
-.attachment-image-wrapper.loading,
-.attachment-image-wrapper.error {
-  /* It inherits the width/height from the base class now */
-  background-color: var(--button-hover-bg);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--secondary-text-color);
-  font-size: 0.8rem;
-  padding: 8px;
-  box-sizing: border-box;
-  text-align: center;
-  line-height: 1.2;
-  border: 1px solid var(--border-color);
+
+/* --- UPDATED: Light Theme Markdown Overrides --- */
+
+[data-theme="light"] .message-content a {
+  color: #2563eb; /* A darker, more readable blue for light bg */
+}
+[data-theme="light"] .message-content a:hover {
+  color: #3b82f6;
 }
 
-.attachment-image-wrapper.error {
-  background-color: rgba(239, 68, 68, 0.1);
-  color: #f87171;
-  border-color: rgba(239, 68, 68, 0.3);
+[data-theme="light"] .message-content table {
+  border-color: var(--border-color);
+}
+[data-theme="light"] .message-content th,
+[data-theme="light"] .message-content td {
+  border-color: var(--border-color);
+}
+[data-theme="light"] .message-content thead {
+  background-color: var(--button-hover-bg);
+}
+[data-theme="light"] .message-content tr:nth-child(2n) {
+  background-color: transparent; /* Cleaner look on light theme */
+}
+
+/* Light theme inline code */
+[data-theme="light"] .message-content code:not([class*="language-"]) {
+  color: var(--primary-text-color);
+}
+
+/* Light theme code blocks */
+[data-theme="light"] .code-block-wrapper {
+  background-color: #fafafa;
+  border-color: var(--border-color);
+}
+
+[data-theme="light"] .code-block-header {
+  background-color: var(--code-block-header);
+  color: var(--main-bg-color);
+}
+
+[data-theme="light"] .code-block-header .language-name {
+  color: var(--code-text);
+}
+
+[data-theme="light"] .code-block-header .copy-code-button {
+  color: var(--code-text);
+}
+
+[data-theme="light"] .code-block-header .copy-code-button:hover {
+  background-color: #374151;
+  color: var(--main-bg-color);
 }

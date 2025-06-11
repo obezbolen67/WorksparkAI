@@ -1,16 +1,20 @@
 // src/App.tsx
 import { Routes, Route, Navigate } from 'react-router-dom';
+import { lazy } from 'react';
 import './App.css';
 import './css/SettingsModal.css';
 import './css/Notification.css'; 
 import './css/AuthPage.css';
-import './css/Tooltip.css'; // <-- ADDED
+import './css/Tooltip.css';
+import './css/CodeAnalysisBlock.css';
 
 import PrivateRoute from './routing/PrivateRoute';
 import MainAppLayout from './pages/MainAppLayout';
 import AuthPage from './pages/AuthPage';
-import ChatPage from './pages/ChatPage'; // Import ChatPage
 import { useSettings } from './contexts/SettingsContext';
+
+// --- Lazily load the ChatPage component ---
+const ChatPage = lazy(() => import('./pages/ChatPage'));
 
 function App() {
   const { isAuthenticated } = useSettings();
@@ -26,7 +30,7 @@ function App() {
         element={isAuthenticated ? <Navigate to="/" /> : <AuthPage />} 
       />
       
-      {/* --- UPDATED: Nested Routing --- */}
+      {/* --- Nested Routing --- */}
       <Route 
         path="/"
         element={

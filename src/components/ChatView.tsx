@@ -1,6 +1,6 @@
 // src/components/ChatView.tsx
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import type { Message, Attachment } from '../types';
 import ChatInput from './ChatInput';
 import ChatMessage from './ChatMessage';
@@ -40,8 +40,7 @@ const ChatView = (props: ChatViewProps) => {
   }, []);
 
   useEffect(() => {
-    // Auto-scroll if we are not manually scrolled up
-    if (!isLoading && chatContentRef.current && !showScrollToBottom) {
+    if (chatContentRef.current && !showScrollToBottom) {
       chatContentRef.current.scrollTop = chatContentRef.current.scrollHeight;
     }
   }, [messages, isLoading, showScrollToBottom]);
@@ -60,9 +59,9 @@ const ChatView = (props: ChatViewProps) => {
     return () => chatContent.removeEventListener('scroll', handleScroll);
   }, []);
 
-  const handleCopy = (content: string) => {
+  const handleCopy = useCallback((content: string) => {
     navigator.clipboard.writeText(content).then(() => showNotification("Copied!"));
-  };
+  }, [showNotification]);
 
   const scrollToBottom = () => {
     chatContentRef.current?.scrollTo({
@@ -71,8 +70,10 @@ const ChatView = (props: ChatViewProps) => {
     });
   };
 
+  const visibleMessages = messages.filter(msg => msg.role !== 'tool');
+
   return (
-    <div className={`chat-view-container ${messages.length === 0 ? 'is-empty' : ''} ${isReady ? 'is-ready' : ''}`}>
+    <div className={`chat-view-container ${visibleMessages.length === 0 ? 'is-empty' : ''} ${isReady ? 'is-ready' : ''}`}>
       <header className="chat-view-header">
         <ModelSelector />
       </header>
@@ -80,38 +81,52 @@ const ChatView = (props: ChatViewProps) => {
       <main className="chat-view">
         {isLoading && (
           <div className="loading-overlay">
-            <div className="loading-spinner"></div>
+            <div className="bouncing-loader">
+              <div></div>
+              <div></div>
+              <div></div>
+            </div>
           </div>
         )}
         
         <div className="chat-content" ref={chatContentRef}>
-          {/* The list is always rendered; it's just empty if there are no messages. */}
           <div className="chat-messages-list">
-            {messages.map((msg, index) => (
-              <ChatMessage 
-                key={index}
-                index={index}
-                message={msg}
-                chatId={activeChatId}
-                isEditing={editingIndex === index}
-                isStreaming={isStreaming && index === messages.length - 1}
-                onRegenerate={onRegenerate}
-                onCopy={() => handleCopy(msg.content)}
-                onStartEdit={onStartEdit}
-                onSaveEdit={onSaveEdit}
-                onCancelEdit={onCancelEdit}
-              />
-            ))}
+            {visibleMessages.map((msg, visibleIndex) => {
+              const actualIndex = messages.findIndex(m => m === msg);
+              
+              // --- START OF THE FIX ---
+              // The key must be STABLE for the lifetime of the message instance to prevent remounting.
+              // We use the tool_call_id for tool_code messages as the stable, unique identifier.
+              const stableIdentifier = msg.tool_calls?.[0]?.id || msg.content?.length || 0;
+              const key = `${actualIndex}-${msg.role}-${stableIdentifier}`;
+              // --- END OF THE FIX ---
+              
+              return (
+                <ChatMessage 
+                  key={key}
+                  index={actualIndex}
+                  message={msg}
+                  messages={messages}
+                  chatId={activeChatId}
+                  isEditing={editingIndex === actualIndex}
+                  isStreaming={isStreaming && visibleIndex === visibleMessages.length - 1}
+                  onRegenerate={onRegenerate}
+                  onCopy={handleCopy}
+                  onStartEdit={onStartEdit}
+                  onSaveEdit={onSaveEdit}
+                  onCancelEdit={onCancelEdit}
+                />
+              );
+            })}
           </div>
         </div>
 
         <div className="chat-input-area">
-          {/* "Empty" message is now part of the input area. CSS handles hiding it. */}
           <div className="empty-chat-container">
             <h1>How can I help you?</h1>
           </div>
 
-          {showScrollToBottom && !isStreaming && messages.length > 0 && (
+          {showScrollToBottom && !isStreaming && visibleMessages.length > 0 && (
             <Tooltip text="Scroll to latest message">
               <button className="scroll-to-bottom" onClick={scrollToBottom}>
                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">

@@ -1,5 +1,5 @@
 // src/pages/MainAppLayout.tsx
-import { useState } from 'react';
+import { useState, Suspense } from 'react';
 import { Outlet, useNavigate } from 'react-router-dom';
 import Sidebar from '../components/Sidebar';
 import SettingsModal from '../components/SettingsModal';
@@ -8,6 +8,23 @@ import { ChatProvider } from '../contexts/ChatContext';
 // --- NEW IMPORTS ---
 import MobileHeader from '../components/MobileHeader';
 import '../css/MobileHeader.css';
+
+// --- UPDATED: Fallback now uses the bouncing loader structure ---
+const RouteFallback = () => (
+  <div style={{
+    display: 'flex',
+    justifyContent: 'center',
+    alignItems: 'center',
+    width: '100%',
+    height: '100%'
+  }}>
+    <div className="bouncing-loader">
+      <div></div>
+      <div></div>
+      <div></div>
+    </div>
+  </div>
+);
 
 const MainAppLayout = () => {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
@@ -37,8 +54,10 @@ const MainAppLayout = () => {
           isCollapsed={isSidebarCollapsed}
           onToggleCollapse={() => setIsSidebarCollapsed(prev => !prev)}
         />
-        {/* Outlet renders either the empty ChatPage or ChatPage with a chatId */}
-        <Outlet />
+        {/* --- Wrap Outlet in Suspense to handle lazy-loaded routes --- */}
+        <Suspense fallback={<RouteFallback />}>
+          <Outlet />
+        </Suspense>
       </div>
       <SettingsModal
         isOpen={isSettingsOpen}

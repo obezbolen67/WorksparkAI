@@ -1,58 +1,156 @@
 // src/components/ChatMessage.tsx
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, memo } from 'react';
 import type { Message, Attachment } from '../types';
 import api from '../utils/api';
 import '../css/ChatMessage.css';
-import { FiCopy, FiRefreshCw, FiEdit } from 'react-icons/fi';
+import { FiCopy, FiRefreshCw, FiEdit, FiCheck } from 'react-icons/fi';
 import ImageViewer from './ImageViewer';
-import Tooltip from './Tooltip'; // <-- ADDED
+import Tooltip from './Tooltip';
+import ReactMarkdown from 'react-markdown';
+import type { Components } from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
+import { vscDarkPlus, oneLight } from 'react-syntax-highlighter/dist/esm/styles/prism';
+import CodeAnalysisBlock from './CodeAnalysisBlock';
 
-const AnimatedStreamingText = ({ content, isStreaming }: { content: string; isStreaming: boolean }) => {
-  // ... (no changes in this sub-component)
-  const [previousContent, setPreviousContent] = useState('');
-  const [animationKey, setAnimationKey] = useState(0);
+interface CodeComponentProps {
+  node?: any;
+  inline?: boolean;
+  className?: string;
+  children?: React.ReactNode;
+  style?: React.CSSProperties;
+  [key: string]: any;
+}
 
-  useEffect(() => {
-    if (isStreaming && content.length > previousContent.length) {
-      setPreviousContent(content);
-      setAnimationKey(prev => prev + 1);
-    } else if (!isStreaming) {
-      setPreviousContent(content);
-    }
-  }, [content, isStreaming, previousContent.length]);
+const useTheme = () => {
+    const [theme, setTheme] = useState(
+        () => document.documentElement.getAttribute('data-theme') || 'dark'
+    );
 
-  if (!isStreaming || !content) {
-    return <span>{content}</span>;
-  }
+    useEffect(() => {
+        const observer = new MutationObserver(mutations => {
+            for (const mutation of mutations) {
+                if (mutation.type === 'attributes' && mutation.attributeName === 'data-theme') {
+                    const newTheme = document.documentElement.getAttribute('data-theme') || 'dark';
+                    setTheme(newTheme);
+                    break;
+                }
+            }
+        });
 
-  const stableContent = previousContent;
-  const newContent = content.slice(previousContent.length);
+        observer.observe(document.documentElement, { attributes: true });
 
-  return (
-    <span>
-      <span>{stableContent}</span>
-      {newContent && (
-        <span key={animationKey} className="streaming-chunk">
-          {newContent}
-        </span>
-      )}
-    </span>
-  );
+        return () => observer.disconnect();
+    }, []);
+
+    return theme;
 };
 
-// --- Helper component to securely load images ---
+async function copyTextToClipboard(text: string): Promise<boolean> {
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    try {
+      await navigator.clipboard.writeText(text);
+      return true;
+    } catch (err) {
+      console.warn("Clipboard API failed, falling back to execCommand.", err);
+    }
+  }
+
+  const textArea = document.createElement("textarea");
+  textArea.value = text;
+  textArea.style.position = "fixed";
+  textArea.style.top = "-9999px";
+  textArea.style.left = "-9999px";
+  document.body.appendChild(textArea);
+  textArea.focus();
+  textArea.select();
+
+  try {
+    const successful = document.execCommand("copy");
+    return successful;
+  } catch (err) {
+    console.error("Fallback to execCommand failed.", err);
+    return false;
+  } finally {
+    document.body.removeChild(textArea);
+  }
+}
+
+const CodeBlock = ({ node, inline, className, children, style, ...props }: CodeComponentProps) => {
+    const [isCopied, setIsCopied] = useState(false);
+    const theme = useTheme();
+    const match = /language-(\w+)/.exec(className || '');
+    const language = match ? match[1] : '';
+    const codeString = String(children).replace(/\n$/, '');
+    const syntaxHighlighterStyle = theme === 'light' ? oneLight : vscDarkPlus;
+
+    const handleCopy = async () => {
+        const success = await copyTextToClipboard(codeString);
+        if (success) {
+            setIsCopied(true);
+            setTimeout(() => setIsCopied(false), 2000);
+        } else {
+            alert("Failed to copy to clipboard.");
+        }
+    };
+
+    if (inline) {
+        return (
+            <code className={className} style={style} {...props}>
+                {children}
+            </code>
+        );
+    }
+    
+    const { ref, ...syntaxHighlighterProps } = props;
+    
+    return (
+        <div className="code-block-wrapper">
+            <div className="code-block-header">
+                <span className="language-name">{language}</span>
+                <button onClick={handleCopy} className="copy-code-button">
+                    {isCopied ? <FiCheck size={16} /> : <FiCopy size={16} />}
+                    <span>{isCopied ? 'Copied!' : 'Copy code'}</span>
+                </button>
+            </div>
+            <SyntaxHighlighter
+                style={syntaxHighlighterStyle}
+                language={language}
+                PreTag="div"
+                {...syntaxHighlighterProps}
+            >
+                {codeString}
+            </SyntaxHighlighter>
+        </div>
+    );
+};
+
+// --- START OF THE FIX ---
+// This custom component fixes a hydration error caused by react-markdown.
+// By default, it wraps elements like code blocks (`<pre>`) in a `<p>` tag.
+// Our `CodeBlock` component renders a `<div>`, which is invalid inside a `<p>`.
+// This component checks if a paragraph's only child is a code block,
+// and if so, it renders the code block directly without the wrapping `<p>`.
+const Paragraph: Components['p'] = ({ node, ...props }) => {
+    const child = node?.children[0];
+    if (
+        node?.children.length === 1 &&
+        child?.type === 'element' &&
+        child?.tagName === 'pre'
+    ) {
+        return <>{props.children}</>;
+    }
+    return <p {...props} />;
+};
+// --- END OF THE FIX ---
+
 const AuthenticatedImage = ({ chatId, attachment, onView }: { chatId: string, attachment: Attachment, onView: (src: string) => void }) => {
     const [objectUrl, setObjectUrl] = useState<string | null>(null);
     const [hasError, setHasError] = useState(false);
-
-    // --- FIX: The endpoint is now nullable if attachment._id doesn't exist ---
     const apiEndpoint = attachment._id ? `/files/view/${chatId}/${attachment._id}` : null;
 
     useEffect(() => {
-        // If there's no ID, we can't fetch. The component will show a loading state.
-        // When the parent component re-renders with an attachment that has an _id,
-        // apiEndpoint will change, and this effect will re-run.
         if (!apiEndpoint) {
             setObjectUrl(null);
             setHasError(false);
@@ -61,17 +159,14 @@ const AuthenticatedImage = ({ chatId, attachment, onView }: { chatId: string, at
 
         let isMounted = true;
         let tempUrl: string | null = null;
-        
-        // Reset state for new fetch attempt
+      
         setHasError(false);
         setObjectUrl(null);
 
         const fetchImage = async () => {
             try {
                 const response = await api(apiEndpoint);
-                if (!response.ok) {
-                    throw new Error(`Server responded with ${response.status}`);
-                }
+                if (!response.ok) throw new Error(`Server responded with ${response.status}`);
                 const blob = await response.blob();
                 if (isMounted) {
                     tempUrl = URL.createObjectURL(blob);
@@ -99,7 +194,6 @@ const AuthenticatedImage = ({ chatId, attachment, onView }: { chatId: string, at
     };
 
     if (hasError) return <div className="attachment-image-wrapper error"><span>Error Loading Image</span></div>;
-    // If we don't have an objectUrl (because we are fetching, or because we can't fetch yet), show loading.
     if (!objectUrl) return <div className="attachment-image-wrapper loading" />;
 
     return (
@@ -109,36 +203,34 @@ const AuthenticatedImage = ({ chatId, attachment, onView }: { chatId: string, at
     );
 };
 
-
 interface ChatMessageProps {
   message: Message;
+  messages: Message[];
   chatId: string | null;
   index: number;
   isEditing: boolean;
   isStreaming: boolean;
   onRegenerate: () => void;
-  onCopy: () => void;
+  onCopy: (content: string) => void;
   onStartEdit: (index: number) => void;
   onSaveEdit: (index: number, newContent: string) => void;
   onCancelEdit: () => void;
 }
 
-const ChatMessage = ({ message, chatId, index, isEditing, isStreaming, onRegenerate, onCopy, onStartEdit, onSaveEdit, onCancelEdit }: ChatMessageProps) => {
+const ChatMessage = ({ message, messages, chatId, index, isEditing, isStreaming, onRegenerate, onCopy, onStartEdit, onSaveEdit, onCancelEdit }: ChatMessageProps) => {
   const isUser = message.role === 'user';
-  const [editedContent, setEditedContent] = useState(message.content);
+  const [editedContent, setEditedContent] = useState(message.content || '');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const messageContentRef = useRef<HTMLDivElement>(null);
   const bubbleRef = useRef<HTMLDivElement>(null);
   const [initialDimensions, setInitialDimensions] = useState<{ width: number; height: number } | null>(null);
-  
-  // --- NEW: State for the ImageViewer ---
   const [viewerSrc, setViewerSrc] = useState<string | null>(null);
   const [viewerAlt, setViewerAlt] = useState('');
   const [isViewerOpen, setIsViewerOpen] = useState(false);
 
   useEffect(() => {
     if (isEditing) {
-      setEditedContent(message.content);
+      setEditedContent(message.content || '');
       if (messageContentRef.current && bubbleRef.current) {
         setInitialDimensions({
           width: bubbleRef.current.getBoundingClientRect().width,
@@ -167,8 +259,7 @@ const ChatMessage = ({ message, chatId, index, isEditing, isStreaming, onRegener
       }, 300);
     }
   }, [editedContent, isEditing, initialDimensions]);
-  
-  // --- NEW: Handler to open the viewer ---
+
   const handleOpenViewer = (src: string, alt: string) => {
     setViewerSrc(src);
     setViewerAlt(alt);
@@ -179,10 +270,7 @@ const ChatMessage = ({ message, chatId, index, isEditing, isStreaming, onRegener
     <div className="message-attachments">
       {attachments.map(att => {
         if (!chatId) return null;
-        
-        // --- FIX: Use a stable key that exists even on optimistic updates ---
         const attachmentKey = att._id || att.gcsObjectName;
-        
         if (att.mimeType.startsWith('image/')) {
           return <AuthenticatedImage 
                     key={attachmentKey} 
@@ -195,7 +283,6 @@ const ChatMessage = ({ message, chatId, index, isEditing, isStreaming, onRegener
         const handleDownload = async (e: React.MouseEvent<HTMLAnchorElement>) => {
             e.preventDefault();
             try {
-                // We need an _id to download, so if it's missing, we can't proceed.
                 if (!att._id) {
                     alert("File is still processing. Please wait a moment.");
                     return;
@@ -216,7 +303,7 @@ const ChatMessage = ({ message, chatId, index, isEditing, isStreaming, onRegener
                 alert('Could not download file.');
             }
         };
-        
+      
         return (
           <a key={attachmentKey} href="#" onClick={handleDownload} className="attachment-file-link">
             {att.fileName}
@@ -226,9 +313,33 @@ const ChatMessage = ({ message, chatId, index, isEditing, isStreaming, onRegener
     </div>
   );
 
-  if (isUser) {
+  if (message.role === 'tool_code') {
+      // Find the corresponding tool output message in the full message history
+      const toolOutput = messages.find(m => 
+          m.role === 'tool' && 
+          m.tool_call_id === message.tool_calls?.[0]?.id
+      );
+      
+      return (
+          <div className="chat-message-wrapper assistant">
+              <div className="chat-message-container">
+                  <div className="message-content-wrapper">
+                      <div className="message-content">
+                          <CodeAnalysisBlock 
+                              toolCodeMessage={message}
+                              toolOutputMessage={toolOutput}
+                              isStreaming={isStreaming}
+                          />
+                      </div>
+                  </div>
+              </div>
+          </div>
+      );
+  }
+  
+  if (message.role === 'user') {
     return (
-      <> {/* <-- NEW: Use Fragment to wrap message and viewer */}
+      <>
         <div className={`chat-message-wrapper user ${isEditing ? 'editing' : ''}`}>
           <div className="chat-message-container">
             <div
@@ -242,7 +353,7 @@ const ChatMessage = ({ message, chatId, index, isEditing, isStreaming, onRegener
               {!isEditing ? (
                 <div ref={messageContentRef} className="message-content">
                   {message.attachments && message.attachments.length > 0 && renderAttachments(message.attachments)}
-                  {message.content && <div>{message.content}</div>}
+                  {message.content && <ReactMarkdown remarkPlugins={[remarkGfm]} components={{ code: CodeBlock, p: Paragraph }}>{message.content}</ReactMarkdown>}
                   {!message.content && (!message.attachments || message.attachments.length === 0) && '\u00A0'}
                 </div>
               ) : (
@@ -275,8 +386,7 @@ const ChatMessage = ({ message, chatId, index, isEditing, isStreaming, onRegener
             )}
           </div>
         </div>
-        
-        {/* --- NEW: Render the ImageViewer here --- */}
+      
         <ImageViewer 
           isOpen={isViewerOpen}
           src={viewerSrc}
@@ -287,34 +397,52 @@ const ChatMessage = ({ message, chatId, index, isEditing, isStreaming, onRegener
     );
   }
 
-  // Assistant Message
-  return (
-    <div className={`chat-message-wrapper assistant`}>
-      <div className="chat-message-container">
-        <div className="message-content-wrapper">
-          <div className="message-content">
-            <AnimatedStreamingText content={message.content} isStreaming={isStreaming} />
-            {isStreaming && <span className="streaming-cursor"></span>}
-            {!message.content && !isStreaming && '\u00A0'}
+  if (message.role === 'assistant') {
+      const isLastMessage = index === messages.length - 1;
+
+      return (
+          <div className={`chat-message-wrapper assistant`}>
+              <div className="chat-message-container">
+                  <div className="message-content-wrapper">
+                      <div className="message-content">
+                          {message.content ? (
+                              <ReactMarkdown
+                                  remarkPlugins={[remarkGfm]}
+                                  components={{ code: CodeBlock, p: Paragraph }}
+                              >
+                                  {message.content}
+                              </ReactMarkdown>
+                          ) : (
+                              // Render a non-breaking space for empty messages to maintain bubble height,
+                              // but only if it's not the active streaming message.
+                              !isStreaming && '\u00A0'
+                          )}
+                          {/* Show streaming cursor if this is the last message and we are streaming */}
+                          {isStreaming && isLastMessage && <span className="streaming-cursor"></span>}
+                      </div>
+                      
+                      {/* Show actions only if there is content and we are not streaming */}
+                      {message.content && !isStreaming && (
+                          <div className="message-actions">
+                              <Tooltip text="Regenerate">
+                                  <button className="action-button" onClick={onRegenerate}>
+                                      <FiRefreshCw size={16} />
+                                  </button>
+                              </Tooltip>
+                              <Tooltip text="Copy">
+                                  <button className="action-button" onClick={() => onCopy(message.content || '')}>
+                                      <FiCopy size={16} />
+                                  </button>
+                              </Tooltip>
+                          </div>
+                      )}
+                  </div>
+              </div>
           </div>
-          {message.content && !isStreaming && (
-            <div className="message-actions">
-              <Tooltip text="Regenerate">
-                <button className="action-button" onClick={onRegenerate}>
-                  <FiRefreshCw size={16} />
-                </button>
-              </Tooltip>
-              <Tooltip text="Copy">
-                <button className="action-button" onClick={onCopy}>
-                  <FiCopy size={16} />
-                </button>
-              </Tooltip>
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  );
+      );
+  }
+
+  return null;
 };
 
-export default ChatMessage;
+export default memo(ChatMessage);

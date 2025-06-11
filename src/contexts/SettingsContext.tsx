@@ -6,11 +6,14 @@ type Model = {
   id: string;
 };
 
-// --- NEW: Define the structure for model configurations ---
+// --- UPDATED: Add 'code' modality ---
+type Modality = 'text' | 'image' | 'code';
+
 type ModelConfig = {
   id: string;
-  modalities: ('text' | 'image')[];
+  modalities: Modality[];
 };
+
 
 type User = {
   _id: string;

@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useState, useCallback, useEffect, ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
-import type { Message, Attachment } from '../types';
+import type { Message, Attachment, ToolCall } from '../types';
 import { useSettings } from './SettingsContext';
 import { useNotification } from './NotificationContext';
 import api from '../utils/api';
@@ -48,7 +48,7 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
   const [isStreaming, setIsStreaming] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
-  
+
   const loadChatList = useCallback(async () => {
     if (!token) return;
     try {
@@ -65,133 +65,210 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     loadChatList();
   }, [loadChatList]);
-  
-  // --- NEW ---
-  // A silent refresh function that doesn't trigger the main loading spinner.
-  // It's used to get the final state of messages (with attachment _ids) after sending.
-  const refreshChat = useCallback(async (id: string) => {
-    try {
-      const response = await api(`/chats/${id}`);
-      if (!response.ok) {
-        console.error(`Silent refresh for chat ${id} failed with status ${response.status}`);
-        return;
-      }
-      const data = await response.json();
-      setMessages(data.messages);
-    } catch (error) {
-      console.error(`Silent refresh for chat ${id} threw an error:`, error);
-    }
-  }, []);
 
   const streamAndSaveResponse = async (chatId: string, messageHistory: Message[]) => {
-    setIsStreaming(true);
-    setMessages([...messageHistory, { role: 'assistant', content: '' }]);
-    
-    try {
-      const response = await api(`/chats/${chatId}/stream`, {
-        method: 'POST',
-        // FIX: The error "messagesFromClient is not defined" comes from the backend.
-        // This implies the backend expects a key named `messagesFromClient`.
-        body: JSON.stringify({ messagesFromClient: messageHistory }),
-      });
+      setIsStreaming(true);
       
-      const reader = response.body?.getReader();
-      const decoder = new TextDecoder();
-      if (!reader) throw new Error("Failed to read stream.");
+      const streamingToolArguments = new Map<string, string>();
+      const streamingToolOutputs = new Map<string, string>();
 
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
+      try {
+          const response = await api(`/chats/${chatId}/stream`, {
+              method: 'POST',
+              body: JSON.stringify({ messagesFromClient: messageHistory }),
+          });
+          
+          const reader = response.body?.getReader();
+          const decoder = new TextDecoder();
+          if (!reader) throw new Error("Failed to read stream.");
 
-        const chunk = decoder.decode(value, { stream: true });
-        const lines = chunk.split('\n\n').filter(Boolean);
+          let buffer = '';
+          while (true) {
+              const { done, value } = await reader.read();
+              if (done) break;
 
-        for (const line of lines) {
-          if (line.startsWith('data: ')) {
-            const data = JSON.parse(line.substring(6));
-            if (data.content) {
-              setMessages(prev => {
-                const lastMessage = prev[prev.length - 1];
-                const updatedLastMessage = { ...lastMessage, content: lastMessage.content + data.content };
-                return [...prev.slice(0, -1), updatedLastMessage];
-              });
-            }
-            if (data.error) throw new Error(data.error);
+              buffer += decoder.decode(value, { stream: true });
+              let boundary = buffer.indexOf('\n\n');
+              while (boundary !== -1) {
+                  const messageChunk = buffer.substring(0, boundary);
+                  buffer = buffer.substring(boundary + 2);
+                  const lines = messageChunk.split('\n');
+                  for (const line of lines) {
+                      if (line.startsWith('data: ')) {
+                          const jsonString = line.substring(6).trim();
+                          if (jsonString === '[DONE]' || jsonString === '') continue;
+
+                          try {
+                              const event = JSON.parse(jsonString);
+                              
+                              if (event.type === 'error') {
+                                if (!event.error.includes('exceeded maximum number of turns')) {
+                                    throw new Error(event.error);
+                                }
+                                continue;
+                              }
+
+                              setMessages(prev => {
+                                let newMessages = [...prev];
+                                switch (event.type) {
+                                    case 'TOOL_CODE_CREATE':
+                                        return [...prev, event.message];
+
+                                    case 'TOOL_CODE_STREAM': {
+                                        const currentArgs = streamingToolArguments.get(event.tool_call_id) || '';
+                                        const newArgs = currentArgs + event.content;
+                                        streamingToolArguments.set(event.tool_call_id, newArgs);
+                                        
+                                        const toolCodeIndex = newMessages.findIndex(m => 
+                                            m.role === 'tool_code' && m.tool_calls?.some(tc => tc.id === event.tool_call_id)
+                                        );
+                                        
+                                        if (toolCodeIndex !== -1) {
+                                            const originalMessage = newMessages[toolCodeIndex];
+                                            const newToolCalls = originalMessage.tool_calls?.map(tc => 
+                                                tc.id === event.tool_call_id 
+                                                ? { ...tc, function: { ...tc.function, arguments: newArgs } } 
+                                                : tc
+                                            ) ?? [];
+                                            
+                                            newMessages[toolCodeIndex] = { ...originalMessage, tool_calls: newToolCalls };
+                                        }
+                                        return newMessages;
+                                    }
+
+                                    case 'TOOL_CODE_EXECUTING': {
+                                        streamingToolArguments.delete(event.tool_call_id);
+                                        const toolCodeIndex = newMessages.findIndex(m => 
+                                            m.role === 'tool_code' && m.tool_calls?.some(tc => tc.id === event.tool_call_id)
+                                        );
+                                        
+                                        if (toolCodeIndex !== -1) {
+                                            newMessages[toolCodeIndex] = { ...newMessages[toolCodeIndex], state: 'executing' };
+                                        }
+                                        return newMessages;
+                                    }
+
+                                    case 'TOOL_OUTPUT_START': {
+                                        const toolCodeIndex = newMessages.findIndex(m =>
+                                            m.role === 'tool_code' && m.tool_calls?.some(tc => tc.id === event.tool_call_id)
+                                        );
+                                        if (toolCodeIndex !== -1) {
+                                            newMessages.splice(toolCodeIndex + 1, 0, event.message);
+                                        } else {
+                                            newMessages.push(event.message);
+                                        }
+                                        return newMessages;
+                                    }
+
+                                    case 'ASSISTANT_DELTA': {
+                                        const lastAssistantIndex = newMessages.findLastIndex(m => m.role === 'assistant');
+                                        if (lastAssistantIndex === -1 || newMessages[lastAssistantIndex].content === null) {
+                                            newMessages.push({ role: 'assistant', content: event.content });
+                                        } else {
+                                            const originalMessage = newMessages[lastAssistantIndex];
+                                            newMessages[lastAssistantIndex] = {
+                                                ...originalMessage,
+                                                content: (originalMessage.content || '') + event.content
+                                            };
+                                        }
+                                        return newMessages;
+                                    }
+
+                                    case 'TOOL_OUTPUT_CHUNK': {
+                                        const currentContent = streamingToolOutputs.get(event.tool_call_id) || '';
+                                        const newContent = currentContent + event.content;
+                                        streamingToolOutputs.set(event.tool_call_id, newContent);
+                                        
+                                        const toolOutputIndex = newMessages.findIndex(m => 
+                                            m.role === 'tool' && m.tool_call_id === event.tool_call_id
+                                        );
+                                        if (toolOutputIndex !== -1) {
+                                            newMessages[toolOutputIndex] = { ...newMessages[toolOutputIndex], content: newContent };
+                                        }
+                                        return newMessages;
+                                    }
+
+                                    case 'TOOL_OUTPUT_COMPLETE': {
+                                        streamingToolOutputs.delete(event.tool_call_id);
+                                        
+                                        // Update the tool output message with the complete content
+                                        const toolOutputIndex = newMessages.findIndex(m => 
+                                            m.role === 'tool' && m.tool_call_id === event.tool_call_id
+                                        );
+                                        if (toolOutputIndex !== -1) {
+                                            newMessages[toolOutputIndex] = { 
+                                                ...newMessages[toolOutputIndex], 
+                                                content: event.content || newMessages[toolOutputIndex].content 
+                                            };
+                                        }
+                                        
+                                        // Update the tool code message state
+                                        const toolCodeIndex = newMessages.findIndex(m => 
+                                            m.role === 'tool_code' && m.tool_calls?.some(tc => tc.id === event.tool_call_id)
+                                        );
+                                        if (toolCodeIndex !== -1) {
+                                            newMessages[toolCodeIndex] = { ...newMessages[toolCodeIndex], state: event.state };
+                                        }
+                                        return newMessages;
+                                    }
+
+                                    default:
+                                        return prev;
+                                }
+                            });
+                          } catch (error) {
+                              console.error("Failed to parse SSE JSON chunk:", jsonString, error);
+                          }
+                      }
+                  }
+                  boundary = buffer.indexOf('\n\n');
+              }
           }
-        }
+      } catch (error) {
+          console.error("Streaming failed:", error);
+          showNotification(error instanceof Error ? error.message : "Failed to get response.", "error");
+          setMessages(messageHistory);
+      } finally {
+          setIsStreaming(false);
+          streamingToolArguments.clear();
+          streamingToolOutputs.clear();
+          await loadChatList();
       }
-    } catch (error) {
-        console.error("Streaming failed:", error);
-        showNotification(error instanceof Error ? error.message : "Failed to get response.", "error");
-        // FIX: On error, revert the UI by removing the optimistic assistant message.
-        setMessages(messageHistory);
-    } finally {
-        setIsStreaming(false);
-        await loadChatList(); // Update sidebar with new updatedAt timestamp
-        
-        // --- FIX ---
-        // After the server has processed the message and saved the attachments,
-        // we silently refresh the chat state to get the final message list,
-        // which includes the `_id` for each new attachment. This makes images load.
-        if (chatId) {
-            await refreshChat(chatId);
-        }
-    }
   };
-  
+
   const sendMessage = async (text: string, attachments: Attachment[] = []) => {
     if (isStreaming || isSending) return;
-
     const userMessage: Message = { role: 'user', content: text, attachments };
-    
-    // Capture state before optimistic update for rollback on error.
     const originalMessages = messages;
     setIsSending(true);
     
     try {
-      if (!activeChatId) { // This is a new chat
+      if (!activeChatId) {
         setIsCreatingChat(true);
         setMessages([userMessage]);
-
         const createChatResponse = await api('/chats', {
           method: 'POST',
           body: JSON.stringify({ messages: [userMessage] }),
         });
-
         if (!createChatResponse.ok) {
             const errorData = await createChatResponse.json();
             throw new Error(errorData.error || 'Failed to create chat session.');
         }
-
         const newChat = await createChatResponse.json();
-        
-        // --- FIX ---
-        // Replace the optimistic message with the real one from the server.
-        // This ensures attachments in the first message have their `_id`.
         setMessages(newChat.messages); 
-        
         setActiveChatId(newChat._id);
         navigate(`/c/${newChat._id}`, { replace: true });
-        
         await streamAndSaveResponse(newChat._id, newChat.messages);
-
-      } else { // This is an existing chat
+      } else {
         const updatedMessages = [...messages, userMessage];
         setMessages(updatedMessages);
-
         await streamAndSaveResponse(activeChatId, updatedMessages);
       }
     } catch (error) {
       console.error(error);
       showNotification(error instanceof Error ? error.message : 'Could not send message.', 'error');
-      // On error, revert to the state before the failed message was sent.
-      if (activeChatId) {
-        setMessages(originalMessages);
-      } else {
-        setMessages([]);
-        setActiveChatId(null);
-        navigate('/', { replace: true });
-      }
+      if (activeChatId) { setMessages(originalMessages); } 
+      else { setMessages([]); setActiveChatId(null); navigate('/', { replace: true }); }
     } finally {
       setIsSending(false);
       setIsCreatingChat(false);
@@ -226,23 +303,18 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
 
   const saveAndSubmitEdit = async (index: number, newContent: string) => {
     if (!activeChatId) return;
-
     const editedHistory = messages.slice(0, index + 1);
-    editedHistory[index] = { 
-        ...editedHistory[index], 
-        content: newContent 
-    };
-    
+    editedHistory[index] = { ...editedHistory[index], content: newContent };
     setEditingIndex(null);
     setMessages(editedHistory);
-    
     await streamAndSaveResponse(activeChatId, editedHistory);
   };
   
   const regenerateResponse = async () => {
-    if (!activeChatId || messages.length < 2) return;
-    const historyWithoutLastResponse = messages.slice(0, -1);
-    
+    if (!activeChatId || messages.length < 1) return;
+    const lastUserIndex = messages.findLastIndex(m => m.role === 'user');
+    if (lastUserIndex === -1) return;
+    const historyWithoutLastResponse = messages.slice(0, lastUserIndex + 1);
     setMessages(historyWithoutLastResponse);
     await streamAndSaveResponse(activeChatId, historyWithoutLastResponse);
   };
