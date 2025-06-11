@@ -77,73 +77,64 @@ async function copyTextToClipboard(text: string): Promise<boolean> {
   }
 }
 
-const CodeBlock = ({ node, inline, className, children, style, ...props }: CodeComponentProps) => {
-    const [isCopied, setIsCopied] = useState(false);
-    const theme = useTheme();
-    const match = /language-(\w+)/.exec(className || '');
-    const language = match ? match[1] : '';
-    const codeString = String(children).replace(/\n$/, '');
-    const syntaxHighlighterStyle = theme === 'light' ? oneLight : vscDarkPlus;
+const CustomCode = ({ node, inline, className, children, style, ...props }: CodeComponentProps) => {
+  const [isCopied, setIsCopied] = useState(false);
+  const theme = useTheme();
+  const match = /language-(\w+)/.exec(className || '');
+  const codeString = String(children).replace(/\n$/, '');
+  const syntaxHighlighterStyle = theme === 'light' ? oneLight : vscDarkPlus;
 
-    const handleCopy = async () => {
-        const success = await copyTextToClipboard(codeString);
-        if (success) {
-            setIsCopied(true);
-            setTimeout(() => setIsCopied(false), 2000);
-        } else {
-            alert("Failed to copy to clipboard.");
-        }
-    };
-
-    if (inline) {
-        return (
-            <code className={className} style={style} {...props}>
-                {children}
-            </code>
-        );
+  const handleCopy = async () => {
+    const success = await copyTextToClipboard(codeString);
+    if (success) {
+      setIsCopied(true);
+      setTimeout(() => setIsCopied(false), 2000);
+    } else {
+      alert("Failed to copy to clipboard.");
     }
-    
-    const { ref, ...syntaxHighlighterProps } = props;
-    
+  };
+
+  if (!inline && match) {
     return (
-        <div className="code-block-wrapper">
-            <div className="code-block-header">
-                <span className="language-name">{language}</span>
-                <button onClick={handleCopy} className="copy-code-button">
-                    {isCopied ? <FiCheck size={16} /> : <FiCopy size={16} />}
-                    <span>{isCopied ? 'Copied!' : 'Copy code'}</span>
-                </button>
-            </div>
-            <SyntaxHighlighter
-                style={syntaxHighlighterStyle}
-                language={language}
-                PreTag="div"
-                {...syntaxHighlighterProps}
-            >
-                {codeString}
-            </SyntaxHighlighter>
+      <div className="code-block-wrapper">
+        <div className="code-block-header">
+          <span className="language-name">{match[1]}</span>
+          <button onClick={handleCopy} className="copy-code-button">
+            {isCopied ? <FiCheck size={16} /> : <FiCopy size={16} />}
+            <span>{isCopied ? 'Copied!' : 'Copy code'}</span>
+          </button>
         </div>
+        <SyntaxHighlighter
+          style={syntaxHighlighterStyle}
+          language={match[1]}
+          PreTag="div"
+          {...props}
+        >
+          {codeString}
+        </SyntaxHighlighter>
+      </div>
     );
+  }
+  
+  return (
+    <code className={className} style={style} {...props}>
+      {children}
+    </code>
+  );
 };
 
-// --- START OF THE FIX ---
-// This custom component fixes a hydration error caused by react-markdown.
-// By default, it wraps elements like code blocks (`<pre>`) in a `<p>` tag.
-// Our `CodeBlock` component renders a `<div>`, which is invalid inside a `<p>`.
-// This component checks if a paragraph's only child is a code block,
-// and if so, it renders the code block directly without the wrapping `<p>`.
 const Paragraph: Components['p'] = ({ node, ...props }) => {
     const child = node?.children[0];
     if (
         node?.children.length === 1 &&
         child?.type === 'element' &&
-        child?.tagName === 'pre'
+        (child?.tagName === 'pre' || 
+         (child?.tagName === 'div' && typeof child.properties?.className === 'string' && child.properties.className.includes('code-analysis-container')))
     ) {
         return <>{props.children}</>;
     }
     return <p {...props} />;
 };
-// --- END OF THE FIX ---
 
 const AuthenticatedImage = ({ chatId, attachment, onView }: { chatId: string, attachment: Attachment, onView: (src: string) => void }) => {
     const [objectUrl, setObjectUrl] = useState<string | null>(null);
@@ -226,7 +217,7 @@ const ChatMessage = ({ message, messages, chatId, index, isEditing, isStreaming,
   const [viewerSrc, setViewerSrc] = useState<string | null>(null);
   const [viewerAlt, setViewerAlt] = useState('');
   const [isViewerOpen, setIsViewerOpen] = useState(false);
-
+  
   useEffect(() => {
     if (isEditing) {
       setEditedContent(message.content || '');
@@ -312,29 +303,20 @@ const ChatMessage = ({ message, messages, chatId, index, isEditing, isStreaming,
     </div>
   );
 
-  if (message.role === 'tool_code') {
-      // Find the corresponding tool output message in the full message history
-      const toolOutput = messages.find(m => 
-          m.role === 'tool' && 
-          m.tool_call_id === message.tool_calls?.[0]?.id
-      );
-      
-      return (
-          <div className="chat-message-wrapper assistant">
-              <div className="chat-message-container">
-                  <div className="message-content-wrapper">
-                      <div className="message-content">
-                          <CodeAnalysisBlock 
-                              toolCodeMessage={message}
-                              toolOutputMessage={toolOutput}
-                              isStreaming={isStreaming}
-                          />
-                      </div>
-                  </div>
-              </div>
-          </div>
-      );
+  // --- START OF THE FIX: AGGRESSIVE HIDING LOGIC ---
+  // A message should NOT render itself if it's a part of a larger turn that will be rendered by a preceding "turn starter" message.
+  const prevMessage = messages[index - 1];
+  if (
+    // Hide all tool-related messages. They are always rendered by an assistant message.
+    message.role === 'tool' ||
+    message.role === 'tool_code' ||
+    // Hide an assistant message if it's a "continuation" or "summary" that follows a tool call.
+    // The "turn starter" assistant message will render it instead.
+    (message.role === 'assistant' && prevMessage?.role === 'tool')
+  ) {
+    return null;
   }
+  // --- END OF THE FIX ---
   
   if (message.role === 'user') {
     return (
@@ -352,7 +334,7 @@ const ChatMessage = ({ message, messages, chatId, index, isEditing, isStreaming,
               {!isEditing ? (
                 <div ref={messageContentRef} className="message-content">
                   {message.attachments && message.attachments.length > 0 && renderAttachments(message.attachments)}
-                  {message.content && <ReactMarkdown remarkPlugins={[remarkGfm]} components={{ code: CodeBlock, p: Paragraph }}>{message.content}</ReactMarkdown>}
+                  {message.content && <ReactMarkdown remarkPlugins={[remarkGfm]} components={{ code: CustomCode, p: Paragraph }}>{message.content}</ReactMarkdown>}
                   {!message.content && (!message.attachments || message.attachments.length === 0) && '\u00A0'}
                 </div>
               ) : (
@@ -397,31 +379,74 @@ const ChatMessage = ({ message, messages, chatId, index, isEditing, isStreaming,
   }
 
   if (message.role === 'assistant') {
-      const isLastMessage = index === messages.length - 1;
+      // --- START OF THE FIX: Unified Turn Rendering ---
+      const turnParts: React.ReactNode[] = [];
+      const textParts: string[] = [];
+      let lastMessageInTurnIndex = index;
+
+      // This loop iterates through the entire multi-step turn, collecting all parts.
+      let currentIndex = index;
+      while (currentIndex < messages.length) {
+          const currentMessage = messages[currentIndex];
+
+          // 1. Add the assistant's text content.
+          if (currentMessage.role === 'assistant' && currentMessage.content) {
+              textParts.push(currentMessage.content);
+              turnParts.push(
+                  <ReactMarkdown key={`text-${currentIndex}`} remarkPlugins={[remarkGfm]} components={{ code: CustomCode, p: Paragraph }}>
+                      {currentMessage.content}
+                  </ReactMarkdown>
+              );
+          }
+
+          // 2. Check for a following tool call.
+          const nextMessage = messages[currentIndex + 1];
+          if (nextMessage && nextMessage.role === 'tool_code') {
+              const toolCodeMessage = nextMessage;
+              const toolOutputMessage = messages.find(m => m.role === 'tool' && m.tool_id === toolCodeMessage.tool_id);
+              
+              turnParts.push(
+                  <CodeAnalysisBlock 
+                      key={`code-${toolCodeMessage.tool_id || currentIndex}`}
+                      toolCodeMessage={toolCodeMessage}
+                      toolOutputMessage={toolOutputMessage}
+                  />
+              );
+              
+              if (toolOutputMessage) {
+                  const toolOutputIndex = messages.indexOf(toolOutputMessage);
+                  const nextAssistantMessage = messages[toolOutputIndex + 1];
+                  // If another assistant message follows, continue the loop from there.
+                  if (nextAssistantMessage && nextAssistantMessage.role === 'assistant') {
+                      currentIndex = toolOutputIndex + 1;
+                      lastMessageInTurnIndex = currentIndex;
+                      continue;
+                  }
+              }
+          }
+
+          // If no tool call follows, this turn is over.
+          lastMessageInTurnIndex = currentIndex;
+          break;
+      }
+
+      const fullContent = textParts.join('\n\n');
+      const isStreamingInThisTurn = isStreaming && (messages.length - 1 === lastMessageInTurnIndex);
+      // --- END OF THE FIX ---
 
       return (
-          <div className={`chat-message-wrapper assistant`}>
+          <div className={`chat-message-wrapper assistant ${isStreamingInThisTurn ? 'is-streaming' : ''}`}>
               <div className="chat-message-container">
                   <div className="message-content-wrapper">
-                      <div className="message-content">
-                          {message.content ? (
-                              <ReactMarkdown
-                                  remarkPlugins={[remarkGfm]}
-                                  components={{ code: CodeBlock, p: Paragraph }}
-                              >
-                                  {message.content}
-                              </ReactMarkdown>
-                          ) : (
-                              // Render a non-breaking space for empty messages to maintain bubble height,
-                              // but only if it's not the active streaming message.
-                              !isStreaming && '\u00A0'
-                          )}
-                          {/* Show streaming cursor if this is the last message and we are streaming */}
-                          {isStreaming && isLastMessage && <span className="streaming-cursor"></span>}
+                      <div className={`message-content ${isStreamingInThisTurn ? 'is-streaming' : 'streaming-complete'}`}>
+                          {turnParts}
+                          
+                          {isStreamingInThisTurn && <span className="streaming-cursor"></span>}
+
+                          {turnParts.length === 0 && !isStreamingInThisTurn && '\u00A0'}
                       </div>
                       
-                      {/* Show actions only if there is content and we are not streaming */}
-                      {message.content && !isStreaming && (
+                      {fullContent && !isStreamingInThisTurn && (
                           <div className="message-actions">
                               <Tooltip text="Regenerate">
                                   <button className="action-button" onClick={onRegenerate}>
@@ -429,7 +454,7 @@ const ChatMessage = ({ message, messages, chatId, index, isEditing, isStreaming,
                                   </button>
                               </Tooltip>
                               <Tooltip text="Copy">
-                                  <button className="action-button" onClick={() => onCopy(message.content || '')}>
+                                  <button className="action-button" onClick={() => onCopy(fullContent)}>
                                       <FiCopy size={16} />
                                   </button>
                               </Tooltip>
@@ -439,6 +464,7 @@ const ChatMessage = ({ message, messages, chatId, index, isEditing, isStreaming,
               </div>
           </div>
       );
+
   }
 
   return null;

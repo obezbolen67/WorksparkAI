@@ -1,0 +1,71 @@
+/* src/css/ThinkingIndicator.css */
+.thinking-indicator-wrapper {
+  padding: 1rem 0;
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 0 1rem;
+  box-sizing: border-box;
+  animation: fadeInThinking 0.5s ease-out forwards;
+}
+
+@keyframes fadeInThinking {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.thinking-indicator-container {
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  background-color: var(--assistant-message-bg);
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.thinking-header {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--secondary-text-color);
+}
+
+.thinking-icon {
+  width: 16px;
+  height: 16px;
+  animation: pulseIcon 2s ease-in-out infinite;
+}
+
+@keyframes pulseIcon {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
+.thinking-content {
+  font-size: 0.9rem;
+  color: var(--secondary-text-color);
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  padding-left: 26px; /* Align with header text */
+}
+
+.thinking-content p {
+  margin: 0;
+}
+
+@keyframes blink-small {
+  50% { opacity: 0; }
+}
+
+.streaming-cursor-small {
+  display: inline-block;
+  width: 2px;
+  height: 0.9em;
+  background-color: var(--secondary-text-color);
+  animation: blink-small 1s infinite;
+  margin-left: 2px;
+  vertical-align: text-bottom;
+}

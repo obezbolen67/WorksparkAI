@@ -1,7 +1,7 @@
 // src/components/CodeAnalysisBlock.tsx
 
 import { useState, useMemo, memo, useEffect } from 'react';
-import { FiChevronDown, FiCheckCircle, FiXCircle, FiLoader, FiCode } from 'react-icons/fi';
+import { FiChevronDown, FiCheckCircle, FiXCircle, FiLoader } from 'react-icons/fi';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { vscDarkPlus, oneLight } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import { useSettings } from '../contexts/SettingsContext';
@@ -11,85 +11,41 @@ import '../css/CodeAnalysisBlock.css';
 interface CodeAnalysisBlockProps {
   toolCodeMessage: Message;
   toolOutputMessage?: Message;
-  isStreaming?: boolean;
 }
 
-const CodeAnalysisBlock = ({ toolCodeMessage, toolOutputMessage, isStreaming = false }: CodeAnalysisBlockProps) => {
-  const state = toolCodeMessage.state || 'completed';
-  const [isExpanded, setIsExpanded] = useState(false);
+const CodeAnalysisBlock = ({ toolCodeMessage, toolOutputMessage }: CodeAnalysisBlockProps) => {
+  const state = toolCodeMessage.state || 'writing';
+  const [isExpanded, setIsExpanded] = useState(true);
   const { theme } = useSettings();
   const syntaxTheme = theme === 'light' ? oneLight : vscDarkPlus;
 
   useEffect(() => {
-    if (state === 'processing' || state === 'executing' || state === 'error') {
+    // Keep it expanded if it's writing, executing or has an error
+    if (state === 'writing' || state === 'executing' || state === 'error') {
       setIsExpanded(true);
     }
   }, [state]);
 
-  const toolCall = toolCodeMessage.tool_calls?.[0];
-  let code = '';
-  
-  if (toolCall) {
-    let rawArgs = toolCall.function.arguments || '';
-    
-    // --- START OF THE POLISHING FIX ---
-    // This is the final, most robust parser.
-    
-    // 1. Find the last occurrence of the code key pattern `:"` which separates the key from the value.
-    const lastCodeKeyIndex = rawArgs.lastIndexOf('code"');
-    if (lastCodeKeyIndex !== -1) {
-      const separatorIndex = rawArgs.indexOf(':"', lastCodeKeyIndex);
-      
-      if (separatorIndex !== -1) {
-        // 2. The raw content starts 2 characters after the separator.
-        let rawContent = rawArgs.slice(separatorIndex + 2);
-
-        // 3. Clean up potential trailing JSON characters.
-        if (rawContent.endsWith('"')) {
-          rawContent = rawContent.slice(0, -1);
-        }
-        if (rawContent.endsWith('}')) {
-          rawContent = rawContent.slice(0, -1);
-        }
-         if (rawContent.endsWith('}')) {
-          rawContent = rawContent.slice(0, -1);
-        }
-
-        // 4. Unescape the final, clean content for display.
-        code = rawContent
-          .replace(/\\n/g, '\n')
-          .replace(/\\"/g, '"')
-          .replace(/\\t/g, '\t')
-          .replace(/\\\\/g, '\\')
-          .replace(/\\r/g, '\r');
-      }
-    }
-    // --- END OF THE POLISHING FIX ---
-  }
-
+  const code = toolCodeMessage.content || '';
   const hasError = state === 'error';
-  const isActivelyProcessing = isStreaming && (state === 'processing' || state === 'executing');
-  const isCodeStreaming = isStreaming && state === 'processing';
+  const isWriting = state === 'writing';
 
   const { statusText, StatusIcon } = useMemo(() => {
-    if (state === 'processing') {
-      return { statusText: 'Writing code...', StatusIcon: <FiCode className="processing-icon" /> };
+    if (state === 'writing') {
+      return { statusText: 'Writing code...', StatusIcon: <FiLoader className="spinner-icon" /> };
     }
-    if (state === 'executing') {
-       return { statusText: 'Executing...', StatusIcon: <FiLoader className="spinner-icon" /> };
+    if (state === 'ready_to_execute' || state === 'executing') {
+      return { statusText: 'Executing...', StatusIcon: <FiLoader className="spinner-icon" /> };
     }
     if (hasError) {
       return { statusText: 'Error', StatusIcon: <FiXCircle /> };
     }
     return { statusText: 'Code Executed', StatusIcon: <FiCheckCircle /> };
   }, [state, hasError]);
-
-  if (!toolCall) return null;
   
   const output = toolOutputMessage?.content || '';
   const isOutputError = hasError || (state === 'completed' && output.toLowerCase().includes('error:'));
-  const isOutputStreaming = isActivelyProcessing && state === 'executing' && toolOutputMessage && !output;
-
+  
   return (
     <div className={`code-analysis-container ${state} ${isExpanded ? 'expanded' : ''}`}>
       <div className="analysis-header" onClick={() => setIsExpanded(!isExpanded)}>
@@ -105,24 +61,36 @@ const CodeAnalysisBlock = ({ toolCodeMessage, toolOutputMessage, isStreaming = f
           <div className="analysis-section">
             <div className="analysis-section-title">Code</div>
             <div className="code-wrapper">
-              <SyntaxHighlighter
-                style={syntaxTheme}
-                language="python"
-                PreTag="div"
-              >
-                {code || '# No code to display'}
-              </SyntaxHighlighter>
-              {isCodeStreaming && <span className="streaming-cursor code"></span>}
+              {code ? (
+                <SyntaxHighlighter
+                  style={syntaxTheme}
+                  language="python"
+                  PreTag="div"
+                >
+                  {code}
+                </SyntaxHighlighter>
+              ) : (
+                <div className="code-placeholder">
+                  <pre className="analysis-output-text">
+                    {isWriting && <span className="streaming-cursor"></span>}
+                  </pre>
+                </div>
+              )}
+              {isWriting && code && (
+                <div className="code-streaming-indicator">
+                  <span className="streaming-cursor"></span>
+                </div>
+              )}
             </div>
           </div>
-          {(toolOutputMessage || state === 'executing') && (
+          {(toolOutputMessage || ['executing', 'completed', 'error'].includes(state)) && (
             <div className="analysis-section">
               <div className="analysis-section-title">
                 {state === 'executing' && !output ? 'Output (Executing...)' : 'Output'}
               </div>
               <pre className={`analysis-output-text ${isOutputError ? 'error' : ''}`}>
                 {output || (state === 'executing' ? '' : 'No output.')}
-                {isOutputStreaming && <span className="streaming-cursor"></span>}
+                {state === 'executing' && !output && <span className="streaming-cursor"></span>}
               </pre>
             </div>
           )}

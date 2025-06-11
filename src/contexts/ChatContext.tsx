@@ -66,17 +66,30 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
     loadChatList();
   }, [loadChatList]);
 
-  const streamAndSaveResponse = async (chatId: string, messageHistory: Message[]) => {
-      setIsStreaming(true);
-      
-      const streamingToolArguments = new Map<string, string>();
-      const streamingToolOutputs = new Map<string, string>();
+  const streamAndSaveResponse = async (
+        chatId: string, 
+        messageHistory: Message[], 
+        metadata?: { isRegeneration?: boolean; hadCodeExecution?: boolean }
+      ) => {
+        setIsStreaming(true);
+        
+        setMessages(prev => [...prev, { role: 'assistant', content: '' }]);
 
-      try {
+        console.log(`[CLIENT->SERVER] Calling /stream for chatId: ${chatId}.`);
+        try {
           const response = await api(`/chats/${chatId}/stream`, {
-              method: 'POST',
-              body: JSON.stringify({ messagesFromClient: messageHistory }),
+            method: 'POST',
+            body: JSON.stringify({ 
+              messagesFromClient: messageHistory,
+              metadata 
+            }),
           });
+
+          
+          if (!response.ok) {
+            const errorData = await response.json().catch(() => ({error: "Streaming failed with status " + response.status}));
+            throw new Error(errorData.error);
+          }
           
           const reader = response.body?.getReader();
           const decoder = new TextDecoder();
@@ -96,121 +109,80 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
                   for (const line of lines) {
                       if (line.startsWith('data: ')) {
                           const jsonString = line.substring(6).trim();
-                          if (jsonString === '[DONE]' || jsonString === '') continue;
+                          if (jsonString === '[DONE]' || jsonString === '' || jsonString === '{"type":"done"}') continue;
 
                           try {
                               const event = JSON.parse(jsonString);
+                              console.log('[CLIENT<-SERVER SSE RECV]', event.type, event);
                               
                               if (event.type === 'error') {
-                                if (!event.error.includes('exceeded maximum number of turns')) {
-                                    throw new Error(event.error);
-                                }
-                                continue;
+                                throw new Error(event.error);
                               }
-
+                              
                               setMessages(prev => {
                                 let newMessages = [...prev];
                                 switch (event.type) {
-                                    case 'TOOL_CODE_CREATE':
-                                        return [...prev, event.message];
-
-                                    case 'TOOL_CODE_STREAM': {
-                                        const currentArgs = streamingToolArguments.get(event.tool_call_id) || '';
-                                        const newArgs = currentArgs + event.content;
-                                        streamingToolArguments.set(event.tool_call_id, newArgs);
-                                        
-                                        const toolCodeIndex = newMessages.findIndex(m => 
-                                            m.role === 'tool_code' && m.tool_calls?.some(tc => tc.id === event.tool_call_id)
-                                        );
-                                        
-                                        if (toolCodeIndex !== -1) {
-                                            const originalMessage = newMessages[toolCodeIndex];
-                                            const newToolCalls = originalMessage.tool_calls?.map(tc => 
-                                                tc.id === event.tool_call_id 
-                                                ? { ...tc, function: { ...tc.function, arguments: newArgs } } 
-                                                : tc
-                                            ) ?? [];
-                                            
-                                            newMessages[toolCodeIndex] = { ...originalMessage, tool_calls: newToolCalls };
-                                        }
-                                        return newMessages;
-                                    }
-
-                                    case 'TOOL_CODE_EXECUTING': {
-                                        streamingToolArguments.delete(event.tool_call_id);
-                                        const toolCodeIndex = newMessages.findIndex(m => 
-                                            m.role === 'tool_code' && m.tool_calls?.some(tc => tc.id === event.tool_call_id)
-                                        );
-                                        
-                                        if (toolCodeIndex !== -1) {
-                                            newMessages[toolCodeIndex] = { ...newMessages[toolCodeIndex], state: 'executing' };
-                                        }
-                                        return newMessages;
-                                    }
-
-                                    case 'TOOL_OUTPUT_START': {
-                                        const toolCodeIndex = newMessages.findIndex(m =>
-                                            m.role === 'tool_code' && m.tool_calls?.some(tc => tc.id === event.tool_call_id)
-                                        );
-                                        if (toolCodeIndex !== -1) {
-                                            newMessages.splice(toolCodeIndex + 1, 0, event.message);
-                                        } else {
-                                            newMessages.push(event.message);
-                                        }
-                                        return newMessages;
-                                    }
-
                                     case 'ASSISTANT_DELTA': {
                                         const lastAssistantIndex = newMessages.findLastIndex(m => m.role === 'assistant');
-                                        if (lastAssistantIndex === -1 || newMessages[lastAssistantIndex].content === null) {
-                                            newMessages.push({ role: 'assistant', content: event.content });
-                                        } else {
-                                            const originalMessage = newMessages[lastAssistantIndex];
-                                            newMessages[lastAssistantIndex] = {
-                                                ...originalMessage,
-                                                content: (originalMessage.content || '') + event.content
-                                            };
+                                        if (lastAssistantIndex !== -1) {
+                                            const updatedMessage = { ...newMessages[lastAssistantIndex] };
+                                            const currentContent = updatedMessage.content || '';
+                                            updatedMessage.content = currentContent + event.content;
+                                            newMessages[lastAssistantIndex] = updatedMessage;
+                                        }
+                                        return newMessages;
+                                    }
+                                    
+                                    case 'TOOL_CODE_CREATE': {
+                                        const lastAssistant = newMessages.findLast(m => m.role === 'assistant');
+                                        if (lastAssistant && (lastAssistant.content || '').trim() === '') {
+                                          newMessages.pop();
+                                        }
+                                        newMessages.push(event.message);
+                                        return newMessages;
+                                    }
+
+                                    case 'TOOL_CODE_DELTA': {
+                                        const toolCodeIndex = newMessages.findIndex(m => m.tool_id === event.tool_id);
+                                        if (toolCodeIndex !== -1) {
+                                            const updatedMessage = { ...newMessages[toolCodeIndex] };
+                                            updatedMessage.content = (updatedMessage.content || '') + event.content;
+                                            newMessages[toolCodeIndex] = updatedMessage;
                                         }
                                         return newMessages;
                                     }
 
-                                    case 'TOOL_OUTPUT_CHUNK': {
-                                        const currentContent = streamingToolOutputs.get(event.tool_call_id) || '';
-                                        const newContent = currentContent + event.content;
-                                        streamingToolOutputs.set(event.tool_call_id, newContent);
-                                        
-                                        const toolOutputIndex = newMessages.findIndex(m => 
-                                            m.role === 'tool' && m.tool_call_id === event.tool_call_id
-                                        );
-                                        if (toolOutputIndex !== -1) {
-                                            newMessages[toolOutputIndex] = { ...newMessages[toolOutputIndex], content: newContent };
+                                    case 'TOOL_CODE_COMPLETE': {
+                                        const toolCodeIndex = newMessages.findIndex(m => m.tool_id === event.tool_id);
+                                        if (toolCodeIndex !== -1) {
+                                            newMessages[toolCodeIndex] = { ...newMessages[toolCodeIndex], state: 'ready_to_execute' };
                                         }
                                         return newMessages;
                                     }
 
-                                    case 'TOOL_OUTPUT_COMPLETE': {
-                                        streamingToolOutputs.delete(event.tool_call_id);
-                                        
-                                        // Update the tool output message with the complete content
-                                        const toolOutputIndex = newMessages.findIndex(m => 
-                                            m.role === 'tool' && m.tool_call_id === event.tool_call_id
-                                        );
-                                        if (toolOutputIndex !== -1) {
-                                            newMessages[toolOutputIndex] = { 
-                                                ...newMessages[toolOutputIndex], 
-                                                content: event.content || newMessages[toolOutputIndex].content 
-                                            };
-                                        }
-                                        
-                                        // Update the tool code message state
-                                        const toolCodeIndex = newMessages.findIndex(m => 
-                                            m.role === 'tool_code' && m.tool_calls?.some(tc => tc.id === event.tool_call_id)
-                                        );
+                                    case 'TOOL_CODE_STATE_UPDATE': {
+                                        const toolCodeIndex = newMessages.findIndex(m => m.tool_id === event.tool_id);
                                         if (toolCodeIndex !== -1) {
                                             newMessages[toolCodeIndex] = { ...newMessages[toolCodeIndex], state: event.state };
                                         }
                                         return newMessages;
                                     }
+                                    
+                                    // --- START OF THE FIX ---
+                                    case 'TOOL_OUTPUT_COMPLETE': {
+                                        const toolCodeIndex = newMessages.findIndex(m => m.tool_id === event.tool_id);
+                                        if (toolCodeIndex !== -1) {
+                                            newMessages[toolCodeIndex] = { ...newMessages[toolCodeIndex], state: event.state };
+                                        }
+                                        newMessages.push({ role: 'tool', content: event.content, tool_id: event.tool_id });
+                                        
+                                        // Add a NEW assistant placeholder for the model's response to the tool output.
+                                        // This ensures the next part of the conversation appears in a new message bubble.
+                                        newMessages.push({ role: 'assistant', content: '' });
+
+                                        return newMessages;
+                                    }
+                                    // --- END OF THE FIX ---
 
                                     default:
                                         return prev;
@@ -230,12 +202,16 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
           setMessages(messageHistory);
       } finally {
           setIsStreaming(false);
-          streamingToolArguments.clear();
-          streamingToolOutputs.clear();
+          setMessages(prev => prev.filter(m => {
+            if (m.role === 'assistant') {
+                return (m.content && m.content.trim() !== '');
+            }
+            return true;
+          }));
           await loadChatList();
       }
   };
-
+  
   const sendMessage = async (text: string, attachments: Attachment[] = []) => {
     if (isStreaming || isSending) return;
     const userMessage: Message = { role: 'user', content: text, attachments };
@@ -255,9 +231,9 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
             throw new Error(errorData.error || 'Failed to create chat session.');
         }
         const newChat = await createChatResponse.json();
-        setMessages(newChat.messages); 
         setActiveChatId(newChat._id);
         navigate(`/c/${newChat._id}`, { replace: true });
+        setMessages(newChat.messages);
         await streamAndSaveResponse(newChat._id, newChat.messages);
       } else {
         const updatedMessages = [...messages, userMessage];
@@ -314,9 +290,17 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
     if (!activeChatId || messages.length < 1) return;
     const lastUserIndex = messages.findLastIndex(m => m.role === 'user');
     if (lastUserIndex === -1) return;
-    const historyWithoutLastResponse = messages.slice(0, lastUserIndex + 1);
+    
+    const hadCodeExecution = messages.some(m => m.role === 'tool_code');
+    
+    let historyWithoutLastResponse = messages.slice(0, lastUserIndex + 1);
+    
     setMessages(historyWithoutLastResponse);
-    await streamAndSaveResponse(activeChatId, historyWithoutLastResponse);
+    
+    await streamAndSaveResponse(activeChatId, historyWithoutLastResponse, { 
+      isRegeneration: true, 
+      hadCodeExecution 
+    });
   };
 
   const renameChat = async (chatId: string, newTitle: string) => {
@@ -355,7 +339,7 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
   const value = {
     messages, chatList, activeChatId, loadChat, clearChat, isLoadingChat,
     isCreatingChat, isSending, sendMessage, isStreaming, editingIndex, startEditing,
-    cancelEditing, saveAndSubmitEdit, regenerateResponse, renameChat, deleteChat
+    cancelEditing, saveAndSubmitEdit, regenerateResponse, renameChat, deleteChat,
   };
 
   return <ChatContext.Provider value={value}>{children}</ChatContext.Provider>;

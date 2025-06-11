@@ -26,7 +26,7 @@ interface ChatViewProps {
 const ChatView = (props: ChatViewProps) => {
   const { 
     messages, activeChatId, isStreaming, isLoading, isSending, onSendMessage, 
-    editingIndex, onStartEdit, onCancelEdit, onSaveEdit, onRegenerate
+    editingIndex, onStartEdit, onCancelEdit, onSaveEdit, onRegenerate,
   } = props;
 
   const chatContentRef = useRef<HTMLDivElement>(null);
@@ -43,7 +43,7 @@ const ChatView = (props: ChatViewProps) => {
     if (chatContentRef.current && !showScrollToBottom) {
       chatContentRef.current.scrollTop = chatContentRef.current.scrollHeight;
     }
-  }, [messages, isLoading, showScrollToBottom]);
+  }, [messages, isLoading, showScrollToBottom, isStreaming]);
 
   useEffect(() => {
     const chatContent = chatContentRef.current;
@@ -70,10 +70,8 @@ const ChatView = (props: ChatViewProps) => {
     });
   };
 
-  const visibleMessages = messages.filter(msg => msg.role !== 'tool');
-
   return (
-    <div className={`chat-view-container ${visibleMessages.length === 0 ? 'is-empty' : ''} ${isReady ? 'is-ready' : ''}`}>
+    <div className={`chat-view-container ${messages.length === 0 ? 'is-empty' : ''} ${isReady ? 'is-ready' : ''}`}>
       <header className="chat-view-header">
         <ModelSelector />
       </header>
@@ -91,25 +89,21 @@ const ChatView = (props: ChatViewProps) => {
         
         <div className="chat-content" ref={chatContentRef}>
           <div className="chat-messages-list">
-            {visibleMessages.map((msg, visibleIndex) => {
-              const actualIndex = messages.findIndex(m => m === msg);
+            {messages.map((msg, index) => {
+              // --- FIX: Do not render 'tool' messages directly. They are part of the CodeAnalysisBlock.
+              if (msg.role === 'tool') return null; 
               
-              // --- START OF THE FIX ---
-              // The key must be STABLE for the lifetime of the message instance to prevent remounting.
-              // We use the tool_call_id for tool_code messages as the stable, unique identifier.
-              const stableIdentifier = msg.tool_calls?.[0]?.id || msg.content?.length || 0;
-              const key = `${actualIndex}-${msg.role}-${stableIdentifier}`;
-              // --- END OF THE FIX ---
+              const key = `${index}-${msg.role}-${msg.content?.length || 0}`;
               
               return (
                 <ChatMessage 
                   key={key}
-                  index={actualIndex}
+                  index={index}
                   message={msg}
                   messages={messages}
                   chatId={activeChatId}
-                  isEditing={editingIndex === actualIndex}
-                  isStreaming={isStreaming && visibleIndex === visibleMessages.length - 1}
+                  isEditing={editingIndex === index}
+                  isStreaming={isStreaming && index === messages.length - 1}
                   onRegenerate={onRegenerate}
                   onCopy={handleCopy}
                   onStartEdit={onStartEdit}
@@ -126,7 +120,7 @@ const ChatView = (props: ChatViewProps) => {
             <h1>How can I help you?</h1>
           </div>
 
-          {showScrollToBottom && !isStreaming && visibleMessages.length > 0 && (
+          {showScrollToBottom && !isStreaming && messages.length > 0 && (
             <Tooltip text="Scroll to latest message">
               <button className="scroll-to-bottom" onClick={scrollToBottom}>
                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">

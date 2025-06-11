@@ -8,7 +8,8 @@ import api from '../utils/api';
 import Tooltip from './Tooltip';
 
 type Model = { id: string };
-type Modality = 'text' | 'image' | 'code';
+// --- UPDATED: Add 'reasoning' to modality type ---
+type Modality = 'text' | 'image' | 'code' | 'reasoning';
 type ModelConfig = {
   id: string;
   modalities: Modality[];
@@ -218,6 +219,8 @@ const SettingsModal = ({ isOpen, onClose }: SettingsModalProps) => {
               const config = modelConfigs.find(c => c.id === model.id) || { modalities: ['text'] };
               const hasImageModality = config.modalities.some(modality => modality === 'image');
               const hasCodeModality = config.modalities.some(modality => modality === 'code');
+              // --- NEW: Check for reasoning modality ---
+              const hasReasoningModality = config.modalities.some(modality => modality === 'reasoning');
 
 
               return (
@@ -246,6 +249,17 @@ const SettingsModal = ({ isOpen, onClose }: SettingsModalProps) => {
                           <input type="checkbox" checked disabled />
                           <span className="checkbox-visual"></span>
                           <span>Text</span>
+                       </label>
+                       {/* --- NEW: Reasoning checkbox --- */}
+                       <label className="config-menu-item">
+                          <input 
+                            type="checkbox" 
+                            checked={hasReasoningModality}
+                            onChange={(e) => handleModalityChange(model.id, 'reasoning', e.target.checked)}
+                          />
+                          <span className="checkbox-visual"></span>
+                          <FiCpu size={14} style={{ marginRight: '6px' }}/>
+                          <span>Reasoning</span>
                        </label>
                        <label className="config-menu-item">
                           <input 

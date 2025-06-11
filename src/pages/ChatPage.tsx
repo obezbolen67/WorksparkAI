@@ -13,14 +13,15 @@ const ChatPage = () => {
     clearChat, 
     isLoadingChat, 
     isCreatingChat,
-    isSending, // <-- Get the new sending state
-    sendMessage, // <-- This function now handles attachments
+    isSending,
+    sendMessage,
     isStreaming, 
     editingIndex, 
     startEditing, 
     cancelEditing, 
     saveAndSubmitEdit, 
-    regenerateResponse 
+    regenerateResponse,
+    // --- REMOVED isThinking and thinkingContent ---
   } = useChat();
   
   const { chatId } = useParams<{ chatId: string }>();
@@ -41,16 +42,17 @@ const ChatPage = () => {
   return (
     <ChatView 
       messages={messages}
-      activeChatId={activeChatId} // <-- Pass down ID for attachment URLs
+      activeChatId={activeChatId}
       isStreaming={isStreaming}
       isLoading={isLoadingChat}
-      isSending={isSending} // <-- Pass down sending status
-      onSendMessage={sendMessage} // <-- Pass down the updated function
+      isSending={isSending}
+      onSendMessage={sendMessage}
       editingIndex={editingIndex}
       onStartEdit={startEditing}
       onCancelEdit={cancelEditing}
       onSaveEdit={saveAndSubmitEdit}
       onRegenerate={regenerateResponse}
+      // --- REMOVED isThinking and thinkingContent props ---
     />
   );
 };

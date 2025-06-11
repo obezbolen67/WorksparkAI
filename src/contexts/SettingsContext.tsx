@@ -6,8 +6,8 @@ type Model = {
   id: string;
 };
 
-// --- UPDATED: Add 'code' modality ---
-type Modality = 'text' | 'image' | 'code';
+// --- UPDATED: Add 'reasoning' modality ---
+type Modality = 'text' | 'image' | 'code' | 'reasoning';
 
 type ModelConfig = {
   id: string;
@@ -22,7 +22,7 @@ type User = {
   baseUrl: string;
   selectedModel: string;
   quickAccessModels?: string[];
-  modelConfigs?: ModelConfig[]; // --- Add new field to User type ---
+  modelConfigs?: ModelConfig[];
 };
 
 type Theme = 'dark' | 'light';
