@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useState, useCallback, useEffect, ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
-import type { Message, Attachment, ToolCall } from '../types';
+import type { Message, Attachment } from '../types';
 import { useSettings } from './SettingsContext';
 import { useNotification } from './NotificationContext';
 import api from '../utils/api';

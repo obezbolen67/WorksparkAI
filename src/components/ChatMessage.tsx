@@ -218,7 +218,6 @@ interface ChatMessageProps {
 }
 
 const ChatMessage = ({ message, messages, chatId, index, isEditing, isStreaming, onRegenerate, onCopy, onStartEdit, onSaveEdit, onCancelEdit }: ChatMessageProps) => {
-  const isUser = message.role === 'user';
   const [editedContent, setEditedContent] = useState(message.content || '');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const messageContentRef = useRef<HTMLDivElement>(null);
