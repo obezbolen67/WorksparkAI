@@ -1,5 +1,3 @@
-// src/contexts/ChatContext.tsx
-
 import { createContext, useContext, useState, useCallback, useEffect, ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import type { Message, Attachment } from '../types';
@@ -22,13 +20,15 @@ interface ChatContextType {
   isLoadingChat: boolean;
   isCreatingChat: boolean;
   isSending: boolean;
-  sendMessage: (text: string, attachments?: Attachment[]) => Promise<void>;
+  sendMessage: (text: string, attachments: Attachment[], metadata?: Record<string, any>) => Promise<void>;
   isStreaming: boolean;
+  isThinking: boolean;
+  thinkingContent: string | null;
   editingIndex: number | null;
   startEditing: (index: number) => void;
   cancelEditing: () => void;
   saveAndSubmitEdit: (index: number, newContent: string) => Promise<void>;
-  regenerateResponse: () => Promise<void>;
+  regenerateResponse: (metadata?: Record<string, any>) => Promise<void>;
   renameChat: (chatId: string, newTitle: string) => Promise<void>;
   deleteChat: (chatId: string) => Promise<void>;
 }
@@ -48,6 +48,8 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
   const [isStreaming, setIsStreaming] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
+  const [isThinking, setIsThinking] = useState(false);
+  const [thinkingContent, setThinkingContent] = useState<string | null>(null);
 
   const loadChatList = useCallback(async () => {
     if (!token) return;
@@ -67,30 +69,28 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
   }, [loadChatList]);
 
   const streamAndSaveResponse = async (
-        chatId: string, 
-        messageHistory: Message[], 
-        metadata?: { isRegeneration?: boolean; hadCodeExecution?: boolean }
-      ) => {
-        setIsStreaming(true);
-        
-        setMessages(prev => [...prev, { role: 'assistant', content: '' }]);
+      chatId: string,
+      messageHistory: Message[],
+      metadata?: Record<string, any>
+  ) => {
+      setIsStreaming(true);
+      setIsThinking(false);
+      setThinkingContent(null);
 
-        console.log(`[CLIENT->SERVER] Calling /stream for chatId: ${chatId}.`);
-        try {
+      let currentAssistantThinking = '';
+      let assistantMessageIndex = -1;
+
+      try {
           const response = await api(`/chats/${chatId}/stream`, {
-            method: 'POST',
-            body: JSON.stringify({ 
-              messagesFromClient: messageHistory,
-              metadata 
-            }),
+              method: 'POST',
+              body: JSON.stringify({ messagesFromClient: messageHistory, metadata }),
           });
 
-          
           if (!response.ok) {
-            const errorData = await response.json().catch(() => ({error: "Streaming failed with status " + response.status}));
-            throw new Error(errorData.error);
+              const errorData = await response.json().catch(() => ({error: "Streaming failed with status " + response.status}));
+              throw new Error(errorData.error);
           }
-          
+
           const reader = response.body?.getReader();
           const decoder = new TextDecoder();
           if (!reader) throw new Error("Failed to read stream.");
@@ -101,131 +101,232 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
               if (done) break;
 
               buffer += decoder.decode(value, { stream: true });
+
               let boundary = buffer.indexOf('\n\n');
+
               while (boundary !== -1) {
                   const messageChunk = buffer.substring(0, boundary);
                   buffer = buffer.substring(boundary + 2);
                   const lines = messageChunk.split('\n');
+
                   for (const line of lines) {
-                      if (line.startsWith('data: ')) {
-                          const jsonString = line.substring(6).trim();
-                          if (jsonString === '[DONE]' || jsonString === '' || jsonString === '{"type":"done"}') continue;
+                      if (!line.startsWith('data: ')) continue;
+                      const jsonString = line.substring(6).trim();
+                      if (jsonString === '{"type":"done"}' || !jsonString) continue;
 
-                          try {
-                              const event = JSON.parse(jsonString);
-                              console.log('[CLIENT<-SERVER SSE RECV]', event.type, event);
-                              
-                              if (event.type === 'error') {
-                                throw new Error(event.error);
-                              }
-                              
-                              setMessages(prev => {
-                                let newMessages = [...prev];
-                                switch (event.type) {
-                                    case 'ASSISTANT_DELTA': {
-                                        const lastAssistantIndex = newMessages.findLastIndex(m => m.role === 'assistant');
-                                        if (lastAssistantIndex !== -1) {
-                                            const updatedMessage = { ...newMessages[lastAssistantIndex] };
-                                            const currentContent = updatedMessage.content || '';
-                                            updatedMessage.content = currentContent + event.content;
-                                            newMessages[lastAssistantIndex] = updatedMessage;
-                                        }
-                                        return newMessages;
+                      try {
+                          const event = JSON.parse(jsonString);
+
+                          if (event.type === 'error') throw new Error(event.error.message || event.error);
+
+                          switch (event.type) {
+                              case 'THINKING_START':
+                                  setMessages(prev => {
+                                      const newMessages = [...prev];
+                                      setIsThinking(true);
+                                      setThinkingContent('');
+                                      currentAssistantThinking = '';
+
+                                      const lastMessage = newMessages[newMessages.length - 1];
+                                      const needsNewMessage =
+                                          assistantMessageIndex === -1 ||
+                                          (lastMessage && (lastMessage.role === 'tool' || lastMessage.role === 'tool_code'));
+
+                                      if (needsNewMessage) {
+                                          assistantMessageIndex = newMessages.length;
+                                          newMessages.push({
+                                              role: 'assistant',
+                                              content: '',
+                                              thinking: currentAssistantThinking,
+                                          });
+                                      } else {
+                                          const currentMsg = newMessages[assistantMessageIndex];
+                                          if (currentMsg) {
+                                            newMessages[assistantMessageIndex] = { ...currentMsg, thinking: '' };
+                                          }
+                                      }
+                                      return newMessages;
+                                  });
+                                  break;
+
+                              case 'THINKING_DELTA':
+                                  currentAssistantThinking += event.content;
+                                  setThinkingContent(prev => (prev || '') + event.content);
+
+                                  setMessages(prev => {
+                                      const newMessages = [...prev];
+                                      if (assistantMessageIndex >= 0 && assistantMessageIndex < newMessages.length) {
+                                          const messageToUpdate = newMessages[assistantMessageIndex];
+                                          newMessages[assistantMessageIndex] = {
+                                              ...messageToUpdate,
+                                              thinking: currentAssistantThinking,
+                                          };
+                                      }
+                                      return newMessages;
+                                  });
+                                  break;
+
+                              case 'THINKING_END':
+                                  setIsThinking(false);
+                                  break;
+
+                              case 'ASSISTANT_START':
+                                setMessages(prev => {
+                                    const newMessages = [...prev];
+                                    if (assistantMessageIndex === -1) {
+                                        assistantMessageIndex = newMessages.length;
+                                        newMessages.push({
+                                            role: 'assistant',
+                                            content: '',
+                                            thinking: currentAssistantThinking || undefined
+                                        });
+                                    }
+                                    return newMessages;
+                                });
+                                break;
+
+
+                              case 'ASSISTANT_DELTA':
+                                  setMessages(prev => {
+                                      const newMessages = [...prev];
+
+                                      if (assistantMessageIndex === -1) {
+                                          assistantMessageIndex = newMessages.length;
+                                          newMessages.push({
+                                              role: 'assistant',
+                                              content: '',
+                                              thinking: currentAssistantThinking || undefined,
+                                          });
+                                      }
+
+                                      if (assistantMessageIndex >= 0 && assistantMessageIndex < newMessages.length) {
+                                          const oldContent = newMessages[assistantMessageIndex].content || '';
+                                          newMessages[assistantMessageIndex] = {
+                                              ...newMessages[assistantMessageIndex],
+                                              content: oldContent + event.content,
+                                              thinking: currentAssistantThinking || newMessages[assistantMessageIndex].thinking
+                                          };
+                                      }
+                                      return newMessages;
+                                  });
+                                  break;
+
+                              case 'ASSISTANT_COMPLETE':
+                                  if (event.thinking !== undefined) {
+                                      setMessages(prev => {
+                                          const newMessages = [...prev];
+                                          if (assistantMessageIndex >= 0 && assistantMessageIndex < newMessages.length) {
+                                              newMessages[assistantMessageIndex] = {
+                                                  ...newMessages[assistantMessageIndex],
+                                                  thinking: event.thinking || undefined
+                                              };
+                                          }
+                                          return newMessages;
+                                      });
+                                  }
+                                  currentAssistantThinking = '';
+                                  break;
+
+
+                              case 'TOOL_CODE_CREATE':
+                                assistantMessageIndex = -1;
+                                setMessages(prev => [...prev, event.message]);
+                                break;
+
+                              case 'TOOL_CODE_DELTA':
+                                  setMessages(prev => {
+                                      const newMessages = [...prev];
+                                      const toolIndex = newMessages.findIndex(m => m.tool_id === event.tool_id);
+                                      if (toolIndex !== -1) {
+                                          newMessages[toolIndex] = {
+                                              ...newMessages[toolIndex],
+                                              content: (newMessages[toolIndex].content || '') + event.content
+                                          };
+                                      }
+                                      return newMessages;
+                                  });
+                                  break;
+
+                              case 'TOOL_CODE_COMPLETE':
+                                  setMessages(prev => {
+                                      const newMessages = [...prev];
+                                      const toolIndex = newMessages.findIndex(m => m.tool_id === event.tool_id);
+                                      if (toolIndex !== -1) {
+                                          newMessages[toolIndex].state = 'ready_to_execute';
+                                      }
+                                      return newMessages;
+                                  });
+                                  break;
+
+                              case 'TOOL_CODE_STATE_UPDATE':
+                                  setMessages(prev => {
+                                      const newMessages = [...prev];
+                                      const toolIndex = newMessages.findIndex(m => m.tool_id === event.tool_id);
+                                      if (toolIndex !== -1) {
+                                          newMessages[toolIndex].state = event.state;
+                                      }
+                                      return newMessages;
+                                  });
+                                  break;
+
+                              // --- START OF THE FIX ---
+                              // This new event handles the entire result of a tool execution at once.
+                              case 'TOOL_RESULT':
+                                setMessages(prev => {
+                                    const newMessages = [...prev];
+                                    // Update the state of the code block itself (e.g., to 'completed' or 'error')
+                                    const toolCodeIndex = newMessages.findIndex(m => m.role === 'tool_code' && m.tool_id === event.tool_id);
+                                    if (toolCodeIndex !== -1) {
+                                        newMessages[toolCodeIndex].state = event.state;
                                     }
                                     
-                                    case 'TOOL_CODE_CREATE': {
-                                        const lastAssistant = newMessages.findLast(m => m.role === 'assistant');
-                                        if (lastAssistant && (lastAssistant.content || '').trim() === '') {
-                                          newMessages.pop();
-                                        }
-                                        newMessages.push(event.message);
-                                        return newMessages;
-                                    }
-
-                                    case 'TOOL_CODE_DELTA': {
-                                        const toolCodeIndex = newMessages.findIndex(m => m.tool_id === event.tool_id);
-                                        if (toolCodeIndex !== -1) {
-                                            const updatedMessage = { ...newMessages[toolCodeIndex] };
-                                            updatedMessage.content = (updatedMessage.content || '') + event.content;
-                                            newMessages[toolCodeIndex] = updatedMessage;
-                                        }
-                                        return newMessages;
-                                    }
-
-                                    case 'TOOL_CODE_COMPLETE': {
-                                        const toolCodeIndex = newMessages.findIndex(m => m.tool_id === event.tool_id);
-                                        if (toolCodeIndex !== -1) {
-                                            newMessages[toolCodeIndex] = { ...newMessages[toolCodeIndex], state: 'ready_to_execute' };
-                                        }
-                                        return newMessages;
-                                    }
-
-                                    case 'TOOL_CODE_STATE_UPDATE': {
-                                        const toolCodeIndex = newMessages.findIndex(m => m.tool_id === event.tool_id);
-                                        if (toolCodeIndex !== -1) {
-                                            newMessages[toolCodeIndex] = { ...newMessages[toolCodeIndex], state: event.state };
-                                        }
-                                        return newMessages;
-                                    }
-                                    
-                                    // --- START OF THE FIX ---
-                                    case 'TOOL_OUTPUT_COMPLETE': {
-                                        const toolCodeIndex = newMessages.findIndex(m => m.tool_id === event.tool_id);
-                                        if (toolCodeIndex !== -1) {
-                                            newMessages[toolCodeIndex] = { ...newMessages[toolCodeIndex], state: event.state };
-                                        }
-                                        newMessages.push({ role: 'tool', content: event.content, tool_id: event.tool_id });
-                                        
-                                        // Add a NEW assistant placeholder for the model's response to the tool output.
-                                        // This ensures the next part of the conversation appears in a new message bubble.
-                                        newMessages.push({ role: 'assistant', content: '' });
-
-                                        return newMessages;
-                                    }
-                                    // --- END OF THE FIX ---
-
-                                    default:
-                                        return prev;
-                                }
-                            });
-                          } catch (error) {
-                              console.error("Failed to parse SSE JSON chunk:", jsonString, error);
+                                    // Add the new 'tool' message containing the result.
+                                    // This includes standard output (content) and any file output.
+                                    newMessages.push({
+                                        role: 'tool',
+                                        content: event.result.content,
+                                        tool_id: event.tool_id,
+                                        fileOutput: event.result.fileOutput || undefined,
+                                    });
+                                    return newMessages;
+                                });
+                                // Reset assistantMessageIndex so the next ASSISTANT_START creates a new message
+                                assistantMessageIndex = -1;
+                                break;
+                              // --- END OF THE FIX ---
                           }
+                      } catch (error) {
+                          console.error("Failed to parse SSE JSON chunk:", jsonString, error);
                       }
                   }
+
                   boundary = buffer.indexOf('\n\n');
               }
           }
+
       } catch (error) {
           console.error("Streaming failed:", error);
           showNotification(error instanceof Error ? error.message : "Failed to get response.", "error");
           setMessages(messageHistory);
       } finally {
           setIsStreaming(false);
-          setMessages(prev => prev.filter(m => {
-            if (m.role === 'assistant') {
-                return (m.content && m.content.trim() !== '');
-            }
-            return true;
-          }));
+          setIsThinking(false);
+          setThinkingContent(null);
           await loadChatList();
       }
   };
-  
-  const sendMessage = async (text: string, attachments: Attachment[] = []) => {
+
+  const sendMessage = async (text: string, attachments: Attachment[] = [], metadata?: Record<string, any>) => {
     if (isStreaming || isSending) return;
     const userMessage: Message = { role: 'user', content: text, attachments };
     const originalMessages = messages;
     setIsSending(true);
-    
+
     try {
       if (!activeChatId) {
         setIsCreatingChat(true);
         setMessages([userMessage]);
-        const createChatResponse = await api('/chats', {
-          method: 'POST',
-          body: JSON.stringify({ messages: [userMessage] }),
-        });
+        const createChatResponse = await api('/chats', { method: 'POST', body: JSON.stringify({ messages: [userMessage] }) });
         if (!createChatResponse.ok) {
             const errorData = await createChatResponse.json();
             throw new Error(errorData.error || 'Failed to create chat session.');
@@ -233,17 +334,16 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
         const newChat = await createChatResponse.json();
         setActiveChatId(newChat._id);
         navigate(`/c/${newChat._id}`, { replace: true });
-        setMessages(newChat.messages);
-        await streamAndSaveResponse(newChat._id, newChat.messages);
+        await streamAndSaveResponse(newChat._id, newChat.messages, metadata);
       } else {
         const updatedMessages = [...messages, userMessage];
         setMessages(updatedMessages);
-        await streamAndSaveResponse(activeChatId, updatedMessages);
+        await streamAndSaveResponse(activeChatId, updatedMessages, metadata);
       }
     } catch (error) {
       console.error(error);
       showNotification(error instanceof Error ? error.message : 'Could not send message.', 'error');
-      if (activeChatId) { setMessages(originalMessages); } 
+      if (activeChatId) { setMessages(originalMessages); }
       else { setMessages([]); setActiveChatId(null); navigate('/', { replace: true }); }
     } finally {
       setIsSending(false);
@@ -268,10 +368,8 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [navigate, showNotification]);
 
-  const clearChat = useCallback(() => { 
-    setMessages([]);
-    setActiveChatId(null);
-    setEditingIndex(null);
+  const clearChat = useCallback(() => {
+    setMessages([]); setActiveChatId(null); setEditingIndex(null);
   }, []);
 
   const startEditing = (index: number) => setEditingIndex(index);
@@ -285,31 +383,21 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
     setMessages(editedHistory);
     await streamAndSaveResponse(activeChatId, editedHistory);
   };
-  
-  const regenerateResponse = async () => {
+
+  const regenerateResponse = async (metadata?: Record<string, any>) => {
     if (!activeChatId || messages.length < 1) return;
     const lastUserIndex = messages.findLastIndex(m => m.role === 'user');
     if (lastUserIndex === -1) return;
-    
     const hadCodeExecution = messages.some(m => m.role === 'tool_code');
-    
     let historyWithoutLastResponse = messages.slice(0, lastUserIndex + 1);
-    
     setMessages(historyWithoutLastResponse);
-    
-    await streamAndSaveResponse(activeChatId, historyWithoutLastResponse, { 
-      isRegeneration: true, 
-      hadCodeExecution 
-    });
+    const regenerationMetadata = { isRegeneration: true, hadCodeExecution, ...metadata };
+    await streamAndSaveResponse(activeChatId, historyWithoutLastResponse, regenerationMetadata);
   };
 
   const renameChat = async (chatId: string, newTitle: string) => {
     try {
-      const response = await api(`/chats/${chatId}`, {
-        method: 'PUT',
-        body: JSON.stringify({ title: newTitle }),
-      });
-      if (!response.ok) throw new Error('Failed to rename chat');
+      await api(`/chats/${chatId}`, { method: 'PUT', body: JSON.stringify({ title: newTitle }) });
       await loadChatList();
       showNotification("Chat renamed!", "success");
     } catch (error) {
@@ -321,8 +409,7 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
 
   const deleteChat = async (chatId: string) => {
     try {
-      const response = await api(`/chats/${chatId}`, { method: 'DELETE' });
-      if (!response.ok) throw new Error('Failed to delete chat');
+      await api(`/chats/${chatId}`, { method: 'DELETE' });
       setChatList(prev => prev.filter(c => c._id !== chatId));
       if (activeChatId === chatId) {
         navigate('/', { replace: true });
@@ -340,6 +427,7 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
     messages, chatList, activeChatId, loadChat, clearChat, isLoadingChat,
     isCreatingChat, isSending, sendMessage, isStreaming, editingIndex, startEditing,
     cancelEditing, saveAndSubmitEdit, regenerateResponse, renameChat, deleteChat,
+    isThinking, thinkingContent,
   };
 
   return <ChatContext.Provider value={value}>{children}</ChatContext.Provider>;

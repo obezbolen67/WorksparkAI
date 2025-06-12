@@ -1,7 +1,9 @@
 // src/components/CodeAnalysisBlock.tsx
 
 import { useState, useMemo, memo, useEffect } from 'react';
-import { FiChevronDown, FiCheckCircle, FiXCircle, FiLoader } from 'react-icons/fi';
+// --- START OF THE FIX: Import new icons ---
+import { FiChevronDown, FiCheckCircle, FiXCircle, FiLoader, FiDownload, FiFileText } from 'react-icons/fi';
+// --- END OF THE FIX ---
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { vscDarkPlus, oneLight } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import { useSettings } from '../contexts/SettingsContext';
@@ -46,6 +48,14 @@ const CodeAnalysisBlock = ({ toolCodeMessage, toolOutputMessage }: CodeAnalysisB
   const output = toolOutputMessage?.content || '';
   const isOutputError = hasError || (state === 'completed' && output.toLowerCase().includes('error:'));
   
+  // --- START OF THE FIX ---
+  // Check for file output and prepare the data URL for download
+  const fileOutput = toolOutputMessage?.fileOutput;
+  const dataUrl = fileOutput
+    ? `data:${fileOutput.mimeType};base64,${fileOutput.content}`
+    : null;
+  // --- END OF THE FIX ---
+
   return (
     <div className={`code-analysis-container ${state} ${isExpanded ? 'expanded' : ''}`}>
       <div className="analysis-header" onClick={() => setIsExpanded(!isExpanded)}>
@@ -89,11 +99,30 @@ const CodeAnalysisBlock = ({ toolCodeMessage, toolOutputMessage }: CodeAnalysisB
                 {state === 'executing' && !output ? 'Output (Executing...)' : 'Output'}
               </div>
               <pre className={`analysis-output-text ${isOutputError ? 'error' : ''}`}>
-                {output || (state === 'executing' ? '' : 'No output.')}
+                {output || (state === 'executing' ? '' : 'No text output.')}
                 {state === 'executing' && !output && <span className="streaming-cursor"></span>}
               </pre>
             </div>
           )}
+          {/* --- START OF THE FIX --- */}
+          {fileOutput && dataUrl && (
+             <div className="analysis-section">
+                <div className="analysis-section-title">File Output</div>
+                <div className="file-output-content">
+                  <FiFileText size={18} className="file-icon" />
+                  <span className="file-name">{fileOutput.fileName}</span>
+                  <a 
+                    href={dataUrl} 
+                    download={fileOutput.fileName}
+                    className="download-button"
+                  >
+                    <FiDownload size={16} />
+                    <span>Download</span>
+                  </a>
+                </div>
+             </div>
+          )}
+          {/* --- END OF THE FIX --- */}
         </div>
       )}
     </div>

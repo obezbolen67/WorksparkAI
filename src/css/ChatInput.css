@@ -57,15 +57,14 @@
 
 .chat-input-wrapper {
   display: flex;
-  align-items: center;
-  background-color: var(--input-bg-color);
+  align-items: center; /* Change from flex-end to center */
+  gap: 0;
+  background: var(--input-bg-color);
   border: 1px solid var(--border-color);
   border-radius: 16px;
-  padding: 8px 12px;
-  gap: 8px;
-  min-height: 50px;
-  /* --- IMPORTANT: This makes positioning the context menu easy --- */
+  padding: 8px 8px 8px 4px;
   position: relative;
+  transition: border-color 0.2s ease;
 }
 
 .chat-input {
@@ -78,12 +77,13 @@
   line-height: 1.5;
   resize: none;
   font-family: inherit;
-  margin-top: 0;
+  margin: 0 8px; /* Add horizontal margin for spacing */
   padding: 0;
   height: 24px;
   max-height: 120px;
   overflow: hidden;
   word-wrap: break-word;
+  align-self: center; /* Ensure it's centered */
 }
 
 /* --- NEW: Styles for the Context Menu --- */
@@ -175,8 +175,21 @@
   border-radius: 50%;
 }
 
+.chat-input-button svg {
+  display: block;
+  margin: 0;
+  padding: 0;
+}
+
 .chat-input-button:hover:not(:disabled) {
   background-color: var(--button-hover-bg);
+}
+
+/* Also ensure the tool buttons have the same SVG centering */
+.chat-tool-button svg {
+  display: block;
+  margin: 0;
+  padding: 0;
 }
 
 .chat-input-actions {
@@ -219,6 +232,57 @@
   pointer-events: auto;
 }
 
+.chat-tools-section {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 4px;
+}
+
+.chat-tool-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px; /* Increase from 32px to match other buttons */
+  height: 36px; /* Increase from 32px to match other buttons */
+  background: transparent;
+  border: none;
+  border-radius: 8px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  position: relative;
+}
+
+
+.chat-tool-button:hover:not(:disabled) {
+  background: var(--hover-bg);
+  color: var(--text-primary);
+}
+
+.chat-tool-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.chat-tool-button.active {
+  background: var(--accent-bg);
+  color: var(--accent-color);
+}
+
+.chat-tool-button.active:hover:not(:disabled) {
+  background: var(--accent-hover-bg);
+}
+
+.chat-input-divider {
+  width: 1px;
+  height: 28px; /* Increase from 24px for better visual balance */
+  background: var(--border-color);
+  margin: 0 4px;
+  opacity: 0.5;
+  align-self: center; /* Ensure it's centered */
+}
+
 .send-button:disabled {
   cursor: not-allowed;
   background-color: #c2c2d6;
@@ -250,4 +314,16 @@
 [data-theme="light"] .send-button:disabled {
   background-color: #e0e0e0;
   color: #a0a0a0;
+}
+
+[data-theme="light"] {
+  --accent-bg: rgba(99, 102, 241, 0.1);
+  --accent-color: rgb(99, 102, 241);
+  --accent-hover-bg: rgba(99, 102, 241, 0.15);
+}
+
+[data-theme="dark"] {
+  --accent-bg: rgba(139, 92, 246, 0.15);
+  --accent-color: rgb(139, 92, 246);
+  --accent-hover-bg: rgba(139, 92, 246, 0.2);
 }

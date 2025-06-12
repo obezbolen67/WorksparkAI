@@ -44,46 +44,26 @@
   height: 16px;
 }
 
-/* Processing state styles */
-.code-analysis-container.processing .status {
-  color: #8b5cf6;
-}
-[data-theme="light"] .code-analysis-container.processing .status {
-  color: #7c3aed;
-}
-
-.processing-icon {
-  animation: pulse 1.5s ease-in-out infinite;
-}
-
-@keyframes pulse {
-  0%, 100% { opacity: 0.5; }
-  50% { opacity: 1; }
-}
-
-/* Executing state styles */
+/* State-based color styles ... */
 .code-analysis-container.executing .status {
   color: #3b82f6;
 }
 [data-theme="light"] .code-analysis-container.executing .status {
   color: #2563eb;
 }
-
-/* Completed state styles */
 .code-analysis-container.completed .status {
   color: #22c55e;
 }
 [data-theme="light"] .code-analysis-container.completed .status {
   color: #166534;
 }
-
-/* Error state styles */
 .code-analysis-container.error .status {
   color: #ef4444;
 }
 [data-theme="light"] .code-analysis-container.error .status {
   color: #b91c1c;
 }
+
 
 /* Spinner animation */
 .spinner-icon {
@@ -133,24 +113,11 @@
   background-color: var(--button-hover-bg);
 }
 
-.code-streaming-indicator {
-  position: absolute;
-  bottom: 8px;
-  right: 8px;
-  background: var(--bg-primary);
-  padding: 2px 6px;
-  border-radius: 4px;
-}
-
-.code-placeholder {
-  padding: 16px;
-  min-height: 60px;
-}
-
 .code-wrapper {
   position: relative;
 }
 
+/* Streaming cursor styles ... */
 .streaming-cursor {
   display: inline-block;
   width: 8px;
@@ -159,41 +126,34 @@
   animation: blink 1s infinite;
   vertical-align: text-bottom;
 }
-
-.streaming-cursor.code {
-  position: absolute;
-  /* Adjust based on your syntax highlighter's padding */
-  bottom: 0.75rem; 
-  right: 1rem;
-  height: 1.4em;
-  width: 2px;
-}
-
-/* Output text styles */
-.analysis-output-text {
-  padding: 0.75rem;
-  font-family: var(--font-mono, monospace);
-  font-size: 0.875rem;
-  white-space: pre-wrap;
-  word-wrap: break-word;
-  color: var(--primary-text-color);
-  max-height: 300px;
-  overflow-y: auto;
-  margin: 0;
-  min-height: 2.5rem;
-  position: relative;
-}
-
-.analysis-output-text .streaming-cursor {
-  margin-left: 2px;
-}
-
 @keyframes blink {
   0%, 50% { opacity: 1; }
   51%, 100% { opacity: 0; }
 }
 
-/* Error output styles */
+/* --- START OF THE FIX --- */
+/* This is the key change. It applies to both the code and output blocks. */
+.analysis-section pre {
+  margin: 0;
+  background: transparent !important;
+  padding: 0.75rem;
+  font-family: var(--font-mono, monospace);
+  font-size: 0.875rem;
+  color: var(--primary-text-color);
+  
+  /* The magic combination for perfect wrapping */
+  white-space: pre-wrap;       /* Preserves whitespace & newlines, but wraps long lines */
+  overflow-wrap: break-word;   /* Breaks any word/token that is too long to fit */
+}
+
+/* Specific styles for the output block */
+.analysis-output-text {
+  max-height: 300px;
+  overflow-y: auto;
+  min-height: 2.5rem;
+  position: relative;
+}
+
 .analysis-output-text.error {
   color: #f87171;
 }
@@ -201,12 +161,11 @@
   color: #b91c1c;
 }
 
-/* Ensure syntax highlighter fills the space */
-.analysis-section pre, .analysis-section code {
-  margin: 0;
+/* Ensure inner code tag inherits background for syntax highlighter */
+.analysis-section code {
   background: transparent !important;
-  padding-bottom: 2rem !important; /* Ensure space for cursor */
 }
+/* --- END OF THE FIX --- */
 
 /* Scrollbar styling for output */
 .analysis-output-text::-webkit-scrollbar {
@@ -222,4 +181,78 @@
 }
 .analysis-output-text::-webkit-scrollbar-thumb:hover {
   background: var(--secondary-text-color);
+}
+
+/* File output styles ... */
+.file-output-content {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem;
+  flex-wrap: wrap; 
+}
+.file-output-content .file-icon {
+  color: var(--secondary-text-color);
+  flex-shrink: 0;
+}
+.file-output-content .file-name {
+  color: var(--primary-text-color);
+  font-weight: 500;
+  flex-grow: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 100px;
+}
+.download-button {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background-color: var(--main-bg-color);
+  border: 1px solid var(--border-color);
+  color: var(--primary-text-color);
+  padding: 0.3rem 0.75rem;
+  border-radius: 9999px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  text-decoration: none;
+  cursor: pointer;
+  transition: all 0.2s ease-in-out;
+  flex-shrink: 0;
+}
+.download-button:hover {
+  background-color: var(--button-hover-bg);
+  border-color: var(--secondary-text-color);
+  transform: translateY(-1px);
+}
+[data-theme="light"] .download-button {
+  background-color: #f3f4f6;
+  border-color: #d1d5db;
+}
+[data-theme="light"] .download-button:hover {
+  background-color: #e5e7eb;
+}
+
+/* --- Mobile Responsiveness Media Query --- */
+@media (max-width: 640px) {
+  .analysis-header {
+    padding: 0.5rem 0.75rem;
+  }
+  .analysis-content {
+    padding: 0.25rem;
+  }
+  .analysis-section-title {
+    padding: 0.25rem 0.6rem;
+    font-size: 0.7rem;
+  }
+
+  .analysis-section pre,
+  .file-output-content {
+    padding-left: 0.6rem;
+    padding-right: 0.6rem;
+  }
+  .file-output-content .download-button {
+    flex-grow: 1;
+    justify-content: center;
+  }
 }

@@ -1,19 +1,20 @@
 // src/components/ChatInput.tsx
-
 import { useState, useRef, useEffect } from 'react';
-import { FiPlus, FiSend, FiX, FiImage, FiPaperclip } from 'react-icons/fi';
+import { FiPlus, FiSend, FiX, FiImage, FiPaperclip, FiCpu } from 'react-icons/fi';
 import { HiOutlineMicrophone } from "react-icons/hi2";
 import { uploadFile } from '../utils/api';
 import type { Attachment } from '../types';
 import '../css/ChatInput.css';
-import Tooltip from './Tooltip'; // <-- ADDED
+import Tooltip from './Tooltip';
 
 interface ChatInputProps {
   onSendMessage: (text: string, attachments: Attachment[]) => void;
   isSending: boolean;
+  isThinkingVisible: boolean;
+  onToggleThinking: () => void;
 }
 
-const ChatInput = ({ onSendMessage, isSending }: ChatInputProps) => {
+const ChatInput = ({ onSendMessage, isSending, isThinkingVisible, onToggleThinking }: ChatInputProps) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [text, setText] = useState('');
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
@@ -50,14 +51,11 @@ const ChatInput = ({ onSendMessage, isSending }: ChatInputProps) => {
     event.target.value = '';
   };
   
-  // --- THIS IS THE FIX ---
-  // The function now accepts a ref whose `.current` property can be null.
   const triggerFileInput = (ref: React.RefObject<HTMLInputElement | null>) => {
-    // We add a null check before calling .click()
     if (ref.current) {
       ref.current.click();
     }
-    setIsMenuOpen(false); // Close menu after selection
+    setIsMenuOpen(false);
   };
 
   const removeFile = (fileToRemove: File) => {
@@ -70,7 +68,7 @@ const ChatInput = ({ onSendMessage, isSending }: ChatInputProps) => {
       const uploadPromises = selectedFiles.map(file => uploadFile(file));
       const uploadResults = await Promise.all(uploadPromises);
       const newAttachments: Attachment[] = uploadResults.map(result => result.file);
-      onSendMessage(text, newAttachments);
+      onSendMessage(text, newAttachments); // Parent (ChatView) will add metadata
       setText('');
       setSelectedFiles([]);
     } catch (error) {
@@ -148,6 +146,20 @@ const ChatInput = ({ onSendMessage, isSending }: ChatInputProps) => {
       <div className="chat-input-wrapper">
         <input type="file" ref={imageInputRef} onChange={handleFileSelect} multiple accept="image/*" style={{ display: 'none' }} />
         <input type="file" ref={fileInputRef} onChange={handleFileSelect} multiple style={{ display: 'none' }} />
+        
+        <div className="chat-tools-section">
+          <Tooltip text={isThinkingVisible ? "Disable model reasoning" : "Enable model reasoning"}>
+            <button
+              className={`chat-tool-button ${isThinkingVisible ? 'active' : ''}`}
+              onClick={onToggleThinking}
+              disabled={isSending}
+            >
+              <FiCpu size={18} />
+            </button>
+          </Tooltip>
+        </div>
+
+        <div className="chat-input-divider" />
         
         <button
           ref={plusButtonRef}

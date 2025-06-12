@@ -1,0 +1,115 @@
+/* src/css/InlineThinking.css */
+
+@keyframes shimmer {
+  0% { background-position: -200% center; }
+  100% { background-position: 200% center; }
+}
+
+.inline-thinking-container {
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  margin-bottom: 0.75rem;
+  background-color: var(--button-hover-bg);
+  overflow: hidden;
+  transition: background-color 0.3s ease;
+}
+
+.inline-thinking-container.expanded {
+  background-color: transparent;
+}
+
+.thinking-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem 1rem;
+  width: 100%;
+  cursor: pointer;
+  user-select: none;
+}
+
+.thinking-status {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-weight: 500;
+}
+
+.thinking-icon {
+  width: 16px;
+  height: 16px;
+  color: var(--secondary-text-color);
+}
+
+.thinking-text-shimmer {
+  font-size: 0.85rem;
+  background: linear-gradient(90deg, 
+    var(--secondary-text-color) 25%, 
+    var(--primary-text-color) 50%, 
+    var(--secondary-text-color) 75%
+  );
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: shimmer 2.5s linear infinite;
+}
+
+.chevron-icon {
+  color: var(--secondary-text-color);
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.inline-thinking-container.expanded .chevron-icon {
+  transform: rotate(180deg);
+}
+
+.thinking-content-details {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.3s ease-in-out, padding 0.3s ease-in-out, border-top-width 0.3s ease-in-out;
+  padding: 0 1rem;
+  color: var(--secondary-text-color);
+  font-size: 0.9em;
+  line-height: 1.5;
+  border-top: 0px solid var(--border-color);
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+
+.inline-thinking-container.expanded .thinking-content-details {
+  max-height: 500px;
+  overflow-y: auto;
+  border-top-width: 1px;
+  padding: 0.75rem 1rem;
+}
+
+.thinking-content-details p {
+  margin: 0;
+}
+
+.streaming-cursor-small {
+  display: inline-block;
+  width: 2px;
+  height: 0.9em;
+  background-color: var(--secondary-text-color);
+  animation: blink-small 1s infinite;
+  margin-left: 2px;
+  vertical-align: text-bottom;
+}
+
+@keyframes blink-small {
+  50% { opacity: 0; }
+}
+
+[data-theme="light"] .thinking-text-shimmer {
+  background: linear-gradient(90deg, 
+    var(--secondary-text-color) 25%, 
+    var(--primary-text-color) 50%, 
+    var(--secondary-text-color) 75%
+  );
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}

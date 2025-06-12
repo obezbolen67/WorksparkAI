@@ -1,5 +1,3 @@
-// src/components/ChatView.tsx
-
 import { useEffect, useRef, useState, useCallback } from 'react';
 import type { Message, Attachment } from '../types';
 import ChatInput from './ChatInput';
@@ -13,26 +11,29 @@ interface ChatViewProps {
   messages: Message[];
   activeChatId: string | null;
   isStreaming: boolean;
+  isThinking: boolean;
   isLoading: boolean;
   isSending: boolean;
-  onSendMessage: (text: string, attachments: Attachment[]) => void;
+  onSendMessage: (text: string, attachments: Attachment[], metadata?: Record<string, any>) => void;
   editingIndex: number | null;
   onStartEdit: (index: number) => void;
   onCancelEdit: () => void;
   onSaveEdit: (index: number, newContent: string) => void;
-  onRegenerate: () => void;
+  onRegenerate: (metadata?: Record<string, any>) => void;
 }
 
 const ChatView = (props: ChatViewProps) => {
   const { 
-    messages, activeChatId, isStreaming, isLoading, isSending, onSendMessage, 
-    editingIndex, onStartEdit, onCancelEdit, onSaveEdit, onRegenerate,
+    messages, activeChatId, isStreaming, isThinking, isLoading, isSending, onSendMessage, 
+    editingIndex, onStartEdit, onCancelEdit, 
+    onSaveEdit, onRegenerate,
   } = props;
 
   const chatContentRef = useRef<HTMLDivElement>(null);
   const { showNotification } = useNotification();
   const [isReady, setIsReady] = useState(false);
   const [showScrollToBottom, setShowScrollToBottom] = useState(false);
+  const [isThinkingEnabled, setIsThinkingEnabled] = useState(false);
 
   useEffect(() => {
     const timer = setTimeout(() => setIsReady(true), 100);
@@ -43,18 +44,16 @@ const ChatView = (props: ChatViewProps) => {
     if (chatContentRef.current && !showScrollToBottom) {
       chatContentRef.current.scrollTop = chatContentRef.current.scrollHeight;
     }
-  }, [messages, isLoading, showScrollToBottom, isStreaming]);
+  }, [messages, isLoading, showScrollToBottom, isStreaming, isThinking]);
 
   useEffect(() => {
     const chatContent = chatContentRef.current;
     if (!chatContent) return;
-
     const handleScroll = () => {
       const { scrollTop, scrollHeight, clientHeight } = chatContent;
       const isScrolledUp = scrollHeight - scrollTop - clientHeight > 300;
       setShowScrollToBottom(isScrolledUp);
     };
-
     chatContent.addEventListener('scroll', handleScroll, { passive: true });
     return () => chatContent.removeEventListener('scroll', handleScroll);
   }, []);
@@ -64,10 +63,15 @@ const ChatView = (props: ChatViewProps) => {
   }, [showNotification]);
 
   const scrollToBottom = () => {
-    chatContentRef.current?.scrollTo({
-      top: chatContentRef.current.scrollHeight,
-      behavior: 'smooth'
-    });
+    chatContentRef.current?.scrollTo({ top: chatContentRef.current.scrollHeight, behavior: 'smooth' });
+  };
+
+  const handleSendMessage = (text: string, attachments: Attachment[]) => {
+    onSendMessage(text, attachments, { isThinkingEnabled });
+  };
+  
+  const handleRegenerate = () => {
+    onRegenerate({ isThinkingEnabled });
   };
 
   return (
@@ -79,32 +83,30 @@ const ChatView = (props: ChatViewProps) => {
       <main className="chat-view">
         {isLoading && (
           <div className="loading-overlay">
-            <div className="bouncing-loader">
-              <div></div>
-              <div></div>
-              <div></div>
-            </div>
+            <div className="bouncing-loader"><div></div><div></div><div></div></div>
           </div>
         )}
         
         <div className="chat-content" ref={chatContentRef}>
           <div className="chat-messages-list">
             {messages.map((msg, index) => {
-              // --- FIX: Do not render 'tool' messages directly. They are part of the CodeAnalysisBlock.
-              if (msg.role === 'tool') return null; 
-              
-              const key = `${index}-${msg.role}-${msg.content?.length || 0}`;
-              
+              // const isLastMessage = index === messages.length - 1; // This line is no longer needed for isStreaming
               return (
                 <ChatMessage 
-                  key={key}
+                  key={activeChatId ? `${activeChatId}-${index}` : index}
                   index={index}
                   message={msg}
                   messages={messages}
                   chatId={activeChatId}
                   isEditing={editingIndex === index}
-                  isStreaming={isStreaming && index === messages.length - 1}
-                  onRegenerate={onRegenerate}
+                  // --- START OF FIX ---
+                  // Pass the global isStreaming status directly. The ChatMessage
+                  // component is now smart enough to determine if the stream
+                  // applies to its specific turn.
+                  isStreaming={isStreaming}
+                  // --- END OF FIX ---
+                  isThinking={isThinking}
+                  onRegenerate={handleRegenerate}
                   onCopy={handleCopy}
                   onStartEdit={onStartEdit}
                   onSaveEdit={onSaveEdit}
@@ -123,13 +125,16 @@ const ChatView = (props: ChatViewProps) => {
           {showScrollToBottom && !isStreaming && messages.length > 0 && (
             <Tooltip text="Scroll to latest message">
               <button className="scroll-to-bottom" onClick={scrollToBottom}>
-                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                  <polyline points="6 9 12 15 18 9"></polyline>
-                </svg>
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
               </button>
             </Tooltip>
           )}
-          <ChatInput onSendMessage={onSendMessage} isSending={isSending || isStreaming} />
+          <ChatInput 
+            onSendMessage={handleSendMessage} 
+            isSending={isSending || isStreaming}
+            isThinkingVisible={isThinkingEnabled}
+            onToggleThinking={() => setIsThinkingEnabled(prev => !prev)}
+          />
         </div>
       </main>
     </div>

@@ -1,5 +1,3 @@
-// src/pages/ChatPage.tsx
-
 import { useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { useChat } from '../contexts/ChatContext';
@@ -14,6 +12,7 @@ const ChatPage = () => {
     isLoadingChat, 
     isCreatingChat,
     isSending,
+    isThinking,
     sendMessage,
     isStreaming, 
     editingIndex, 
@@ -21,15 +20,12 @@ const ChatPage = () => {
     cancelEditing, 
     saveAndSubmitEdit, 
     regenerateResponse,
-    // --- REMOVED isThinking and thinkingContent ---
   } = useChat();
   
   const { chatId } = useParams<{ chatId: string }>();
 
   useEffect(() => {
-    if (isCreatingChat) {
-      return;
-    }
+    if (isCreatingChat) return;
     if (chatId && chatId !== activeChatId) {
       loadChat(chatId);
       return;
@@ -46,13 +42,13 @@ const ChatPage = () => {
       isStreaming={isStreaming}
       isLoading={isLoadingChat}
       isSending={isSending}
+      isThinking={isThinking}
       onSendMessage={sendMessage}
+      onRegenerate={regenerateResponse}
       editingIndex={editingIndex}
       onStartEdit={startEditing}
       onCancelEdit={cancelEditing}
       onSaveEdit={saveAndSubmitEdit}
-      onRegenerate={regenerateResponse}
-      // --- REMOVED isThinking and thinkingContent props ---
     />
   );
 };
