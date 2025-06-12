@@ -2,7 +2,7 @@ steps:
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     entrypoint: 'gcloud'
     timeout: 240s
-    args: ['gcloud app', 'deploy']
+    args: ['gcloud deploy']
 
 options:
   logging: CLOUD_LOGGING_ONLY 
