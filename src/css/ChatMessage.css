@@ -408,6 +408,7 @@
 .attachment-image-wrapper.loading, .attachment-image-wrapper.error { background-color: var(--button-hover-bg); display: flex; align-items: center; justify-content: center; color: var(--secondary-text-color); font-size: 0.8rem; padding: 8px; box-sizing: border-box; text-align: center; line-height: 1.2; border: 1px solid var(--border-color); }
 .attachment-image-wrapper.error { background-color: rgba(239, 68, 68, 0.1); color: #f87171; border-color: rgba(239, 68, 68, 0.3); }
 
+
 /* --- THEME OVERRIDES --- */
 [data-theme="light"] .assistant .message-content,
 [data-theme="light"] .streaming-cursor { color: var(--primary-text-color); }
@@ -438,3 +439,4 @@
   background-color: var(--assistant-message-bg);
   color: var(--secondary-text-color);
 }
+

@@ -76,6 +76,10 @@ const CodeAnalysisBlock = ({ toolCodeMessage, toolOutputMessage }: CodeAnalysisB
                   style={syntaxTheme}
                   language="python"
                   PreTag="div"
+                  customStyle={{
+                    maxWidth: '100%',
+                    overflow: 'auto',
+                  }}
                 >
                   {code}
                 </SyntaxHighlighter>
