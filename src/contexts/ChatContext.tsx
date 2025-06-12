@@ -131,26 +131,24 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
                           
                           switch (event.type) {
                               case 'THINKING_START':
-                                setMessages(prev => {
-                                    console.log('[CLIENT-STATE] setMessages for THINKING_START. Prev length:', prev.length);
-                                    const newMessages = [...prev];
-                                    setIsThinking(true);
-                                    setThinkingContent('');
-                                    currentAssistantThinking = '';
-                                    const lastMessage = newMessages[newMessages.length - 1];
-                                    const needsNewMessage = assistantMessageIndex === -1 || (lastMessage && (lastMessage.role === 'tool' || lastMessage.role === 'tool_code'));
-                                    if (needsNewMessage) {
-                                        assistantMessageIndex = newMessages.length;
-                                        // Make sure thinking is defined (empty string, not undefined)
-                                        newMessages.push({ role: 'assistant', content: '', thinking: '' });
-                                    } else {
-                                        const currentMsg = newMessages[assistantMessageIndex];
-                                        if (currentMsg) newMessages[assistantMessageIndex] = { ...currentMsg, thinking: '' };
-                                    }
-                                    return newMessages;
-                                });
-                                break;
-
+                                  setMessages(prev => {
+                                      console.log('[CLIENT-STATE] setMessages for THINKING_START. Prev length:', prev.length);
+                                      const newMessages = [...prev];
+                                      setIsThinking(true);
+                                      setThinkingContent('');
+                                      currentAssistantThinking = '';
+                                      const lastMessage = newMessages[newMessages.length - 1];
+                                      const needsNewMessage = assistantMessageIndex === -1 || (lastMessage && (lastMessage.role === 'tool' || lastMessage.role === 'tool_code'));
+                                      if (needsNewMessage) {
+                                          assistantMessageIndex = newMessages.length;
+                                          newMessages.push({ role: 'assistant', content: '', thinking: currentAssistantThinking });
+                                      } else {
+                                          const currentMsg = newMessages[assistantMessageIndex];
+                                          if (currentMsg) newMessages[assistantMessageIndex] = { ...currentMsg, thinking: '' };
+                                      }
+                                      return newMessages;
+                                  });
+                                  break;
                               case 'THINKING_DELTA':
                                   currentAssistantThinking += event.content;
                                   setThinkingContent(prev => (prev || '') + event.content);
