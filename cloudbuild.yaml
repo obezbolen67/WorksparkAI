@@ -5,4 +5,4 @@ steps:
     args: ['gcloud', 'deploy']
 
 options:
-  logging: GCS_ONLY
+  logging: CLOUD_LOGGING_ONLY 
