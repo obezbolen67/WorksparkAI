@@ -131,24 +131,25 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
                           
                           switch (event.type) {
                               case 'THINKING_START':
-                                  setMessages(prev => {
-                                      console.log('[CLIENT-STATE] setMessages for THINKING_START. Prev length:', prev.length);
-                                      const newMessages = [...prev];
-                                      setIsThinking(true);
-                                      setThinkingContent('');
-                                      currentAssistantThinking = '';
-                                      const lastMessage = newMessages[newMessages.length - 1];
-                                      const needsNewMessage = assistantMessageIndex === -1 || (lastMessage && (lastMessage.role === 'tool' || lastMessage.role === 'tool_code'));
-                                      if (needsNewMessage) {
-                                          assistantMessageIndex = newMessages.length;
-                                          newMessages.push({ role: 'assistant', content: '', thinking: currentAssistantThinking });
-                                      } else {
-                                          const currentMsg = newMessages[assistantMessageIndex];
-                                          if (currentMsg) newMessages[assistantMessageIndex] = { ...currentMsg, thinking: '' };
-                                      }
-                                      return newMessages;
-                                  });
-                                  break;
+                                setMessages(prev => {
+                                    console.log('[CLIENT-STATE] setMessages for THINKING_START. Prev length:', prev.length);
+                                    const newMessages = [...prev];
+                                    setIsThinking(true);
+                                    setThinkingContent('');
+                                    currentAssistantThinking = '';
+                                    const lastMessage = newMessages[newMessages.length - 1];
+                                    const needsNewMessage = assistantMessageIndex === -1 || (lastMessage && (lastMessage.role === 'tool' || lastMessage.role === 'tool_code' || lastMessage.role === 'user'));
+                                    if (needsNewMessage) {
+                                        assistantMessageIndex = newMessages.length;
+                                        newMessages.push({ role: 'assistant', content: '', thinking: '' });
+                                    } else {
+                                        const currentMsg = newMessages[assistantMessageIndex];
+                                        if (currentMsg) newMessages[assistantMessageIndex] = { ...currentMsg, thinking: '' };
+                                    }
+                                    return newMessages;
+                                });
+                                break;
+
                               case 'THINKING_DELTA':
                                   currentAssistantThinking += event.content;
                                   setThinkingContent(prev => (prev || '') + event.content);
@@ -167,26 +168,43 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
                                 setMessages(prev => {
                                     console.log('[CLIENT-STATE] setMessages for ASSISTANT_START. Prev length:', prev.length);
                                     const newMessages = [...prev];
-                                    if (assistantMessageIndex === -1) {
+                                    const lastMessage = newMessages[newMessages.length - 1];
+                                    
+                                    // Check if we need a new assistant message or can reuse the existing one
+                                    if (assistantMessageIndex === -1 || 
+                                        (lastMessage && (lastMessage.role === 'tool' || lastMessage.role === 'tool_code' || lastMessage.role === 'user'))) {
                                         assistantMessageIndex = newMessages.length;
                                         newMessages.push({ role: 'assistant', content: '', thinking: currentAssistantThinking || undefined });
+                                    }
+                                    // If we already have an assistant message at the index, just ensure it exists
+                                    // This handles the case where THINKING_START already created the message
+                                    return newMessages;
+                                });
+                                break;
+
+                              case 'ASSISTANT_DELTA':
+                                setMessages(prev => {
+                                    const newMessages = [...prev];
+                                    
+                                    // Make sure we have an assistant message to append to
+                                    if (assistantMessageIndex === -1 || assistantMessageIndex >= newMessages.length) {
+                                        // This shouldn't happen, but if it does, create the message
+                                        assistantMessageIndex = newMessages.length;
+                                        newMessages.push({ role: 'assistant', content: '', thinking: currentAssistantThinking || undefined });
+                                    }
+                                    
+                                    const currentMsg = newMessages[assistantMessageIndex];
+                                    if (currentMsg && currentMsg.role === 'assistant') {
+                                        newMessages[assistantMessageIndex] = { 
+                                            ...currentMsg, 
+                                            content: (currentMsg.content || '') + event.content, 
+                                            thinking: currentAssistantThinking || currentMsg.thinking 
+                                        };
                                     }
                                     return newMessages;
                                 });
                                 break;
-                              case 'ASSISTANT_DELTA':
-                                  setMessages(prev => {
-                                      const newMessages = [...prev];
-                                      if (assistantMessageIndex === -1) {
-                                          assistantMessageIndex = newMessages.length;
-                                          newMessages.push({ role: 'assistant', content: '', thinking: currentAssistantThinking || undefined });
-                                      }
-                                      if (assistantMessageIndex >= 0 && assistantMessageIndex < newMessages.length) {
-                                          newMessages[assistantMessageIndex] = { ...newMessages[assistantMessageIndex], content: (newMessages[assistantMessageIndex].content || '') + event.content, thinking: currentAssistantThinking || newMessages[assistantMessageIndex].thinking };
-                                      }
-                                      return newMessages;
-                                  });
-                                  break;
+
                               case 'ASSISTANT_COMPLETE':
                                   if (event.thinking !== undefined) {
                                       setMessages(prev => {

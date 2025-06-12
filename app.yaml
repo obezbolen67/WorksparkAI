@@ -7,7 +7,7 @@ service: default
 
 env_variables:
   NODE_ENV: "production"
-  VITE_API_URL: "https://api-dot-fexoai.uc.r.appspot.com"
+  VITE_API_URL: "https://api.fexoai.in"
 
 
 handlers:
