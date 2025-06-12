@@ -1,6 +1,6 @@
 // src/utils/api.ts
 
-export const API_BASE_URL = import.meta.env.VITE_API_URL || '';
+export const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://api-dot-fexoai.uc.r.appspot.com';
 
 /**
  * A wrapper around the native `fetch` function that automatically adds
