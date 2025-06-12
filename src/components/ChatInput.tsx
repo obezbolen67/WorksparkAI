@@ -6,6 +6,8 @@ import { uploadFile } from '../utils/api';
 import type { Attachment } from '../types';
 import '../css/ChatInput.css';
 import Tooltip from './Tooltip';
+import { useSettings } from '../contexts/SettingsContext';
+import { useNotification } from '../contexts/NotificationContext';
 
 interface ChatInputProps {
   onSendMessage: (text: string, attachments: Attachment[]) => void;
@@ -15,6 +17,8 @@ interface ChatInputProps {
 }
 
 const ChatInput = ({ onSendMessage, isSending, isThinkingVisible, onToggleThinking }: ChatInputProps) => {
+  const { user, selectedModel } = useSettings();
+  const { showNotification } = useNotification();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [text, setText] = useState('');
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
@@ -45,8 +49,25 @@ const ChatInput = ({ onSendMessage, isSending, isThinkingVisible, onToggleThinki
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     if (event.target.files) {
-      const files = Array.from(event.target.files).slice(0, 5);
-      setSelectedFiles(prev => [...prev, ...files]);
+      const files = Array.from(event.target.files);
+      const containsImage = files.some(f => f.type.startsWith('image/'));
+
+      if (containsImage) {
+        const modelConfigs = user?.modelConfigs || [];
+        const modelConfig = modelConfigs.find(c => c.id === selectedModel);
+        // The modality for vision is 'image' in our types, matching SettingsModal.
+        const supportsImage = modelConfig?.modalities.includes('image');
+
+        if (!supportsImage) {
+          // The snippet used 'warning', but our context only has 'error' or 'success'. 'error' is appropriate.
+          showNotification('This model does not support image inputs. Please select a vision-capable model.', 'error');
+          event.target.value = ''; // Clear the input so the user can try again.
+          return;
+        }
+      }
+
+      const filesToAdd = files.slice(0, 5);
+      setSelectedFiles(prev => [...prev, ...filesToAdd]);
     }
     event.target.value = '';
   };
@@ -73,7 +94,7 @@ const ChatInput = ({ onSendMessage, isSending, isThinkingVisible, onToggleThinki
       setSelectedFiles([]);
     } catch (error) {
       console.error("Failed to upload files and send message:", error);
-      alert((error as Error).message || 'An error occurred during upload.');
+      showNotification((error as Error).message || 'An error occurred during upload.', 'error');
     }
   };
 
