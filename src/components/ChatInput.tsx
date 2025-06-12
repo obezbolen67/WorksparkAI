@@ -1,6 +1,6 @@
 // src/components/ChatInput.tsx
 import { useState, useRef, useEffect } from 'react';
-import { FiPlus, FiSend, FiX, FiImage, FiPaperclip, FiCpu } from 'react-icons/fi';
+import { FiPlus, FiSend, FiX, FiImage, FiPaperclip, FiCpu, FiSquare } from 'react-icons/fi';
 import { HiOutlineMicrophone } from "react-icons/hi2";
 import { uploadFile } from '../utils/api';
 import type { Attachment } from '../types';
@@ -11,12 +11,13 @@ import { useNotification } from '../contexts/NotificationContext';
 
 interface ChatInputProps {
   onSendMessage: (text: string, attachments: Attachment[]) => void;
+  onStopGeneration: () => void; // <-- NEW
   isSending: boolean;
   isThinkingVisible: boolean;
   onToggleThinking: () => void;
 }
 
-const ChatInput = ({ onSendMessage, isSending, isThinkingVisible, onToggleThinking }: ChatInputProps) => {
+const ChatInput = ({ onSendMessage, onStopGeneration, isSending, isThinkingVisible, onToggleThinking }: ChatInputProps) => {
   const { user, selectedModel } = useSettings();
   const { showNotification } = useNotification();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -30,6 +31,7 @@ const ChatInput = ({ onSendMessage, isSending, isThinkingVisible, onToggleThinki
   const plusButtonRef = useRef<HTMLButtonElement>(null);
 
   const hasContent = text.trim().length > 0 || selectedFiles.length > 0;
+  const isGenerating = isSending; // Simplified name for clarity
 
   useEffect(() => {
     if (!isMenuOpen) return;
@@ -55,13 +57,11 @@ const ChatInput = ({ onSendMessage, isSending, isThinkingVisible, onToggleThinki
       if (containsImage) {
         const modelConfigs = user?.modelConfigs || [];
         const modelConfig = modelConfigs.find(c => c.id === selectedModel);
-        // The modality for vision is 'image' in our types, matching SettingsModal.
         const supportsImage = modelConfig?.modalities.includes('image');
 
         if (!supportsImage) {
-          // The snippet used 'warning', but our context only has 'error' or 'success'. 'error' is appropriate.
           showNotification('This model does not support image inputs. Please select a vision-capable model.', 'error');
-          event.target.value = ''; // Clear the input so the user can try again.
+          event.target.value = '';
           return;
         }
       }
@@ -84,12 +84,12 @@ const ChatInput = ({ onSendMessage, isSending, isThinkingVisible, onToggleThinki
   };
 
   const handleSend = async () => {
-    if (!hasContent || isSending) return;
+    if (!hasContent || isGenerating) return;
     try {
       const uploadPromises = selectedFiles.map(file => uploadFile(file));
       const uploadResults = await Promise.all(uploadPromises);
       const newAttachments: Attachment[] = uploadResults.map(result => result.file);
-      onSendMessage(text, newAttachments); // Parent (ChatView) will add metadata
+      onSendMessage(text, newAttachments);
       setText('');
       setSelectedFiles([]);
     } catch (error) {
@@ -106,6 +106,7 @@ const ChatInput = ({ onSendMessage, isSending, isThinkingVisible, onToggleThinki
   };
 
   const adjustTextareaHeight = () => {
+    // ... (no changes in this function)
     const textarea = textareaRef.current;
     if (!textarea) return;
     const hiddenDiv = document.createElement('div');
@@ -173,7 +174,7 @@ const ChatInput = ({ onSendMessage, isSending, isThinkingVisible, onToggleThinki
             <button
               className={`chat-tool-button ${isThinkingVisible ? 'active' : ''}`}
               onClick={onToggleThinking}
-              disabled={isSending}
+              disabled={isGenerating}
             >
               <FiCpu size={18} />
             </button>
@@ -186,7 +187,7 @@ const ChatInput = ({ onSendMessage, isSending, isThinkingVisible, onToggleThinki
           ref={plusButtonRef}
           className="chat-input-button"
           onClick={() => setIsMenuOpen(prev => !prev)}
-          disabled={isSending}
+          disabled={isGenerating}
         >
           <FiPlus size={20} />
         </button>
@@ -213,19 +214,33 @@ const ChatInput = ({ onSendMessage, isSending, isThinkingVisible, onToggleThinki
           onKeyDown={handleKeyDown}
           onInput={handleInput}
           rows={1}
-          disabled={isSending}
+          disabled={isGenerating}
         />
-        <div className={`chat-input-actions ${hasContent ? 'has-text' : ''}`}>
-          <button className="chat-input-button mic-button" disabled={isSending}>
-            <HiOutlineMicrophone size={20} />
-          </button>
-          <button
-            className="chat-input-button send-button"
-            onClick={handleSend}
-            disabled={!hasContent || isSending}
-          >
-            {isSending ? <div className="button-spinner"></div> : <FiSend size={20} />}
-          </button>
+        {/* --- UPDATED: Conditional rendering for Send/Stop/Mic buttons --- */}
+        <div className="chat-input-actions">
+          {isGenerating ? (
+            <Tooltip text="Stop generating">
+              <button
+                className="chat-input-button stop-button"
+                onClick={onStopGeneration}
+              >
+                <FiSquare size={18} />
+              </button>
+            </Tooltip>
+          ) : (
+            <>
+              <button className="chat-input-button mic-button" disabled={isGenerating}>
+                <HiOutlineMicrophone size={20} />
+              </button>
+              <button
+                className="chat-input-button send-button"
+                onClick={handleSend}
+                disabled={!hasContent || isGenerating}
+              >
+                {isSending ? <div className="button-spinner"></div> : <FiSend size={20} />}
+              </button>
+            </>
+          )}
         </div>
       </div>
     </div>

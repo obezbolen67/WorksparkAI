@@ -6,7 +6,6 @@ type Model = {
   id: string;
 };
 
-// --- UPDATED: Add 'reasoning' modality ---
 type Modality = 'text' | 'image' | 'code' | 'reasoning';
 
 type ModelConfig = {
@@ -14,18 +13,19 @@ type ModelConfig = {
   modalities: Modality[];
 };
 
+type Theme = 'dark' | 'light';
 
+// --- UPDATED: Add 'theme' to the User type ---
 type User = {
   _id: string;
   email: string;
   apiKey: string;
   baseUrl: string;
   selectedModel: string;
+  theme: Theme; // <-- ADDED
   quickAccessModels?: string[];
   modelConfigs?: ModelConfig[];
 };
-
-type Theme = 'dark' | 'light';
 
 interface SettingsContextType {
   token: string | null;
@@ -52,27 +52,59 @@ export const SettingsProvider = ({ children }: { children: ReactNode }) => {
   const [loading, setLoading] = useState<boolean>(true);
   const [user, setUser] = useState<User | null>(null);
   const [models, setModels] = useState<Model[]>([]);
+  
+  // Initialize from localStorage as a fallback for the initial render
   const [theme, setThemeState] = useState<Theme>(() => (localStorage.getItem('fexo-theme') as Theme) || 'dark');
 
+  const updateSettings = async (settings: Partial<User>) => {
+    if (!token) return;
+    try {
+      const res = await api('/settings', {
+        method: 'PUT',
+        body: JSON.stringify(settings),
+      });
+      if (!res.ok) throw new Error('Failed to update settings');
+      const updatedUser = await res.json();
+      setUser(updatedUser); // Update the local user state with the response from the server
+    } catch (err) {
+      console.error(err);
+      throw err;
+    }
+  };
+
+  // --- UPDATED: The setTheme function now saves to the database ---
+  const setTheme = (newTheme: Theme) => {
+    // 1. Update the UI optimistically for instant feedback
+    setThemeState(newTheme);
+    // 2. If the user is logged in, save the preference to the database
+    if (isAuthenticated) {
+      // We can "fire and forget" this. The updateSettings function will handle errors.
+      updateSettings({ theme: newTheme }).catch(err => {
+        // This catch is for any unhandled promise rejection, though updateSettings logs it.
+        console.error("Could not save theme preference to the database.", err);
+      });
+    }
+  };
+
+  // This effect synchronizes the theme with the DOM and localStorage
   useEffect(() => {
-    const body = document.body;
-    body.setAttribute('data-theme', theme);
+    document.body.setAttribute('data-theme', theme);
     localStorage.setItem('fexo-theme', theme);
   }, [theme]);
   
-  const setTheme = (newTheme: Theme) => {
-    setThemeState(newTheme);
-  };
-
   const loadUser = useCallback(async () => {
     const currentToken = localStorage.getItem('fexo-token');
     if (currentToken) {
       try {
         const res = await api('/settings');
         if (!res.ok) throw new Error('Failed to load user');
-        const userData = await res.json();
+        const userData: User = await res.json();
         setUser(userData);
         setIsAuthenticated(true);
+        // --- ADDED: Set theme from loaded user data ---
+        if (userData.theme) {
+          setThemeState(userData.theme);
+        }
       } catch (err) {
         console.error(err);
         localStorage.removeItem('fexo-token');
@@ -120,7 +152,7 @@ export const SettingsProvider = ({ children }: { children: ReactNode }) => {
     }
     localStorage.setItem('fexo-token', data.token);
     setToken(data.token);
-    await loadUser();
+    await loadUser(); // loadUser will now also set the theme
   };
 
   const login = (email: string, password: string) => apiAuthRequest('login', { email, password });
@@ -128,27 +160,14 @@ export const SettingsProvider = ({ children }: { children: ReactNode }) => {
 
   const logout = () => {
     localStorage.removeItem('fexo-token');
+    // On logout, you might want to reset the theme to the default or keep the last one.
+    // Resetting to 'dark' is a clean approach.
+    setThemeState('dark'); 
     setToken(null);
     setIsAuthenticated(false);
     setUser(null);
     setModels([]);
     setLoading(false);
-  };
-
-  const updateSettings = async (settings: Partial<User>) => {
-    if (!token) return;
-    try {
-      const res = await api('/settings', {
-        method: 'PUT',
-        body: JSON.stringify(settings),
-      });
-      if (!res.ok) throw new Error('Failed to update settings');
-      const updatedUser = await res.json();
-      setUser(updatedUser);
-    } catch (err) {
-      console.error(err);
-      throw err;
-    }
   };
 
   return (

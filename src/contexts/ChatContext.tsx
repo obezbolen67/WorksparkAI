@@ -1,5 +1,5 @@
 // src/contexts/ChatContext.tsx
-import { createContext, useContext, useState, useCallback, useEffect, ReactNode } from 'react';
+import { createContext, useContext, useState, useCallback, useEffect, ReactNode, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import type { Message, Attachment } from '../types';
 import { useSettings } from './SettingsContext';
@@ -22,6 +22,7 @@ interface ChatContextType {
   isCreatingChat: boolean;
   isSending: boolean;
   sendMessage: (text: string, attachments: Attachment[], metadata?: Record<string, any>) => Promise<void>;
+  stopGeneration: () => void; // <-- NEW
   isStreaming: boolean;
   isThinking: boolean;
   thinkingContent: string | null;
@@ -52,6 +53,9 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
   const [isThinking, setIsThinking] = useState(false);
   const [thinkingContent, setThinkingContent] = useState<string | null>(null);
 
+  // --- NEW: Ref to hold the AbortController for the stream ---
+  const streamAbortControllerRef = useRef<AbortController | null>(null);
+
   const loadChatList = useCallback(async () => {
     if (!token) return;
     try {
@@ -80,6 +84,9 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
           metadata,
       });
 
+      // --- NEW: Create and store a new AbortController for this request ---
+      streamAbortControllerRef.current = new AbortController();
+
       setMessages(messageHistory);
       setIsStreaming(true);
       setIsThinking(false);
@@ -92,6 +99,8 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
           const response = await api(`/chats/${chatId}/stream`, {
               method: 'POST',
               body: JSON.stringify({ messagesFromClient: messageHistory, metadata }),
+              // --- NEW: Pass the AbortSignal to the fetch request ---
+              signal: streamAbortControllerRef.current.signal,
           });
 
           if (!response.ok) {
@@ -170,14 +179,11 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
                                     const newMessages = [...prev];
                                     const lastMessage = newMessages[newMessages.length - 1];
                                     
-                                    // Check if we need a new assistant message or can reuse the existing one
                                     if (assistantMessageIndex === -1 || 
                                         (lastMessage && (lastMessage.role === 'tool' || lastMessage.role === 'tool_code' || lastMessage.role === 'user'))) {
                                         assistantMessageIndex = newMessages.length;
                                         newMessages.push({ role: 'assistant', content: '', thinking: currentAssistantThinking || undefined });
                                     }
-                                    // If we already have an assistant message at the index, just ensure it exists
-                                    // This handles the case where THINKING_START already created the message
                                     return newMessages;
                                 });
                                 break;
@@ -185,14 +191,10 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
                               case 'ASSISTANT_DELTA':
                                 setMessages(prev => {
                                     const newMessages = [...prev];
-                                    
-                                    // Make sure we have an assistant message to append to
                                     if (assistantMessageIndex === -1 || assistantMessageIndex >= newMessages.length) {
-                                        // This shouldn't happen, but if it does, create the message
                                         assistantMessageIndex = newMessages.length;
                                         newMessages.push({ role: 'assistant', content: '', thinking: currentAssistantThinking || undefined });
                                     }
-                                    
                                     const currentMsg = newMessages[assistantMessageIndex];
                                     if (currentMsg && currentMsg.role === 'assistant') {
                                         newMessages[assistantMessageIndex] = { 
@@ -264,14 +266,22 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
               }
           }
       } catch (error) {
-          console.error("%c[CLIENT] Stream Error", 'color: red; font-weight: bold;', error);
-          showNotification(error instanceof Error ? error.message : "Failed to get response.", "error");
-          setMessages(messageHistory);
+          // --- NEW: Gracefully handle user-initiated abort ---
+          if (error instanceof DOMException && error.name === 'AbortError') {
+              console.log('%c[CLIENT] Stream aborted by user.', 'color: orange; font-weight: bold;');
+              // Keep the last complete message state. No error notification needed.
+              // The finally block will handle state cleanup.
+          } else {
+              console.error("%c[CLIENT] Stream Error", 'color: red; font-weight: bold;', error);
+              showNotification(error instanceof Error ? error.message : "Failed to get response.", "error");
+              setMessages(messageHistory);
+          }
       } finally {
           console.log('%c[CLIENT] Stream Finally Block', 'color: blue; font-weight: bold;');
           setIsStreaming(false);
           setIsThinking(false);
           setThinkingContent(null);
+          streamAbortControllerRef.current = null; // Clear the controller
           await loadChatList();
       }
   };
@@ -301,12 +311,22 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
       }
     } catch (error) {
       console.error(error);
-      showNotification(error instanceof Error ? error.message : 'Could not send message.', 'error');
+      // Don't show an error if it was a user-initiated abort
+      if (!(error instanceof DOMException && error.name === 'AbortError')) {
+        showNotification(error instanceof Error ? error.message : 'Could not send message.', 'error');
+      }
       if (activeChatId) { setMessages(originalMessages); }
       else { setMessages([]); setActiveChatId(null); navigate('/', { replace: true }); }
     } finally {
       setIsSending(false);
       setIsCreatingChat(false);
+    }
+  };
+
+  // --- NEW: Function to stop the ongoing stream ---
+  const stopGeneration = () => {
+    if (streamAbortControllerRef.current) {
+        streamAbortControllerRef.current.abort();
     }
   };
 
@@ -402,6 +422,7 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
     isCreatingChat, isSending, sendMessage, isStreaming, editingIndex, startEditing,
     cancelEditing, saveAndSubmitEdit, regenerateResponse, renameChat, deleteChat,
     isThinking, thinkingContent,
+    stopGeneration, // <-- NEW
   };
 
   return <ChatContext.Provider value={value}>{children}</ChatContext.Provider>;

@@ -3,12 +3,12 @@ import { useState, useEffect, useRef } from 'react';
 import { useSettings } from '../contexts/SettingsContext';
 import { useNotification } from '../contexts/NotificationContext';
 import '../css/SettingsModal.css';
-import { FiRefreshCw, FiCpu, FiSliders, FiEye, FiEyeOff, FiMoreVertical, FiTerminal } from "react-icons/fi"; 
+import { FiRefreshCw, FiCpu, FiSliders, FiEye, FiEyeOff, FiMoreVertical } from "react-icons/fi"; 
 import api from '../utils/api';
 import Tooltip from './Tooltip';
+import Portal from './Portal'; // Import the Portal component
 
 type Model = { id: string };
-// --- UPDATED: Add 'reasoning' to modality type ---
 type Modality = 'text' | 'image' | 'code' | 'reasoning';
 type ModelConfig = {
   id: string;
@@ -39,8 +39,8 @@ const SettingsModal = ({ isOpen, onClose }: SettingsModalProps) => {
   const [isApiKeyVisible, setIsApiKeyVisible] = useState(false);
 
   const [openConfigMenuId, setOpenConfigMenuId] = useState<string | null>(null);
+  const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
   const configMenuRef = useRef<HTMLDivElement>(null);
-
 
   useEffect(() => {
     if (user) {
@@ -115,7 +115,13 @@ const SettingsModal = ({ isOpen, onClose }: SettingsModalProps) => {
 
   const handleSave = async () => {
     try {
-      const configsToSave = modelConfigs.filter(config => quickAccessModels.includes(config.id));
+      const configsToSave = modelConfigs
+        .filter(config => quickAccessModels.includes(config.id))
+        .map(config => ({
+          ...config,
+          modalities: ['text', ...(config.modalities.includes('image') ? ['image'] : [])] as Modality[]
+        }));
+
       await updateSettings({ apiKey, baseUrl, selectedModel, quickAccessModels, modelConfigs: configsToSave });
       showNotification('Settings Saved!');
       handleClose();
@@ -138,7 +144,6 @@ const SettingsModal = ({ isOpen, onClose }: SettingsModalProps) => {
       const configIndex = newConfigs.findIndex(c => c.id === modelId);
 
       if (configIndex > -1) {
-        // Config exists, so we update it.
         const configToUpdate = { ...newConfigs[configIndex] };
         const modalitiesSet = new Set(configToUpdate.modalities);
 
@@ -151,7 +156,6 @@ const SettingsModal = ({ isOpen, onClose }: SettingsModalProps) => {
         configToUpdate.modalities = Array.from(modalitiesSet);
         newConfigs[configIndex] = configToUpdate;
       } else {
-        // No config, create a new one. 'text' is always default.
         const newModalities: Modality[] = ['text'];
         if (isEnabled) {
           newModalities.push(modalityToToggle);
@@ -161,6 +165,19 @@ const SettingsModal = ({ isOpen, onClose }: SettingsModalProps) => {
 
       return newConfigs;
     });
+  };
+
+  const handleMenuToggle = (modelId: string, event: React.MouseEvent<HTMLButtonElement>) => {
+    if (openConfigMenuId === modelId) {
+      setOpenConfigMenuId(null);
+    } else {
+      const rect = event.currentTarget.getBoundingClientRect();
+      setMenuPosition({
+        top: rect.bottom + window.scrollY + 5,
+        left: rect.left + window.scrollX,
+      });
+      setOpenConfigMenuId(modelId);
+    }
   };
 
   const renderGptTab = () => (
@@ -218,10 +235,6 @@ const SettingsModal = ({ isOpen, onClose }: SettingsModalProps) => {
             {models.map(model => {
               const config = modelConfigs.find(c => c.id === model.id) || { modalities: ['text'] };
               const hasImageModality = config.modalities.some(modality => modality === 'image');
-              const hasCodeModality = config.modalities.some(modality => modality === 'code');
-              // --- NEW: Check for reasoning modality ---
-              const hasReasoningModality = config.modalities.some(modality => modality === 'reasoning');
-
 
               return (
               <div key={model.id} className="quick-access-row">
@@ -238,49 +251,38 @@ const SettingsModal = ({ isOpen, onClose }: SettingsModalProps) => {
                 <div className="model-config-wrapper">
                   <button
                     className="model-config-button"
-                    onClick={() => setOpenConfigMenuId(openConfigMenuId === model.id ? null : model.id)}
+                    onClick={(e) => handleMenuToggle(model.id, e)}
                     disabled={!quickAccessModels.includes(model.id)}
                   >
                     <FiMoreVertical size={16}/>
                   </button>
                   {openConfigMenuId === model.id && (
-                    <div className="model-config-menu" ref={configMenuRef}>
-                       <label className="config-menu-item">
-                          <input type="checkbox" checked disabled />
-                          <span className="checkbox-visual"></span>
-                          <span>Text</span>
-                       </label>
-                       {/* --- NEW: Reasoning checkbox --- */}
-                       <label className="config-menu-item">
-                          <input 
-                            type="checkbox" 
-                            checked={hasReasoningModality}
-                            onChange={(e) => handleModalityChange(model.id, 'reasoning', e.target.checked)}
-                          />
-                          <span className="checkbox-visual"></span>
-                          <FiCpu size={14} style={{ marginRight: '6px' }}/>
-                          <span>Reasoning</span>
-                       </label>
-                       <label className="config-menu-item">
-                          <input 
-                            type="checkbox" 
-                            checked={hasImageModality}
-                            onChange={(e) => handleModalityChange(model.id, 'image', e.target.checked)}
-                          />
-                          <span className="checkbox-visual"></span>
-                          <span>Image</span>
-                       </label>
-                       <label className="config-menu-item">
-                          <input 
-                            type="checkbox" 
-                            checked={hasCodeModality}
-                            onChange={(e) => handleModalityChange(model.id, 'code', e.target.checked)}
-                          />
-                          <span className="checkbox-visual"></span>
-                          <FiTerminal size={14} style={{ marginRight: '6px' }}/>
-                          <span>Code</span>
-                       </label>
-                    </div>
+                    <Portal>
+                      <div 
+                        className="model-config-menu" 
+                        ref={configMenuRef}
+                        style={{
+                          position: 'absolute',
+                          top: `${menuPosition.top}px`,
+                          left: `${menuPosition.left}px`,
+                        }}
+                      >
+                         <label className="config-menu-item">
+                            <input type="checkbox" checked disabled />
+                            <span className="checkbox-visual"></span>
+                            <span>Text</span>
+                         </label>
+                         <label className="config-menu-item">
+                            <input 
+                              type="checkbox" 
+                              checked={hasImageModality}
+                              onChange={(e) => handleModalityChange(model.id, 'image', e.target.checked)}
+                            />
+                            <span className="checkbox-visual"></span>
+                            <span>Image</span>
+                         </label>
+                      </div>
+                    </Portal>
                   )}
                 </div>
               </div>

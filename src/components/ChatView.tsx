@@ -1,3 +1,4 @@
+// src/components/ChatView.tsx
 import { useEffect, useRef, useState, useCallback } from 'react';
 import type { Message, Attachment } from '../types';
 import ChatInput from './ChatInput';
@@ -15,6 +16,7 @@ interface ChatViewProps {
   isLoading: boolean;
   isSending: boolean;
   onSendMessage: (text: string, attachments: Attachment[], metadata?: Record<string, any>) => void;
+  onStopGeneration: () => void; // <-- NEW
   editingIndex: number | null;
   onStartEdit: (index: number) => void;
   onCancelEdit: () => void;
@@ -25,6 +27,7 @@ interface ChatViewProps {
 const ChatView = (props: ChatViewProps) => {
   const { 
     messages, activeChatId, isStreaming, isThinking, isLoading, isSending, onSendMessage, 
+    onStopGeneration, // <-- NEW
     editingIndex, onStartEdit, onCancelEdit, 
     onSaveEdit, onRegenerate,
   } = props;
@@ -90,7 +93,6 @@ const ChatView = (props: ChatViewProps) => {
         <div className="chat-content" ref={chatContentRef}>
           <div className="chat-messages-list">
             {messages.map((msg, index) => {
-              // const isLastMessage = index === messages.length - 1; // This line is no longer needed for isStreaming
               return (
                 <ChatMessage 
                   key={activeChatId ? `${activeChatId}-${index}` : index}
@@ -99,12 +101,7 @@ const ChatView = (props: ChatViewProps) => {
                   messages={messages}
                   chatId={activeChatId}
                   isEditing={editingIndex === index}
-                  // --- START OF FIX ---
-                  // Pass the global isStreaming status directly. The ChatMessage
-                  // component is now smart enough to determine if the stream
-                  // applies to its specific turn.
                   isStreaming={isStreaming}
-                  // --- END OF FIX ---
                   isThinking={isThinking}
                   onRegenerate={handleRegenerate}
                   onCopy={handleCopy}
@@ -131,6 +128,7 @@ const ChatView = (props: ChatViewProps) => {
           )}
           <ChatInput 
             onSendMessage={handleSendMessage} 
+            onStopGeneration={onStopGeneration} // <-- NEW
             isSending={isSending || isStreaming}
             isThinkingVisible={isThinkingEnabled}
             onToggleThinking={() => setIsThinkingEnabled(prev => !prev)}

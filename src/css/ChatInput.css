@@ -57,12 +57,12 @@
 
 .chat-input-wrapper {
   display: flex;
-  align-items: center; /* Change from flex-end to center */
+  align-items: center; 
   gap: 0;
   background: var(--input-bg-color);
   border: 1px solid var(--border-color);
   border-radius: 16px;
-  padding: 8px 8px 8px 4px;
+  padding: 8px;
   position: relative;
   transition: border-color 0.2s ease;
 }
@@ -77,16 +77,15 @@
   line-height: 1.5;
   resize: none;
   font-family: inherit;
-  margin: 0 8px; /* Add horizontal margin for spacing */
+  margin: 0 8px; 
   padding: 0;
   height: 24px;
   max-height: 120px;
   overflow: hidden;
   word-wrap: break-word;
-  align-self: center; /* Ensure it's centered */
+  align-self: center; 
 }
 
-/* --- NEW: Styles for the Context Menu --- */
 @keyframes slideUpFadeIn {
   from {
     opacity: 0;
@@ -100,8 +99,8 @@
 
 .context-menu {
   position: absolute;
-  bottom: calc(100% + 8px); /* Position above the input wrapper with 8px gap */
-  left: 8px; /* Align with the left padding of the wrapper */
+  bottom: calc(100% + 8px); 
+  left: 8px;
   background-color: var(--button-hover-bg);
   border: 1px solid var(--border-color);
   border-radius: 12px;
@@ -140,7 +139,6 @@
   color: var(--secondary-text-color);
   flex-shrink: 0;
 }
-/* --- End of New Styles --- */
 
 .chat-input.scrollable {
   overflow-y: auto;
@@ -149,11 +147,9 @@
 .chat-input::-webkit-scrollbar {
   width: 6px;
 }
-
 .chat-input::-webkit-scrollbar-track {
   background: transparent;
 }
-
 .chat-input::-webkit-scrollbar-thumb {
   background-color: var(--border-color);
   border-radius: 3px;
@@ -167,7 +163,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: background-color 0.2s ease-in-out;
+  transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out, opacity 0.2s ease-in-out;
   flex-shrink: 0;
   width: 36px;
   height: 36px;
@@ -185,66 +181,74 @@
   background-color: var(--button-hover-bg);
 }
 
-/* Also ensure the tool buttons have the same SVG centering */
 .chat-tool-button svg {
   display: block;
   margin: 0;
   padding: 0;
 }
 
+/* --- UPDATED: Simplified layout for action buttons --- */
 .chat-input-actions {
-  position: relative;
-  width: 36px; 
-  height: 36px;
-  transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.chat-input-actions.has-text {
-  width: calc(36px + 8px + 36px); 
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .mic-button {
-  position: absolute;
-  top: 0;
-  right: 0;
-  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.chat-input-actions.has-text .mic-button {
-  transform: translateX(calc(-100% - 8px));
+  transition: opacity 0.2s, transform 0.2s;
 }
 
 .send-button {
-  position: absolute;
-  top: 0;
-  right: 0;
-  opacity: 0;
-  transform: translateX(50%) scale(0.7);
-  pointer-events: none;
-  transition: opacity 0.3s ease, transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.2s ease;
   background-color: #FFFFFF;
   color: #2f2f2f;
+  transition: opacity 0.2s ease, transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.2s ease;
+  opacity: 0;
+  transform: scale(0.7);
+  pointer-events: none;
 }
 
-.chat-input-actions.has-text .send-button {
+.chat-input-button:not(:disabled).send-button {
   opacity: 1;
-  transform: translateX(0) scale(1);
+  transform: scale(1);
   pointer-events: auto;
 }
+
+/* --- NEW: Stop Button --- */
+.stop-button {
+  border: 1px solid #ef4444;
+  color: #ef4444;
+  background-color: transparent;
+}
+.stop-button:hover {
+  background-color: hsla(0, 84%, 60%, 0.1);
+  border-color: #dc2626;
+  color: #dc2626;
+}
+[data-theme="light"] .stop-button {
+  border-color: #b91c1c;
+  color: #b91c1c;
+}
+[data-theme="light"] .stop-button:hover {
+  background-color: #fef2f2;
+  border-color: #991b1b;
+  color: #991b1b;
+}
+/* --- END NEW --- */
+
 
 .chat-tools-section {
   display: flex;
   align-items: center;
   gap: 4px;
-  padding: 0 4px;
+  padding: 0 4px 0 0;
 }
 
 .chat-tool-button {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 36px; /* Increase from 32px to match other buttons */
-  height: 36px; /* Increase from 32px to match other buttons */
+  width: 36px;
+  height: 36px;
   background: transparent;
   border: none;
   border-radius: 8px;
@@ -254,10 +258,9 @@
   position: relative;
 }
 
-
 .chat-tool-button:hover:not(:disabled) {
-  background: var(--hover-bg);
-  color: var(--text-primary);
+  background: var(--button-hover-bg);
+  color: var(--primary-text-color);
 }
 
 .chat-tool-button:disabled {
@@ -276,11 +279,11 @@
 
 .chat-input-divider {
   width: 1px;
-  height: 28px; /* Increase from 24px for better visual balance */
+  height: 28px;
   background: var(--border-color);
   margin: 0 4px;
   opacity: 0.5;
-  align-self: center; /* Ensure it's centered */
+  align-self: center;
 }
 
 .send-button:disabled {

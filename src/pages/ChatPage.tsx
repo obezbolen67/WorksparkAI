@@ -1,3 +1,4 @@
+// src/pages/ChatPage.tsx
 import { useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { useChat } from '../contexts/ChatContext';
@@ -14,6 +15,7 @@ const ChatPage = () => {
     isSending,
     isThinking,
     sendMessage,
+    stopGeneration, // <-- NEW
     isStreaming, 
     editingIndex, 
     startEditing, 
@@ -44,6 +46,7 @@ const ChatPage = () => {
       isSending={isSending}
       isThinking={isThinking}
       onSendMessage={sendMessage}
+      onStopGeneration={stopGeneration} // <-- NEW
       onRegenerate={regenerateResponse}
       editingIndex={editingIndex}
       onStartEdit={startEditing}
