@@ -74,12 +74,13 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
       messageHistory: Message[],
       metadata?: Record<string, any>
   ) => {
-      // --- START OF THE FIX ---
-      // This is now the ONLY place that sets the initial state for a stream.
-      // It uses the exact history it was given, eliminating race conditions.
-      setMessages(messageHistory);
-      // --- END OF THE FIX ---
+      console.log('%c[CLIENT] Starting Stream', 'color: blue; font-weight: bold;', {
+          chatId,
+          messageHistory: JSON.parse(JSON.stringify(messageHistory)),
+          metadata,
+      });
 
+      setMessages(messageHistory);
       setIsStreaming(true);
       setIsThinking(false);
       setThinkingContent(null);
@@ -105,12 +106,13 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
           let buffer = '';
           while (true) {
               const { done, value } = await reader.read();
-              if (done) break;
+              if (done) {
+                  console.log('%c[CLIENT] Stream Finished', 'color: blue; font-weight: bold;');
+                  break;
+              }
 
               buffer += decoder.decode(value, { stream: true });
-
               let boundary = buffer.indexOf('\n\n');
-
               while (boundary !== -1) {
                   const messageChunk = buffer.substring(0, boundary);
                   buffer = buffer.substring(boundary + 2);
@@ -123,12 +125,14 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
 
                       try {
                           const event = JSON.parse(jsonString);
+                          console.log(`%c[CLIENT] SSE Received:`, 'color: green;', event.type, event);
 
                           if (event.type === 'error') throw new Error(event.error.message || event.error);
-
+                          
                           switch (event.type) {
                               case 'THINKING_START':
                                   setMessages(prev => {
+                                      console.log('[CLIENT-STATE] setMessages for THINKING_START. Prev length:', prev.length);
                                       const newMessages = [...prev];
                                       setIsThinking(true);
                                       setThinkingContent('');
@@ -151,8 +155,7 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
                                   setMessages(prev => {
                                       const newMessages = [...prev];
                                       if (assistantMessageIndex >= 0 && assistantMessageIndex < newMessages.length) {
-                                          const messageToUpdate = newMessages[assistantMessageIndex];
-                                          newMessages[assistantMessageIndex] = { ...messageToUpdate, thinking: currentAssistantThinking };
+                                          newMessages[assistantMessageIndex] = { ...newMessages[assistantMessageIndex], thinking: currentAssistantThinking };
                                       }
                                       return newMessages;
                                   });
@@ -162,6 +165,7 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
                                   break;
                               case 'ASSISTANT_START':
                                 setMessages(prev => {
+                                    console.log('[CLIENT-STATE] setMessages for ASSISTANT_START. Prev length:', prev.length);
                                     const newMessages = [...prev];
                                     if (assistantMessageIndex === -1) {
                                         assistantMessageIndex = newMessages.length;
@@ -178,8 +182,7 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
                                           newMessages.push({ role: 'assistant', content: '', thinking: currentAssistantThinking || undefined });
                                       }
                                       if (assistantMessageIndex >= 0 && assistantMessageIndex < newMessages.length) {
-                                          const oldContent = newMessages[assistantMessageIndex].content || '';
-                                          newMessages[assistantMessageIndex] = { ...newMessages[assistantMessageIndex], content: oldContent + event.content, thinking: currentAssistantThinking || newMessages[assistantMessageIndex].thinking };
+                                          newMessages[assistantMessageIndex] = { ...newMessages[assistantMessageIndex], content: (newMessages[assistantMessageIndex].content || '') + event.content, thinking: currentAssistantThinking || newMessages[assistantMessageIndex].thinking };
                                       }
                                       return newMessages;
                                   });
@@ -236,18 +239,18 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
                                 break;
                           }
                       } catch (error) {
-                          console.error("Failed to parse SSE JSON chunk:", jsonString, error);
+                          console.error("[CLIENT] SSE Parse Error:", { jsonString, error });
                       }
                   }
                   boundary = buffer.indexOf('\n\n');
               }
           }
       } catch (error) {
-          console.error("Streaming failed:", error);
+          console.error("%c[CLIENT] Stream Error", 'color: red; font-weight: bold;', error);
           showNotification(error instanceof Error ? error.message : "Failed to get response.", "error");
-          // Revert to the initial state if the stream fails catastrophically
           setMessages(messageHistory);
       } finally {
+          console.log('%c[CLIENT] Stream Finally Block', 'color: blue; font-weight: bold;');
           setIsStreaming(false);
           setIsThinking(false);
           setThinkingContent(null);
@@ -264,7 +267,6 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
     try {
       if (!activeChatId) {
         setIsCreatingChat(true);
-        // Let streamAndSaveResponse set the initial message
         const initialMessages = [userMessage];
         const createChatResponse = await api('/chats', { method: 'POST', body: JSON.stringify({ messages: initialMessages }) });
         if (!createChatResponse.ok) {
@@ -277,7 +279,6 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
         await streamAndSaveResponse(newChat._id, newChat.messages, metadata);
       } else {
         const updatedMessages = [...messages, userMessage];
-        // Let streamAndSaveResponse set the message state
         await streamAndSaveResponse(activeChatId, updatedMessages, metadata);
       }
     } catch (error) {
@@ -320,17 +321,26 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
     const editedHistory = messages.slice(0, index + 1);
     editedHistory[index] = { ...editedHistory[index], content: newContent };
     setEditingIndex(null);
-    // Let streamAndSaveResponse handle the state update
     await streamAndSaveResponse(activeChatId, editedHistory);
   };
 
   const regenerateResponse = async (metadata?: Record<string, any>) => {
-    if (!activeChatId || messages.length < 1 || isStreaming || isSending) return;
+    console.log('%c[CLIENT] Regenerate Clicked', 'color: orange; font-weight: bold;');
+    if (!activeChatId || messages.length < 1 || isStreaming || isSending) {
+        console.warn('[CLIENT] Regenerate cancelled:', { activeChatId, isStreaming, isSending });
+        return;
+    }
+    
+    console.log('[CLIENT] Messages before regeneration:', JSON.parse(JSON.stringify(messages)));
     
     const lastUserIndex = messages.findLastIndex(m => m.role === 'user');
-    if (lastUserIndex === -1) return;
+    if (lastUserIndex === -1) {
+        console.error('[CLIENT] Could not find last user message for regeneration.');
+        return;
+    }
     
     const historyForRegeneration = messages.slice(0, lastUserIndex + 1);
+    console.log('[CLIENT] History prepared for regeneration:', JSON.parse(JSON.stringify(historyForRegeneration)));
     
     const regenerationMetadata = { 
       isRegeneration: true, 
@@ -338,7 +348,6 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
       ...metadata 
     };
     
-    // The now-reliable streamAndSaveResponse handles setting the pruned state and streaming
     await streamAndSaveResponse(activeChatId, historyForRegeneration, regenerationMetadata);
   };
 
