@@ -1,0 +1,20 @@
+# cloudbuild.yaml (for your React project)
+
+steps:
+  # Step 1: Install npm dependencies
+  # Use the official node image, specify 'npm' as the entrypoint
+  - name: 'gcr.io/cloud-builders/npm'
+    args: ['install']
+    
+  # Step 2: Build the production React app
+  # This runs 'npm run build', which creates the 'dist' directory
+  - name: 'gcr.io/cloud-builders/npm'
+    args: ['run', 'build']
+
+  # Step 3: Deploy to App Engine
+  # This now deploys your source code PLUS the newly created 'dist' folder
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    args: ['gcloud', 'app', 'deploy']
+
+# Optional: Increase the timeout if your build takes longer
+timeout: '1600s'
