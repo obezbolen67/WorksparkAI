@@ -219,12 +219,12 @@ const ChatMessage = ({ message, messages, chatId, index, isEditing, isStreaming,
             }
 
             if (currentMessage.role === 'assistant') {
-                if (currentMessage.thinking) {
+                if (currentMessage.thinking !== undefined) { // Changed from just checking truthiness
                     const isCurrentlyStreamingThinking = isStreaming && i === messages.length - 1;
                     parts.push(
                         <InlineThinking 
                             key={`thinking-${i}`} 
-                            content={currentMessage.thinking}
+                            content={currentMessage.thinking || ''} // Ensure empty string instead of undefined
                             isStreaming={isCurrentlyStreamingThinking}
                         />
                     );

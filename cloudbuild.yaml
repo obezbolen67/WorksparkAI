@@ -1,8 +1,11 @@
 steps:
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    # This is the command to run
     entrypoint: 'gcloud'
     timeout: 240s
-    args: ['gcloud app deploy']
+    # These are the arguments passed to the 'gcloud' command
+    # Each part of the command is a separate item in the list
+    args: ['app', 'deploy']
 
 options:
-  logging: CLOUD_LOGGING_ONLY 
+  logging: CLOUD_LOGGING_ONLY
