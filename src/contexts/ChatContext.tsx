@@ -117,6 +117,8 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
                       try {
                           const event = JSON.parse(jsonString);
 
+                          console.log('[CLIENT] SSE Event Received: '+event.type);
+
                           if (event.type === 'error') throw new Error(event.error.message || event.error);
 
                           switch (event.type) {

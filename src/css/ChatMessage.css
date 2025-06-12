@@ -86,12 +86,14 @@
   color: var(--primary-text-color);
 }
 
+/* --- START OF THE FIX --- */
 .assistant .message-content-wrapper {
   flex-grow: 1;
   position: relative;
-  /* Give normal messages padding, but not the thinking indicator which handles its own */
   padding-bottom: 32px; 
+  min-width: 0; /* Prevents wide content like code blocks from breaking the flex layout */
 }
+/* --- END OF THE FIX --- */
 
 /* The thinking indicator wrapper shouldn't have the default bottom padding */
 .message-content-wrapper.is-thinking {
@@ -439,4 +441,3 @@
   background-color: var(--assistant-message-bg);
   color: var(--secondary-text-color);
 }
-
