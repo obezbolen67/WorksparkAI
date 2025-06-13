@@ -19,6 +19,7 @@ interface ChatContextType {
   loadChat: (chatId: string) => void;
   clearChat: () => void;
   isLoadingChat: boolean;
+  isLoadingChatList: boolean; // <-- NEW
   isCreatingChat: boolean;
   isSending: boolean;
   sendMessage: (text: string, attachments: Attachment[], metadata?: Record<string, any>) => Promise<void>;
@@ -33,6 +34,7 @@ interface ChatContextType {
   regenerateResponse: (metadata?: Record<string, any>) => Promise<void>;
   renameChat: (chatId: string, newTitle: string) => Promise<void>;
   deleteChat: (chatId: string) => Promise<void>;
+  clearAllChats: () => Promise<void>;
 }
 
 const ChatContext = createContext<ChatContextType | undefined>(undefined);
@@ -46,6 +48,7 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
   const [chatList, setChatList] = useState<ChatListItem[]>([]);
   const [activeChatId, setActiveChatId] = useState<string | null>(null);
   const [isLoadingChat, setIsLoadingChat] = useState(false);
+  const [isLoadingChatList, setIsLoadingChatList] = useState(true); // <-- NEW: Start as true
   const [isCreatingChat, setIsCreatingChat] = useState(false);
   const [isStreaming, setIsStreaming] = useState(false);
   const [isSending, setIsSending] = useState(false);
@@ -56,7 +59,11 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
   const streamAbortControllerRef = useRef<AbortController | null>(null);
 
   const loadChatList = useCallback(async () => {
-    if (!token) return;
+    if (!token) {
+      setIsLoadingChatList(false); // <-- NEW
+      return;
+    }
+    setIsLoadingChatList(true); // <-- NEW
     try {
       const response = await api('/chats');
       if (!response.ok) throw new Error('Failed to fetch chat list');
@@ -65,6 +72,8 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
     } catch (error) {
       console.error(error);
       showNotification('Could not load chat history.', 'error');
+    } finally {
+      setIsLoadingChatList(false); // <-- NEW
     }
   }, [token, showNotification]);
 
@@ -134,9 +143,9 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
                           if (event.type === 'error') throw new Error(event.error.message || event.error);
                           
                           switch (event.type) {
+                              // ... (cases for THINKING_START, THINKING_DELTA, THINKING_END, ASSISTANT_START remain the same)
                               case 'THINKING_START':
                                 setMessages(prev => {
-                                    console.log('[CLIENT-STATE] setMessages for THINKING_START. Prev length:', prev.length);
                                     const newMessages = [...prev];
                                     setIsThinking(true);
                                     setThinkingContent('');
@@ -153,7 +162,6 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
                                     return newMessages;
                                 });
                                 break;
-
                               case 'THINKING_DELTA':
                                   currentAssistantThinking += event.content;
                                   setThinkingContent(prev => (prev || '') + event.content);
@@ -170,12 +178,9 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
                                   break;
                               case 'ASSISTANT_START':
                                 setMessages(prev => {
-                                    console.log('[CLIENT-STATE] setMessages for ASSISTANT_START. Prev length:', prev.length);
                                     const newMessages = [...prev];
                                     const lastMessage = newMessages[newMessages.length - 1];
-                                    
-                                    if (assistantMessageIndex === -1 || 
-                                        (lastMessage && (lastMessage.role === 'tool' || lastMessage.role === 'tool_code' || lastMessage.role === 'user'))) {
+                                    if (assistantMessageIndex === -1 || (lastMessage && (lastMessage.role === 'tool' || lastMessage.role === 'tool_code' || lastMessage.role === 'user'))) {
                                         assistantMessageIndex = newMessages.length;
                                         newMessages.push({ role: 'assistant', content: '', thinking: currentAssistantThinking || undefined });
                                     }
@@ -192,16 +197,24 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
                                     }
                                     const currentMsg = newMessages[assistantMessageIndex];
                                     if (currentMsg && currentMsg.role === 'assistant') {
+                                        // --- START OF THE FIX ---
+                                        // Combine the content
+                                        let newContent = (currentMsg.content || '') + event.content;
+                                        // Normalize newlines to prevent more than two in a row
+                                        newContent = newContent.replace(/\n{3,}/g, '\n\n');
+                                        
                                         newMessages[assistantMessageIndex] = { 
                                             ...currentMsg, 
-                                            content: (currentMsg.content || '') + event.content, 
+                                            content: newContent, 
                                             thinking: currentAssistantThinking || currentMsg.thinking 
                                         };
+                                        // --- END OF THE FIX ---
                                     }
                                     return newMessages;
                                 });
                                 break;
-
+                              
+                              // ... (The rest of the switch statement remains the same)
                               case 'ASSISTANT_COMPLETE':
                                   console.log('%c[CLIENT] Assistant Complete', 'color: green; font-weight: bold;')
                                   if (event.thinking !== undefined) {
@@ -216,24 +229,18 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
                                   currentAssistantThinking = '';
                                   assistantMessageIndex = -1;
                                   break;
-                              
                               case 'TOOL_CODE_CREATE':
                                 console.log('%c[CLIENT] Tool Code Create', 'color: blue; font-weight: bold;');
                                 setMessages(prev => {
                                     const newMessages = [...prev];
-                                    
                                     if (assistantMessageIndex === -1) {
                                         assistantMessageIndex = newMessages.length;
                                         newMessages.push({ role: 'assistant', content: '' });
                                     }
-                                    
                                     newMessages.push(event.message);
-                                    
                                     return newMessages;
                                 });
-                                
                                 break;
-                              
                               case 'TOOL_CODE_DELTA':
                                   setMessages(prev => {
                                       const newMessages = [...prev];
@@ -428,12 +435,26 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
+  const clearAllChats = async () => {
+    try {
+      await api('/chats/all', { method: 'DELETE' });
+      setChatList([]);
+      clearChat(); // This clears the active chat view and messages
+      showNotification("All conversations cleared.", "success");
+    } catch (error) {
+      console.error(error);
+      showNotification("Could not clear conversations.", "error");
+      throw error;
+    }
+  };
+
   const value = {
     messages, chatList, activeChatId, loadChat, clearChat, isLoadingChat,
+    isLoadingChatList, // <-- NEW
     isCreatingChat, isSending, sendMessage, isStreaming, editingIndex, startEditing,
-    cancelEditing, saveAndSubmitEdit, regenerateResponse, renameChat, deleteChat,
+    cancelEditing, saveAndSubmitEdit, regenerateResponse, renameChat,
     isThinking, thinkingContent,
-    stopGeneration,
+    stopGeneration, deleteChat, clearAllChats,
   };
 
   return <ChatContext.Provider value={value}>{children}</ChatContext.Provider>;

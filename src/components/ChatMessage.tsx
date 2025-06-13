@@ -1,4 +1,7 @@
-import { useState, useEffect, useRef, memo, useMemo } from 'react';
+// src/components/ChatMessage.tsx
+
+// --- THE FIX: Removed `useRef` from the import statement ---
+import { useState, useEffect, memo, useMemo } from 'react';
 import type { Message, Attachment } from '../types';
 import api, { API_BASE_URL } from '../utils/api';
 import '../css/ChatMessage.css';
@@ -14,6 +17,7 @@ import { vscDarkPlus, oneLight } from 'react-syntax-highlighter/dist/esm/styles/
 import CodeAnalysisBlock from './CodeAnalysisBlock';
 import InlineThinking from './InlineThinking';
 
+// ... (utility components are unchanged)
 interface CodeComponentProps {
   node?: any;
   inline?: boolean;
@@ -121,6 +125,71 @@ const AuthenticatedImage = ({ chatId, attachment, onView }: { chatId: string, at
     );
 };
 
+
+const AssistantTurn = memo(({ messages, chatId, startIndex, isStreaming, isThinking, onRegenerate, onCopy }: Omit<ChatMessageProps, 'message' | 'index' | 'isEditing' | 'onStartEdit' | 'onSaveEdit' | 'onCancelEdit'> & { startIndex: number }) => {
+    
+    const { turnParts, fullContent, lastMessageInTurnIndex } = useMemo(() => {
+        const parts: React.ReactNode[] = [];
+        const textParts: string[] = [];
+        let lastIndex = startIndex;
+        const processedToolIds = new Set<string>();
+
+        for (let i = startIndex; i < messages.length; i++) {
+            const currentMessage = messages[i];
+
+            if (currentMessage.role === 'user') break;
+
+            if (currentMessage.role === 'assistant') {
+                if (currentMessage.thinking !== undefined) {
+                    const isCurrentlyStreamingThinking = isStreaming && i === messages.length - 1;
+                    parts.push(<InlineThinking key={`thinking-${i}`} content={currentMessage.thinking || ''} isStreaming={isCurrentlyStreamingThinking} />);
+                }
+                if (currentMessage.content) {
+                    textParts.push(currentMessage.content);
+                    parts.push(<ReactMarkdown key={`text-${i}`} remarkPlugins={[remarkGfm]} components={{ code: CustomCode, p: Paragraph }}>{currentMessage.content}</ReactMarkdown>);
+                }
+            } else if (currentMessage.role === 'tool_code' && currentMessage.tool_id && !processedToolIds.has(currentMessage.tool_id)) {
+                const toolOutputMessage = messages.find(m => m.role === 'tool' && m.tool_id === currentMessage.tool_id);
+                parts.push(<CodeAnalysisBlock key={`code-${currentMessage.tool_id}`} chatId={chatId} toolCodeMessage={currentMessage} toolOutputMessage={toolOutputMessage} />);
+                processedToolIds.add(currentMessage.tool_id);
+            }
+            
+            lastIndex = i;
+        }
+        
+        return { turnParts: parts, fullContent: textParts.join('\n\n'), lastMessageInTurnIndex: lastIndex };
+    }, [messages, chatId, startIndex, isStreaming]);
+
+    const showThinkingIndicator = isThinking && isStreaming && startIndex === messages.length - 1 && !turnParts.some(part => React.isValidElement(part) && part.key?.toString().startsWith('thinking'));
+
+    if (showThinkingIndicator) {
+        turnParts.unshift(<InlineThinking key="thinking-active" content="" isStreaming={true} />);
+    }
+
+    const isStreamingInThisTurn = isStreaming && (messages.length - 1 <= lastMessageInTurnIndex);
+
+    return (
+        <div className={`chat-message-wrapper assistant ${isStreamingInThisTurn ? 'is-streaming' : ''}`}>
+            <div className="chat-message-container">
+                <div className="message-content-wrapper">
+                    <div className={`message-content ${isStreamingInThisTurn ? 'is-streaming' : 'streaming-complete'}`}>
+                        {turnParts}
+                        {isStreamingInThisTurn && <span className="streaming-cursor"></span>}
+                        {turnParts.length === 0 && !isStreamingInThisTurn && '\u00A0'}
+                    </div>
+                    {fullContent && !isStreamingInThisTurn && (
+                        <div className="message-actions">
+                            <Tooltip text="Regenerate"><button className="action-button" onClick={onRegenerate}><FiRefreshCw size={16} /></button></Tooltip>
+                            <Tooltip text="Copy"><button className="action-button" onClick={() => onCopy(fullContent)}><FiCopy size={16} /></button></Tooltip>
+                        </div>
+                    )}
+                </div>
+            </div>
+        </div>
+    );
+});
+
+
 interface ChatMessageProps {
   message: Message;
   messages: Message[];
@@ -136,11 +205,13 @@ interface ChatMessageProps {
   onCancelEdit: () => void;
 }
 
-const ChatMessage = ({ message, messages, chatId, index, isEditing, isStreaming, isThinking, onRegenerate, onCopy, onStartEdit, onSaveEdit, onCancelEdit }: ChatMessageProps) => {
+const ChatMessage = ({ message, messages, chatId, index, isEditing, onStartEdit, onSaveEdit, onCancelEdit, ...rest }: ChatMessageProps) => {
   const [editedContent, setEditedContent] = useState(message.content || '');
   const [viewerSrc, setViewerSrc] = useState<string | null>(null);
   const [isViewerOpen, setIsViewerOpen] = useState(false);
-  const messageContentRef = useRef<HTMLDivElement>(null);
+
+  // --- THE FIX: Removed the unused ref ---
+  // const messageContentRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (isEditing) setEditedContent(message.content || '');
@@ -161,10 +232,6 @@ const ChatMessage = ({ message, messages, chatId, index, isEditing, isStreaming,
     </div>
   );
 
-  if (message.role === 'tool' || message.role === 'tool_code') {
-    return null;
-  }
-  
   if (message.role === 'user') {
     return (
       <>
@@ -172,7 +239,8 @@ const ChatMessage = ({ message, messages, chatId, index, isEditing, isStreaming,
           <div className="chat-message-container">
             <div className="user-message-bubble">
               {!isEditing ? (
-                <div ref={messageContentRef} className="message-content">
+                // --- THE FIX: Removed the unused ref from the div ---
+                <div className="message-content">
                   {message.attachments && message.attachments.length > 0 && renderAttachments(message.attachments)}
                   {message.content && <ReactMarkdown remarkPlugins={[remarkGfm]} components={{ code: CustomCode, p: Paragraph }}>{message.content}</ReactMarkdown>}
                   {!message.content && !message.attachments?.length && '\u00A0'}
@@ -199,102 +267,12 @@ const ChatMessage = ({ message, messages, chatId, index, isEditing, isStreaming,
     );
   }
 
-  if (message.role === 'assistant') {
-    if (index > 0 && messages[index - 1]?.role !== 'user') {
-      return null;
-    }
-    
-    const { turnParts, fullContent, lastMessageInTurnIndex } = useMemo(() => {
-        const parts: React.ReactNode[] = [];
-        const textParts: string[] = [];
-        let lastIndex = index;
-        const processedToolIds = new Set<string>();
+  const isStartOfTurn = index === 0 || messages[index - 1]?.role === 'user';
 
-        for (let i = index; i < messages.length; i++) {
-            const currentMessage = messages[i];
-
-            if (currentMessage.role === 'user') {
-                break;
-            }
-
-            if (currentMessage.role === 'assistant') {
-                if (currentMessage.thinking !== undefined) { // Changed from just checking truthiness
-                    const isCurrentlyStreamingThinking = isStreaming && i === messages.length - 1;
-                    parts.push(
-                        <InlineThinking 
-                            key={`thinking-${i}`} 
-                            content={currentMessage.thinking || ''} // Ensure empty string instead of undefined
-                            isStreaming={isCurrentlyStreamingThinking}
-                        />
-                    );
-                }
-                if (currentMessage.content) {
-                    textParts.push(currentMessage.content);
-                    parts.push(
-                        <ReactMarkdown key={`text-${i}`} remarkPlugins={[remarkGfm]} components={{ code: CustomCode, p: Paragraph }}>
-                            {currentMessage.content}
-                        </ReactMarkdown>
-                    );
-                }
-            } else if (currentMessage.role === 'tool_code' && currentMessage.tool_id && !processedToolIds.has(currentMessage.tool_id)) {
-                const toolOutputMessage = messages.find(m => m.role === 'tool' && m.tool_id === currentMessage.tool_id);
-                parts.push(
-                    <CodeAnalysisBlock 
-                        key={`code-${currentMessage.tool_id}`} 
-                        toolCodeMessage={currentMessage} 
-                        toolOutputMessage={toolOutputMessage} 
-                    />
-                );
-                processedToolIds.add(currentMessage.tool_id);
-            }
-            
-            lastIndex = i;
-        }
-        
-        return {
-            turnParts: parts,
-            fullContent: textParts.join('\n\n'),
-            lastMessageInTurnIndex: lastIndex
-        };
-    }, [messages, index, isStreaming]);
-
-    const showThinkingIndicator = isThinking && isStreaming && index === messages.length - 1 && !turnParts.some(part => 
-        React.isValidElement(part) && part.key?.toString().startsWith('thinking')
-    );
-
-    if (showThinkingIndicator) {
-        turnParts.unshift(
-            <InlineThinking 
-                key="thinking-active" 
-                content=""
-                isStreaming={true}
-            />
-        );
-    }
-
-    const isStreamingInThisTurn = isStreaming && (messages.length - 1 <= lastMessageInTurnIndex);
-
-    return (
-        <div className={`chat-message-wrapper assistant ${isStreamingInThisTurn ? 'is-streaming' : ''}`}>
-            <div className="chat-message-container">
-                <div className="message-content-wrapper">
-                    <div className={`message-content ${isStreamingInThisTurn ? 'is-streaming' : 'streaming-complete'}`}>
-                        {turnParts}
-                        {isStreamingInThisTurn && <span className="streaming-cursor"></span>}
-                        {turnParts.length === 0 && !isStreamingInThisTurn && '\u00A0'}
-                    </div>
-                    {fullContent && !isStreamingInThisTurn && (
-                        <div className="message-actions">
-                            <Tooltip text="Regenerate"><button className="action-button" onClick={onRegenerate}><FiRefreshCw size={16} /></button></Tooltip>
-                            <Tooltip text="Copy"><button className="action-button" onClick={() => onCopy(fullContent)}><FiCopy size={16} /></button></Tooltip>
-                        </div>
-                    )}
-                </div>
-            </div>
-        </div>
-    );
+  if (isStartOfTurn) {
+    return <AssistantTurn chatId={chatId} messages={messages} startIndex={index} {...rest} />;
   }
-
+  
   return null;
 };
 

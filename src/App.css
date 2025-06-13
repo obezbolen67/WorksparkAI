@@ -1,49 +1,31 @@
 /* src/css/App.css */
 :root {
-  /* Default to dark theme */
-  --sidebar-bg-color: #171717;
-  --main-bg-color: #212121;
-  --input-bg-color: #212121;
-  --primary-text-color: #e5e5e5;
-  --secondary-text-color: #a0a0a0;
-  --border-color: hsl(0, 0%, 22%);
-  --button-hover-bg: #2f2f2f;
-  --assistant-message-bg: #2f2f2f;
-  /* --- NEW: Tooltip Variables --- */
-  --tooltip-bg-color: hsl(0, 0%, 15%);
-  --tooltip-text-color: #e5e5e5;
-}
-
-[data-theme="dark"] {
-  --sidebar-bg-color: #171717;
-  --code-block-header: #171717;;
-  --code-block-bg: rgb(212, 212, 212);
-  --main-bg-color: #212121;
-  --input-bg-color: #212121;
-  --primary-text-color: #e5e5e5;
-  --secondary-text-color: #a0a0a0;
-  --border-color: hsl(0, 0%, 22%);
-  --button-hover-bg: #2f2f2f;
-  --assistant-message-bg: #2f2f2f;
-  /* --- NEW: Tooltip Variables --- */
-  --tooltip-bg-color: hsl(0, 0%, 15%);
-  --tooltip-text-color: #e5e5e5;
-}
-
-[data-theme="light"] {
+  /* Default to light theme */
   --sidebar-bg-color: #f4f4f5;
   --main-bg-color: #ffffff;
   --input-bg-color: #ffffff;
   --primary-text-color: #111827;
   --secondary-text-color: #6b7280;
-  --code-block-header: #171717;;
-  --code-text: #ffffff;
   --border-color: #e5e7eb;
-  --button-hover-bg: #f4f4f5; /* Changed from #ffffff */
+  --button-hover-bg: #f4f4f5;
   --assistant-message-bg: #f4f4f5;
-  /* --- NEW: Tooltip Variables --- */
-  --tooltip-bg-color: #111827; /* Dark gray for good contrast on light bg */
+  --tooltip-bg-color: #111827;
   --tooltip-text-color: #ffffff;
+  --code-block-header: #171717;
+  --code-text: #ffffff;
+}
+
+[data-theme="dark"] {
+  --sidebar-bg-color: #171717;
+  --main-bg-color: #212121;
+  --input-bg-color: #212121;
+  --primary-text-color: #e5e5e5;
+  --secondary-text-color: #a0a0a0;
+  --border-color: hsl(0, 0%, 22%);
+  --button-hover-bg: #2f2f2f;
+  --assistant-message-bg: #2f2f2f;
+  --tooltip-bg-color: hsl(0, 0%, 15%);
+  --tooltip-text-color: #e5e5e5;
 }
 
 

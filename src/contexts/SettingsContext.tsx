@@ -54,7 +54,7 @@ export const SettingsProvider = ({ children }: { children: ReactNode }) => {
   const [models, setModels] = useState<Model[]>([]);
   
   // Initialize from localStorage as a fallback for the initial render
-  const [theme, setThemeState] = useState<Theme>(() => (localStorage.getItem('fexo-theme') as Theme) || 'dark');
+  const [theme, setThemeState] = useState<Theme>(() => (localStorage.getItem('fexo-theme') as Theme) || 'light');
 
   const updateSettings = async (settings: Partial<User>) => {
     if (!token) return;
@@ -160,9 +160,8 @@ export const SettingsProvider = ({ children }: { children: ReactNode }) => {
 
   const logout = () => {
     localStorage.removeItem('fexo-token');
-    // On logout, you might want to reset the theme to the default or keep the last one.
-    // Resetting to 'dark' is a clean approach.
-    setThemeState('dark'); 
+    // On logout, reset the theme to the default light theme.
+    setThemeState('light'); 
     setToken(null);
     setIsAuthenticated(false);
     setUser(null);

@@ -156,6 +156,58 @@
   padding: 0 12px 8px 12px;
 }
 
+/* --- START: NEW Skeleton and Animation Styles --- */
+@keyframes shimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+@keyframes fadeInList {
+  to { opacity: 1; }
+}
+
+.convo-list-loading {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.convo-list-item-skeleton {
+  width: 100%;
+  height: 35px; /* Approximate height of a NavLink */
+  border-radius: 6px;
+  background-color: var(--button-hover-bg);
+  position: relative;
+  overflow: hidden;
+}
+
+.convo-list-item-skeleton::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(90deg, 
+    transparent 25%, 
+    hsla(0, 0%, 100%, 0.1) 50%, 
+    transparent 75%
+  );
+  animation: shimmer 1.5s infinite;
+}
+
+[data-theme="light"] .convo-list-item-skeleton::after {
+   background: linear-gradient(90deg, 
+    transparent 25%, 
+    rgba(0,0,0,0.05) 50%, 
+    transparent 75%
+  );
+}
+/* --- END: NEW Skeleton and Animation Styles --- */
+
+
 .convo-list {
   list-style: none;
   padding: 0;
@@ -163,6 +215,8 @@
   display: flex;
   flex-direction: column;
   gap: 2px; /* Subtle space between items */
+  opacity: 0;
+  animation: fadeInList 0.4s 0.1s ease forwards;
 }
 
 /* --- UPDATED: Use Flexbox for layout --- */
@@ -275,6 +329,22 @@
   color: #be123c;
 }
 
+.menu-button.destructive {
+  color: #f43f5e;
+}
+
+.menu-button.destructive:hover {
+  background-color: hsla(349, 89%, 60%, 0.1);
+  color: #be123c;
+}
+
+/* --- NEW: Divider in user menu --- */
+.user-profile-menu-divider {
+  height: 1px;
+  background-color: var(--border-color);
+  margin: 0.5rem;
+}
+
 
 .sidebar-footer {
   padding: 1rem;
@@ -331,6 +401,11 @@
   cursor: pointer;
   text-align: left;
   transition: background-color 0.2s ease;
+}
+
+/* --- UPDATED: consistent icon size --- */
+.menu-button > svg {
+  font-size: 16px;
 }
 
 .menu-button:hover {

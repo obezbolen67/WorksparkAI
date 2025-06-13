@@ -1,9 +1,7 @@
 // src/components/CodeAnalysisBlock.tsx
 
 import { useState, useMemo, memo, useEffect } from 'react';
-// --- START OF THE FIX: Import new icons ---
 import { FiChevronDown, FiCheckCircle, FiXCircle, FiLoader, FiDownload, FiFileText } from 'react-icons/fi';
-// --- END OF THE FIX ---
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { vscDarkPlus, oneLight } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import { useSettings } from '../contexts/SettingsContext';
@@ -11,10 +9,13 @@ import type { Message } from '../types';
 import '../css/CodeAnalysisBlock.css';
 
 interface CodeAnalysisBlockProps {
+  chatId: string | null;
   toolCodeMessage: Message;
   toolOutputMessage?: Message;
 }
 
+// --- THE FIX ---
+// Removed `chatId` from the destructuring because it's not used in this component's logic.
 const CodeAnalysisBlock = ({ toolCodeMessage, toolOutputMessage }: CodeAnalysisBlockProps) => {
   const state = toolCodeMessage.state || 'writing';
   const [isExpanded, setIsExpanded] = useState(true);
@@ -22,9 +23,10 @@ const CodeAnalysisBlock = ({ toolCodeMessage, toolOutputMessage }: CodeAnalysisB
   const syntaxTheme = theme === 'light' ? oneLight : vscDarkPlus;
 
   useEffect(() => {
-    // Keep it expanded if it's writing, executing or has an error
     if (state === 'writing' || state === 'executing' || state === 'error') {
       setIsExpanded(true);
+    } else {
+      setIsExpanded(false);
     }
   }, [state]);
 
@@ -48,13 +50,10 @@ const CodeAnalysisBlock = ({ toolCodeMessage, toolOutputMessage }: CodeAnalysisB
   const output = toolOutputMessage?.content || '';
   const isOutputError = hasError || (state === 'completed' && output.toLowerCase().includes('error:'));
   
-  // --- START OF THE FIX ---
-  // Check for file output and prepare the data URL for download
   const fileOutput = toolOutputMessage?.fileOutput;
   const dataUrl = fileOutput
     ? `data:${fileOutput.mimeType};base64,${fileOutput.content}`
     : null;
-  // --- END OF THE FIX ---
 
   return (
     <div className={`code-analysis-container ${state} ${isExpanded ? 'expanded' : ''}`}>
@@ -108,7 +107,6 @@ const CodeAnalysisBlock = ({ toolCodeMessage, toolOutputMessage }: CodeAnalysisB
               </pre>
             </div>
           )}
-          {/* --- START OF THE FIX --- */}
           {fileOutput && dataUrl && (
              <div className="analysis-section">
                 <div className="analysis-section-title">File Output</div>
@@ -126,7 +124,6 @@ const CodeAnalysisBlock = ({ toolCodeMessage, toolOutputMessage }: CodeAnalysisB
                 </div>
              </div>
           )}
-          {/* --- END OF THE FIX --- */}
         </div>
       )}
     </div>
