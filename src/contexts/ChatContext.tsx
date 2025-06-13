@@ -397,23 +397,29 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
     editedHistory[index] = { ...editedHistory[index], content: newContent };
     setEditingIndex(null);
 
-    setMessages(editedHistory);
+    // Set the UI state to show the edited history PLUS the waiting indicator.
+    const messagesWithPlaceholder = [...editedHistory, { role: 'assistant', content: '', isWaiting: true } as Message];
+    setMessages(messagesWithPlaceholder);
+
+    // Start the stream with the correct, edited history (without the placeholder).
     await streamAndSaveResponse(activeChatId, editedHistory);
   };
 
   const regenerateResponse = async (metadata?: Record<string, any>) => {
     console.log('%c[CLIENT] Regenerate Clicked', 'color: orange; font-weight: bold;');
-    if (!activeChatId || messages.length < 1 || isStreaming || isSending) {
+    if (!activeChatId || isStreaming || isSending) {
         console.warn('[CLIENT] Regenerate cancelled:', { activeChatId, isStreaming, isSending });
         return;
     }
     
+    // Find the last user message to determine the history cutoff point.
     const lastUserIndex = messages.findLastIndex(m => m.role === 'user');
     if (lastUserIndex === -1) {
         console.error('[CLIENT] Could not find last user message for regeneration.');
         return;
     }
     
+    // The history for regeneration is everything up to and including the last user message.
     const historyForRegeneration = messages.slice(0, lastUserIndex + 1);
     console.log('[CLIENT] History prepared for regeneration:', JSON.parse(JSON.stringify(historyForRegeneration)));
     
@@ -423,7 +429,11 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
       ...metadata 
     };
     
-    setMessages(historyForRegeneration);
+    // Set the UI state to show the truncated history PLUS the waiting indicator.
+    const messagesWithPlaceholder = [...historyForRegeneration, { role: 'assistant', content: '', isWaiting: true } as Message];
+    setMessages(messagesWithPlaceholder);
+    
+    // Start the stream with the correct history (without the placeholder).
     await streamAndSaveResponse(activeChatId, historyForRegeneration, regenerationMetadata);
   };
 
