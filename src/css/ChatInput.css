@@ -187,7 +187,6 @@
   padding: 0;
 }
 
-/* --- UPDATED: Simplified layout for action buttons --- */
 .chat-input-actions {
   display: flex;
   align-items: center;
@@ -213,7 +212,6 @@
   pointer-events: auto;
 }
 
-/* --- NEW: Stop Button --- */
 .stop-button {
   border: 1px solid #ef4444;
   color: #ef4444;
@@ -233,8 +231,6 @@
   border-color: #991b1b;
   color: #991b1b;
 }
-/* --- END NEW --- */
-
 
 .chat-tools-section {
   display: flex;
@@ -329,4 +325,41 @@
   --accent-bg: rgba(139, 92, 246, 0.15);
   --accent-color: rgb(139, 92, 246);
   --accent-hover-bg: rgba(139, 92, 246, 0.2);
+}
+
+.attachment-preview-wrapper {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.attachment-file-preview {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  width: 60px;
+  height: 60px;
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+  background-color: var(--button-hover-bg);
+  padding: 4px;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.file-preview-icon {
+  font-size: 24px;
+  color: var(--secondary-text-color);
+  line-height: 1;
+}
+
+.file-preview-name {
+  font-size: 10px;
+  color: var(--secondary-text-color);
+  width: 100%;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }

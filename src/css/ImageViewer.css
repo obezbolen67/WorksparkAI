@@ -1,5 +1,6 @@
 /* src/css/ImageViewer.css */
 
+/* --- Opening Animations --- */
 @keyframes fadeInViewer {
   from { opacity: 0; }
   to { opacity: 1; }
@@ -9,6 +10,19 @@
   from { transform: scale(0.9); opacity: 0; }
   to { transform: scale(1); opacity: 1; }
 }
+
+/* --- START OF THE FIX: Closing Animations --- */
+@keyframes fadeOutViewer {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+@keyframes zoomOutViewer {
+  from { transform: scale(1); opacity: 1; }
+  to { transform: scale(0.9); opacity: 0; }
+}
+/* --- END OF THE FIX --- */
+
 
 .image-viewer-overlay {
   position: fixed;
@@ -32,6 +46,18 @@
   align-items: center;
   animation: zoomInViewer 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
+
+/* --- START OF THE FIX: Add closing animation rules --- */
+.image-viewer-overlay.closing {
+  /* Use 'forwards' to hold the final state of the animation */
+  animation: fadeOutViewer 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+.image-viewer-content.closing {
+  animation: zoomOutViewer 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+/* --- END OF THE FIX --- */
+
 
 .image-viewer-content img {
   max-width: 100%;

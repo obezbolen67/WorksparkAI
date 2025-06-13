@@ -1,6 +1,4 @@
 // src/components/ChatMessage.tsx
-
-// --- THE FIX: Removed `useRef` from the import statement ---
 import { useState, useEffect, memo, useMemo } from 'react';
 import type { Message, Attachment } from '../types';
 import api, { API_BASE_URL } from '../utils/api';
@@ -16,8 +14,8 @@ import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { vscDarkPlus, oneLight } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import CodeAnalysisBlock from './CodeAnalysisBlock';
 import InlineThinking from './InlineThinking';
+import { getFileIcon } from '../utils/fileIcons';
 
-// ... (utility components are unchanged)
 interface CodeComponentProps {
   node?: any;
   inline?: boolean;
@@ -125,10 +123,12 @@ const AuthenticatedImage = ({ chatId, attachment, onView }: { chatId: string, at
     );
 };
 
+type AssistantTurnProps = Omit<ChatMessageProps, 'message' | 'index' | 'isEditing' | 'onStartEdit' | 'onSaveEdit' | 'onCancelEdit'> & { 
+  startIndex: number;
+  onView: (src: string) => void; 
+};
 
-const AssistantTurn = memo(({ messages, chatId, startIndex, isStreaming, isThinking, onRegenerate, onCopy }: Omit<ChatMessageProps, 'message' | 'index' | 'isEditing' | 'onStartEdit' | 'onSaveEdit' | 'onCancelEdit'> & { startIndex: number }) => {
-    
-    // --- START OF THE FIX ---
+const AssistantTurn = memo(({ messages, chatId, startIndex, isStreaming, isThinking, onRegenerate, onCopy, onView }: AssistantTurnProps) => {
     const { turnParts, fullContent, lastMessageInTurnIndex } = useMemo(() => {
         const parts: React.ReactNode[] = [];
         const textParts: string[] = [];
@@ -151,7 +151,7 @@ const AssistantTurn = memo(({ messages, chatId, startIndex, isStreaming, isThink
             const currentMessage = messages[i];
 
             if (currentMessage.role === 'user') {
-                lastIndex = i - 1; // The turn ends at the message before the user's
+                lastIndex = i - 1;
                 break;
             }
 
@@ -168,7 +168,7 @@ const AssistantTurn = memo(({ messages, chatId, startIndex, isStreaming, isThink
             } else if (currentMessage.role === 'tool_code' && currentMessage.tool_id && !processedToolIds.has(currentMessage.tool_id)) {
                 flushTextBuffer(`text-before-tool-${i}`);
                 const toolOutputMessage = messages.find(m => m.role === 'tool' && m.tool_id === currentMessage.tool_id);
-                parts.push(<CodeAnalysisBlock key={`code-${currentMessage.tool_id}`} chatId={chatId} toolCodeMessage={currentMessage} toolOutputMessage={toolOutputMessage} />);
+                parts.push(<CodeAnalysisBlock key={`code-${currentMessage.tool_id}`} chatId={chatId} toolCodeMessage={currentMessage} toolOutputMessage={toolOutputMessage} onView={onView} />);
                 processedToolIds.add(currentMessage.tool_id);
             }
             
@@ -178,8 +178,7 @@ const AssistantTurn = memo(({ messages, chatId, startIndex, isStreaming, isThink
         flushTextBuffer('text-final');
         
         return { turnParts: parts, fullContent: textParts.join('\n\n'), lastMessageInTurnIndex: lastIndex };
-    }, [messages, chatId, startIndex, isStreaming]);
-    // --- END OF THE FIX ---
+    }, [messages, chatId, startIndex, isStreaming, onView]); 
 
     const showThinkingIndicator = isThinking && isStreaming && startIndex === messages.length - 1 && !turnParts.some(part => React.isValidElement(part) && part.key?.toString().startsWith('thinking'));
 
@@ -210,7 +209,6 @@ const AssistantTurn = memo(({ messages, chatId, startIndex, isStreaming, isThink
     );
 });
 
-
 interface ChatMessageProps {
   message: Message;
   messages: Message[];
@@ -231,9 +229,6 @@ const ChatMessage = ({ message, messages, chatId, index, isEditing, onStartEdit,
   const [viewerSrc, setViewerSrc] = useState<string | null>(null);
   const [isViewerOpen, setIsViewerOpen] = useState(false);
 
-  // --- THE FIX: Removed the unused ref ---
-  // const messageContentRef = useRef<HTMLDivElement>(null);
-
   useEffect(() => {
     if (isEditing) setEditedContent(message.content || '');
   }, [isEditing, message.content]);
@@ -245,22 +240,36 @@ const ChatMessage = ({ message, messages, chatId, index, isEditing, onStartEdit,
       {attachments.map(att => {
         if (!chatId || !att._id) return null;
         const key = att._id || att.gcsObjectName;
-        if (att.mimeType.startsWith('image/')) {
+        const isImage = att.mimeType.startsWith('image/');
+        
+        if (isImage) {
           return <AuthenticatedImage key={key} chatId={chatId} attachment={att} onView={handleOpenViewer} />;
         }
-        return <a key={key} href={`${API_BASE_URL}/api/files/view/${chatId}/${att._id}`} target="_blank" rel="noopener noreferrer" download={att.fileName} className="attachment-file-link">{att.fileName}</a>;
+        
+        return (
+          <a 
+            key={key} 
+            href={`${API_BASE_URL}/api/files/view/${chatId}/${att._id}`} 
+            target="_blank" 
+            rel="noopener noreferrer" 
+            download={att.fileName} 
+            className="attachment-file-link"
+          >
+            <span className="attachment-file-icon">{getFileIcon(att.mimeType)}</span>
+            <span className="attachment-file-name">{att.fileName}</span>
+          </a>
+        );
       })}
     </div>
   );
 
-  if (message.role === 'user') {
-    return (
-      <>
+  const renderMessageContent = () => {
+    if (message.role === 'user') {
+      return (
         <div className={`chat-message-wrapper user ${isEditing ? 'editing' : ''}`}>
           <div className="chat-message-container">
             <div className="user-message-bubble">
               {!isEditing ? (
-                // --- THE FIX: Removed the unused ref from the div ---
                 <div className="message-content">
                   {message.attachments && message.attachments.length > 0 && renderAttachments(message.attachments)}
                   {message.content && <ReactMarkdown remarkPlugins={[remarkGfm]} components={{ code: CustomCode, p: Paragraph }}>{message.content}</ReactMarkdown>}
@@ -283,18 +292,23 @@ const ChatMessage = ({ message, messages, chatId, index, isEditing, onStartEdit,
             )}
           </div>
         </div>
-        <ImageViewer isOpen={isViewerOpen} src={viewerSrc} alt={viewerSrc || ''} onClose={() => setIsViewerOpen(false)} />
-      </>
-    );
-  }
+      );
+    }
+    
+    const isStartOfTurn = index === 0 || messages[index - 1]?.role === 'user';
+    if (isStartOfTurn) {
+      return <AssistantTurn chatId={chatId} messages={messages} startIndex={index} {...rest} onView={handleOpenViewer} />;
+    }
+    
+    return null;
+  };
 
-  const isStartOfTurn = index === 0 || messages[index - 1]?.role === 'user';
-
-  if (isStartOfTurn) {
-    return <AssistantTurn chatId={chatId} messages={messages} startIndex={index} {...rest} />;
-  }
-  
-  return null;
+  return (
+    <>
+      {renderMessageContent()}
+      <ImageViewer isOpen={isViewerOpen} src={viewerSrc} alt={viewerSrc || ''} onClose={() => setIsViewerOpen(false)} />
+    </>
+  );
 };
 
 export default memo(ChatMessage);

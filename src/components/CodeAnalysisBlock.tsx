@@ -8,14 +8,16 @@ import { useSettings } from '../contexts/SettingsContext';
 import type { Message } from '../types';
 import '../css/CodeAnalysisBlock.css';
 
+// --- START OF THE FIX (1/2) ---
 interface CodeAnalysisBlockProps {
   chatId: string | null;
   toolCodeMessage: Message;
   toolOutputMessage?: Message;
+  onView: (src: string) => void; // Add the onView prop
 }
 
-// Removed `chatId` from the destructuring because it's not used in this component's logic.
-const CodeAnalysisBlock = ({ toolCodeMessage, toolOutputMessage }: CodeAnalysisBlockProps) => {
+const CodeAnalysisBlock = ({ toolCodeMessage, toolOutputMessage, onView }: CodeAnalysisBlockProps) => {
+// --- END OF THE FIX (1/2) ---
   const state = toolCodeMessage.state || 'writing';
   const [isExpanded, setIsExpanded] = useState(true);
   const { theme } = useSettings();
@@ -54,9 +56,8 @@ const CodeAnalysisBlock = ({ toolCodeMessage, toolOutputMessage }: CodeAnalysisB
     ? `data:${fileOutput.mimeType};base64,${fileOutput.content}`
     : null;
 
-  // --- START OF THE FIX ---
+  const isImage = fileOutput?.mimeType.startsWith('image/');
 
-  // Create reusable components for the output and file sections
   const OutputSection = (toolOutputMessage || ['executing', 'completed', 'error'].includes(state)) ? (
     <div className="analysis-section">
       <div className="analysis-section-title">
@@ -69,23 +70,32 @@ const CodeAnalysisBlock = ({ toolCodeMessage, toolOutputMessage }: CodeAnalysisB
     </div>
   ) : null;
 
+  // --- START OF THE FIX (2/2) ---
   const FileSection = fileOutput && dataUrl ? (
      <div className="analysis-section">
         <div className="analysis-section-title">File Output</div>
-        <div className="file-output-content">
-          <FiFileText size={18} className="file-icon" />
-          <span className="file-name">{fileOutput.fileName}</span>
-          <a 
-            href={dataUrl} 
-            download={fileOutput.fileName}
-            className="download-button"
-          >
-            <FiDownload size={16} />
-            <span>Download</span>
-          </a>
-        </div>
+        {isImage ? (
+          // Make the wrapper a button and call `onView` when clicked
+          <button onClick={() => onView(dataUrl)} className="file-output-image-wrapper">
+            <img src={dataUrl} alt={fileOutput.fileName} className="file-output-image" />
+          </button>
+        ) : (
+          <div className="file-output-content">
+            <FiFileText size={18} className="file-icon" />
+            <span className="file-name">{fileOutput.fileName}</span>
+            <a 
+              href={dataUrl} 
+              download={fileOutput.fileName}
+              className="download-button"
+            >
+              <FiDownload size={16} />
+              <span>Download</span>
+            </a>
+          </div>
+        )}
      </div>
   ) : null;
+  // --- END OF THE FIX (2/2) ---
 
   return (
     <div className={`code-analysis-container ${state} ${isExpanded ? 'expanded' : ''}`}>
@@ -141,7 +151,6 @@ const CodeAnalysisBlock = ({ toolCodeMessage, toolOutputMessage }: CodeAnalysisB
       )}
     </div>
   );
-  // --- END OF THE FIX ---
 };
 
 export default memo(CodeAnalysisBlock);

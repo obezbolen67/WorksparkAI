@@ -225,6 +225,36 @@
   text-overflow: ellipsis;
   min-width: 100px;
 }
+
+.file-output-image-wrapper {
+  /* Reset button styles */
+  border: none;
+  background: none;
+  cursor: pointer;
+  width: 100%;
+  
+  /* Layout styles */
+  display: block;
+  padding: 0.75rem;
+  background-color: var(--main-bg-color);
+  transition: transform 0.2s ease, opacity 0.2s ease;
+}
+
+.file-output-image-wrapper:hover {
+  opacity: 0.9;
+  transform: scale(1.01);
+}
+
+.file-output-image {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  border-radius: 6px;
+  margin: 0 auto; /* Center the image if it's smaller than the container */
+  border: 1px solid var(--border-color);
+  background-color: white; /* Add a white background for plots with transparency */
+}
+
 .download-button {
   display: flex;
   align-items: center;

@@ -8,10 +8,11 @@ import '../css/ChatInput.css';
 import Tooltip from './Tooltip';
 import { useSettings } from '../contexts/SettingsContext';
 import { useNotification } from '../contexts/NotificationContext';
+import { getFileIcon } from '../utils/fileIcons';
 
 interface ChatInputProps {
   onSendMessage: (text: string, attachments: Attachment[]) => void;
-  onStopGeneration: () => void; // <-- NEW
+  onStopGeneration: () => void;
   isSending: boolean;
   isThinkingVisible: boolean;
   onToggleThinking: () => void;
@@ -31,7 +32,7 @@ const ChatInput = ({ onSendMessage, onStopGeneration, isSending, isThinkingVisib
   const plusButtonRef = useRef<HTMLButtonElement>(null);
 
   const hasContent = text.trim().length > 0 || selectedFiles.length > 0;
-  const isGenerating = isSending; // Simplified name for clarity
+  const isGenerating = isSending;
 
   useEffect(() => {
     if (!isMenuOpen) return;
@@ -106,7 +107,6 @@ const ChatInput = ({ onSendMessage, onStopGeneration, isSending, isThinkingVisib
   };
 
   const adjustTextareaHeight = () => {
-    // ... (no changes in this function)
     const textarea = textareaRef.current;
     if (!textarea) return;
     const hiddenDiv = document.createElement('div');
@@ -152,16 +152,28 @@ const ChatInput = ({ onSendMessage, onStopGeneration, isSending, isThinkingVisib
     <div className="chat-input-container">
       {selectedFiles.length > 0 && (
         <div className="attachment-preview-area">
-          {selectedFiles.map((file, index) => (
-            <div key={index} className="attachment-thumbnail">
-              <img src={URL.createObjectURL(file)} alt={file.name} />
-              <Tooltip text={`Remove ${file.name}`}>
-                <button onClick={() => removeFile(file)} className="remove-attachment-btn">
-                  <FiX size={14} />
-                </button>
-              </Tooltip>
-            </div>
-          ))}
+          {selectedFiles.map((file, index) => {
+            const isImage = file.type.startsWith('image/');
+            return (
+              <div key={index} className="attachment-preview-wrapper">
+                {isImage ? (
+                  <div className="attachment-thumbnail">
+                    <img src={URL.createObjectURL(file)} alt={file.name} />
+                  </div>
+                ) : (
+                  <div className="attachment-file-preview">
+                    <div className="file-preview-icon">{getFileIcon(file.type)}</div>
+                    <span className="file-preview-name">{file.name}</span>
+                  </div>
+                )}
+                <Tooltip text={`Remove ${file.name}`}>
+                  <button onClick={() => removeFile(file)} className="remove-attachment-btn">
+                    <FiX size={14} />
+                  </button>
+                </Tooltip>
+              </div>
+            );
+          })}
         </div>
       )}
 
@@ -216,7 +228,6 @@ const ChatInput = ({ onSendMessage, onStopGeneration, isSending, isThinkingVisib
           rows={1}
           disabled={isGenerating}
         />
-        {/* --- UPDATED: Conditional rendering for Send/Stop/Mic buttons --- */}
         <div className="chat-input-actions">
           {isGenerating ? (
             <Tooltip text="Stop generating">

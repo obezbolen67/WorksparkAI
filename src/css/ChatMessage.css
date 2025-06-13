@@ -42,18 +42,6 @@
   box-shadow: 0 4px 12px rgba(0,0,0,0.2);
 }
 
-.attachment-file-link {
-  display: block;
-  padding: 8px 12px;
-  background-color: var(--button-hover-bg);
-  border-radius: 8px;
-  text-decoration: none;
-  color: var(--secondary-text-color);
-  font-size: 0.9rem;
-  text-align: center;
-  border: 1px solid var(--border-color);
-}
-
 .message-actions {
   display: flex;
   gap: 0.5rem;
@@ -86,21 +74,17 @@
   color: var(--primary-text-color);
 }
 
-/* --- START OF THE FIX --- */
 .assistant .message-content-wrapper {
   flex-grow: 1;
   position: relative;
   padding-bottom: 32px; 
-  min-width: 0; /* Prevents wide content like code blocks from breaking the flex layout */
+  min-width: 0;
 }
-/* --- END OF THE FIX --- */
 
-/* The thinking indicator wrapper shouldn't have the default bottom padding */
 .message-content-wrapper.is-thinking {
   padding-bottom: 0;
 }
 
-/* --- UPDATED: Inline Thinking Indicator Styles --- */
 @keyframes shimmer {
   0% { background-position: -200% center; }
   100% { background-position: 200% center; }
@@ -122,17 +106,16 @@
 
 .inline-thinking-indicator {
   display: flex;
-  justify-content: flex-start; /* Changed */
+  justify-content: flex-start;
   align-items: center;
   color: var(--secondary-text-color);
-  /* font-style: italic; Removed */
   padding: 10px 14px;
 }
 
 .thinking-indicator-header {
   display: flex;
   align-items: center;
-  gap: 8px; /* Increased gap to fit button */
+  gap: 8px;
 }
 
 .expand-thinking-button {
@@ -155,9 +138,9 @@
 
 .thinking-content-details {
   max-height: 0;
-  overflow-y: auto; /* Changed to auto for scrolling if needed */
+  overflow-y: auto;
   transition: max-height 0.3s ease-in-out, padding-top 0.3s ease-in-out, padding-bottom 0.3s ease-in-out, border-top-width 0.3s ease-in-out;
-  padding: 0 14px 0 24px; /* Added more left padding for the border */
+  padding: 0 14px 0 24px;
   background-color: var(--code-block-header);
   color: var(--secondary-text-color);
   font-size: 0.9em;
@@ -168,7 +151,6 @@
   position: relative;
 }
 
-/* Vertical line for expanded content */
 .thinking-content-details::before {
   content: '';
   position: absolute;
@@ -223,7 +205,6 @@
   }
 }
 
-/* Base Message Content Styles */
 .message-content {
   line-height: 1.6;
   white-space: pre-wrap;
@@ -238,7 +219,6 @@
   flex-grow: 1;
 }
 
-/* Markdown Element Styling */
 .message-content > :first-child { margin-top: 0; }
 .message-content > :last-child { margin-bottom: 0; }
 .message-content p, .message-content ul, .message-content ol, .message-content blockquote,
@@ -286,7 +266,6 @@
   white-space: pre-wrap;
 }
 
-/* Code Block Styling */
 .code-block-wrapper {
   background-color: #0d1117;
   border-radius: 8px;
@@ -337,14 +316,12 @@
   word-break: inherit !important;
 }
 
-/* Assistant Actions */
 .assistant .message-actions {
   position: absolute;
   left: 0;
   bottom: 0;
 }
 
-/* User Message Styling */
 .user .chat-message-container { flex-direction: column; align-items: flex-end; gap: 0.5rem; }
 .user-message-bubble {
   background-color: #2f2f2f;
@@ -370,9 +347,6 @@
   width: max(var(--initial-width, auto), 300px);
   min-height: var(--initial-height, 26px);
 }
-
-
-
 .user.editing .message-content { opacity: 0; position: absolute; pointer-events: none; }
 .message-editor-content { opacity: 0; transform: translateY(10px); transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); transition-delay: 0.1s; display: flex; flex-direction: column; gap: 1rem; width: 100%; min-height: var(--initial-height, 26px); }
 .user.editing .message-editor-content { opacity: 1; transform: translateY(0); }
@@ -389,7 +363,6 @@
 .user .message-actions { position: static; transition: opacity 0.2s ease-in-out, transform 0.2s ease-in-out; }
 .user.editing .message-actions { opacity: 0; transform: scale(0.8); pointer-events: none; }
 
-/* Streaming Cursor */
 @keyframes blink { 50% { opacity: 0; } }
 .streaming-cursor {
   display: block;
@@ -402,16 +375,12 @@
   margin-top: 4px;
 }
 
-/* Gentle Pulse for Executing Code */
 .chat-message-wrapper.assistant .message-content:has(.code-analysis-container.executing) { animation: gentlePulse 2s ease-in-out infinite; }
 @keyframes gentlePulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.9; } }
 
-/* Image Placeholders */
 .attachment-image-wrapper.loading, .attachment-image-wrapper.error { background-color: var(--button-hover-bg); display: flex; align-items: center; justify-content: center; color: var(--secondary-text-color); font-size: 0.8rem; padding: 8px; box-sizing: border-box; text-align: center; line-height: 1.2; border: 1px solid var(--border-color); }
 .attachment-image-wrapper.error { background-color: rgba(239, 68, 68, 0.1); color: #f87171; border-color: rgba(239, 68, 68, 0.3); }
 
-
-/* --- THEME OVERRIDES --- */
 [data-theme="light"] .assistant .message-content,
 [data-theme="light"] .streaming-cursor { color: var(--primary-text-color); }
 [data-theme="light"] .user-message-bubble { background-color: var(--assistant-message-bg); color: var(--primary-text-color); }
@@ -422,7 +391,6 @@
 [data-theme="light"] .editor-button.save { background-color: var(--primary-text-color); color: var(--main-bg-color); }
 [data-theme="light"] .editor-button.save:hover { background-color: #374151; }
 
-/* Light Theme Markdown Overrides */
 [data-theme="light"] .message-content a { color: #2563eb; }
 [data-theme="light"] .message-content a:hover { color: #3b82f6; }
 [data-theme="light"] .message-content table { border-color: var(--border-color); }
@@ -436,8 +404,38 @@
 [data-theme="light"] .code-block-header .copy-code-button { color: var(--code-text); }
 [data-theme="light"] .code-block-header .copy-code-button:hover { background-color: #374151; color: var(--main-bg-color); }
 
-/* --- THEME-AWARE THINKING CONTENT --- */
 [data-theme="light"] .thinking-content-details {
   background-color: var(--assistant-message-bg);
   color: var(--secondary-text-color);
+}
+
+.attachment-file-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background-color: var(--button-hover-bg);
+  border-radius: 8px;
+  text-decoration: none;
+  font-size: 0.9rem;
+  border: 1px solid var(--border-color);
+  color: var(--primary-text-color);
+  transition: background-color 0.2s;
+}
+
+.attachment-file-link:hover {
+  background-color: var(--main-bg-color);
+}
+
+.attachment-file-icon {
+  font-size: 18px;
+  color: var(--secondary-text-color);
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.attachment-file-name {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
