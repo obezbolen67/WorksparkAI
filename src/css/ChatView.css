@@ -54,7 +54,9 @@
 .loading-overlay {
   position: absolute;
   inset: 0;
-  background-color: hsla(240, 5%, 13%, 0.7);
+  /* --- THIS IS THE FIX --- */
+  /* The background color is now transparent, removing the black tint. */
+  background-color: transparent;
   backdrop-filter: blur(4px);
   display: flex;
   justify-content: center;
