@@ -150,14 +150,21 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
                                     setIsThinking(true);
                                     setThinkingContent('');
                                     currentAssistantThinking = '';
-                                    const lastMessage = newMessages[newMessages.length - 1];
-                                    const needsNewMessage = assistantMessageIndex === -1 || (lastMessage && (lastMessage.role === 'tool' || lastMessage.role === 'tool_code' || lastMessage.role === 'user'));
-                                    if (needsNewMessage) {
-                                        assistantMessageIndex = newMessages.length;
-                                        newMessages.push({ role: 'assistant', content: '', thinking: '' });
+                                    const lastMessageIndex = newMessages.length - 1;
+                                    const lastMessage = newMessages[lastMessageIndex];
+
+                                    if (lastMessage?.isWaiting) {
+                                        assistantMessageIndex = lastMessageIndex;
+                                        newMessages[lastMessageIndex] = { role: 'assistant', content: '', thinking: '' };
                                     } else {
-                                        const currentMsg = newMessages[assistantMessageIndex];
-                                        if (currentMsg) newMessages[assistantMessageIndex] = { ...currentMsg, thinking: '' };
+                                        const needsNewMessage = assistantMessageIndex === -1 || (lastMessage && (lastMessage.role === 'tool' || lastMessage.role === 'tool_code' || lastMessage.role === 'user'));
+                                        if (needsNewMessage) {
+                                            assistantMessageIndex = newMessages.length;
+                                            newMessages.push({ role: 'assistant', content: '', thinking: '' });
+                                        } else {
+                                            const currentMsg = newMessages[assistantMessageIndex];
+                                            if (currentMsg) newMessages[assistantMessageIndex] = { ...currentMsg, thinking: '' };
+                                        }
                                     }
                                     return newMessages;
                                 });
@@ -179,8 +186,13 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
                               case 'ASSISTANT_START':
                                 setMessages(prev => {
                                     const newMessages = [...prev];
+                                    const lastMessageIndex = newMessages.length - 1;
                                     const lastMessage = newMessages[newMessages.length - 1];
-                                    if (assistantMessageIndex === -1 || (lastMessage && (lastMessage.role === 'tool' || lastMessage.role === 'tool_code' || lastMessage.role === 'user'))) {
+
+                                    if (lastMessage?.isWaiting) {
+                                      assistantMessageIndex = lastMessageIndex;
+                                      newMessages[lastMessageIndex] = { role: 'assistant', content: '', thinking: currentAssistantThinking || undefined };
+                                    } else if (assistantMessageIndex === -1 || (lastMessage && (lastMessage.role === 'tool' || lastMessage.role === 'tool_code' || lastMessage.role === 'user'))) {
                                         assistantMessageIndex = newMessages.length;
                                         newMessages.push({ role: 'assistant', content: '', thinking: currentAssistantThinking || undefined });
                                     }
@@ -201,11 +213,9 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
                                          // Combine the content
                                          let newContent = (currentMsg.content || '') + event.content;
                                          
-                                         // --- START OF THE FIX ---
                                          // Normalize any sequence of 2+ newlines into a single newline
                                          // This prevents unwanted paragraph breaks during streaming.
                                          newContent = newContent.replace(/\n{2,}/g, '\n');
-                                         // --- END OF THE FIX ---
                                          
                                          newMessages[assistantMessageIndex] = { 
                                              ...currentMsg, 
@@ -300,6 +310,8 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
           setIsStreaming(false);
           setIsThinking(false);
           setThinkingContent(null);
+          // Clean up any lingering waiting message on error/abort
+          setMessages(prev => prev.filter(m => !m.isWaiting));
           streamAbortControllerRef.current = null;
           await loadChatList();
       }
@@ -324,11 +336,16 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
         setActiveChatId(newChat._id);
         navigate(`/c/${newChat._id}`, { replace: true });
         
-        setMessages(newChat.messages); 
+        // Add placeholder to the messages received from the server
+        const messagesWithPlaceholder = [...newChat.messages, { role: 'assistant', content: '', isWaiting: true } as Message];
+        setMessages(messagesWithPlaceholder); 
+        // Send original messages to stream function
         await streamAndSaveResponse(newChat._id, newChat.messages, metadata);
       } else {
         const updatedMessages = [...messages, userMessage];
-        setMessages(updatedMessages);
+        const messagesWithPlaceholder = [...updatedMessages, { role: 'assistant', content: '', isWaiting: true } as Message];
+        setMessages(messagesWithPlaceholder);
+        // Send original messages to stream function
         await streamAndSaveResponse(activeChatId, updatedMessages, metadata);
       }
     } catch (error) {

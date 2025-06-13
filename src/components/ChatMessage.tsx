@@ -128,7 +128,24 @@ type AssistantTurnProps = Omit<ChatMessageProps, 'message' | 'index' | 'isEditin
   onView: (src: string) => void; 
 };
 
-const AssistantTurn = memo(({ messages, chatId, startIndex, isStreaming, isThinking, onRegenerate, onCopy, onView }: AssistantTurnProps) => {
+const AssistantTurn = memo(({ messages, chatId, startIndex, isStreaming, isThinking, onRegenerate, onCopy, onView }: AssistantTurnProps) => { 
+    const firstMessageOfTurn = messages[startIndex];
+    if (firstMessageOfTurn?.isWaiting) {
+      return (
+        <div className="chat-message-wrapper assistant">
+            <div className="chat-message-container">
+                <div className="message-content-wrapper">
+                    <div className="waiting-indicator">
+                        <div className="dot"></div>
+                        <div className="dot"></div>
+                        <div className="dot"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+      );
+    }
+
     const { turnParts, fullContent, lastMessageInTurnIndex } = useMemo(() => {
         const parts: React.ReactNode[] = [];
         const textParts: string[] = [];
