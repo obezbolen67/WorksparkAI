@@ -11,7 +11,7 @@ import { useNotification } from '../contexts/NotificationContext';
 import { getFileIcon } from '../utils/fileIcons';
 
 interface ChatInputProps {
-  onSendMessage: (text: string, attachments: Attachment[]) => void;
+  onSendMessage: (text: string, attachments: Attachment[], metadata: { isThinkingEnabled: boolean }) => void;
   onStopGeneration: () => void;
   isSending: boolean;
   isThinkingVisible: boolean;
@@ -90,7 +90,7 @@ const ChatInput = ({ onSendMessage, onStopGeneration, isSending, isThinkingVisib
       const uploadPromises = selectedFiles.map(file => uploadFile(file));
       const uploadResults = await Promise.all(uploadPromises);
       const newAttachments: Attachment[] = uploadResults.map(result => result.file);
-      onSendMessage(text, newAttachments);
+      onSendMessage(text, newAttachments, { isThinkingEnabled: isThinkingVisible });
       setText('');
       setSelectedFiles([]);
     } catch (error) {

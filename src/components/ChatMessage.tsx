@@ -1,4 +1,3 @@
-// src/components/ChatMessage.tsx
 import { useState, useEffect, memo, useMemo } from 'react';
 import type { Message, Attachment } from '../types';
 import api, { API_BASE_URL } from '../utils/api';
@@ -128,7 +127,7 @@ type AssistantTurnProps = Omit<ChatMessageProps, 'message' | 'index' | 'isEditin
   onView: (src: string) => void; 
 };
 
-const AssistantTurn = memo(({ messages, chatId, startIndex, isStreaming, isThinking, onRegenerate, onCopy, onView }: AssistantTurnProps) => { 
+const AssistantTurn = memo(({ messages, chatId, startIndex, isStreaming, onRegenerate, onCopy, onView }: AssistantTurnProps) => { 
     const firstMessageOfTurn = messages[startIndex];
     if (firstMessageOfTurn?.isWaiting) {
       return (
@@ -197,12 +196,6 @@ const AssistantTurn = memo(({ messages, chatId, startIndex, isStreaming, isThink
         return { turnParts: parts, fullContent: textParts.join('\n\n'), lastMessageInTurnIndex: lastIndex };
     }, [messages, chatId, startIndex, isStreaming, onView]); 
 
-    const showThinkingIndicator = isThinking && isStreaming && startIndex === messages.length - 1 && !turnParts.some(part => React.isValidElement(part) && part.key?.toString().startsWith('thinking'));
-
-    if (showThinkingIndicator) {
-        turnParts.unshift(<InlineThinking key="thinking-active" content="" isStreaming={true} />);
-    }
-
     const isStreamingInThisTurn = isStreaming && (messages.length - 1 <= lastMessageInTurnIndex);
 
     return (
@@ -233,7 +226,6 @@ interface ChatMessageProps {
   index: number;
   isEditing: boolean;
   isStreaming: boolean;
-  isThinking: boolean;
   onRegenerate: () => void;
   onCopy: (content: string) => void;
   onStartEdit: (index: number) => void;

@@ -1,4 +1,3 @@
-// src/contexts/ChatContext.tsx
 import { createContext, useContext, useState, useCallback, useEffect, ReactNode, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import type { Message, Attachment } from '../types';
@@ -170,28 +169,30 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
                                 });
                                 break;
                               case 'THINKING_DELTA':
-                                  currentAssistantThinking += event.content;
-                                  setThinkingContent(prev => (prev || '') + event.content);
-                                  setMessages(prev => {
-                                      const newMessages = [...prev];
-                                      if (assistantMessageIndex >= 0 && assistantMessageIndex < newMessages.length) {
-                                          newMessages[assistantMessageIndex] = { ...newMessages[assistantMessageIndex], thinking: currentAssistantThinking };
-                                      }
-                                      return newMessages;
-                                  });
-                                  break;
+                                currentAssistantThinking += event.content;
+                                setMessages(prev => {
+                                    const newMessages = [...prev];
+                                    if (assistantMessageIndex >= 0 && assistantMessageIndex < newMessages.length) {
+                                        newMessages[assistantMessageIndex] = { 
+                                            ...newMessages[assistantMessageIndex], 
+                                            thinking: currentAssistantThinking 
+                                        };
+                                    }
+                                    return newMessages;
+                                });
+                                break;
+
                               case 'THINKING_END':
                                   setIsThinking(false);
                                   break;
                               case 'ASSISTANT_START':
                                 setMessages(prev => {
                                     const newMessages = [...prev];
-                                    const lastMessageIndex = newMessages.length - 1;
                                     const lastMessage = newMessages[newMessages.length - 1];
 
                                     if (lastMessage?.isWaiting) {
-                                      assistantMessageIndex = lastMessageIndex;
-                                      newMessages[lastMessageIndex] = { role: 'assistant', content: '', thinking: currentAssistantThinking || undefined };
+                                      assistantMessageIndex = newMessages.length - 1;
+                                      newMessages[assistantMessageIndex] = { role: 'assistant', content: '', thinking: currentAssistantThinking || undefined };
                                     } else if (assistantMessageIndex === -1 || (lastMessage && (lastMessage.role === 'tool' || lastMessage.role === 'tool_code' || lastMessage.role === 'user'))) {
                                         assistantMessageIndex = newMessages.length;
                                         newMessages.push({ role: 'assistant', content: '', thinking: currentAssistantThinking || undefined });
@@ -221,15 +222,6 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
                                 break;
 
                               case 'ASSISTANT_COMPLETE':
-                                  if (event.thinking !== undefined) {
-                                      setMessages(prev => {
-                                          const newMessages = [...prev];
-                                          if (assistantMessageIndex >= 0 && assistantMessageIndex < newMessages.length) {
-                                              newMessages[assistantMessageIndex] = { ...newMessages[assistantMessageIndex], thinking: event.thinking || undefined };
-                                          }
-                                          return newMessages;
-                                      });
-                                  }
                                   currentAssistantThinking = '';
                                   assistantMessageIndex = -1;
                                   break;
@@ -379,12 +371,25 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
 
   const saveAndSubmitEdit = async (index: number, newContent: string) => {
     if (!activeChatId) return;
-    const editedHistory = messages.slice(0, index + 1);
-    editedHistory[index] = { ...editedHistory[index], content: newContent };
+
+    // --- START: MODIFIED LOGIC FOR EDIT ---
+    // 1. Slice the history to ONLY include messages up to the edited one.
+    const historyUpToEdit = messages.slice(0, index);
+    
+    // 2. Create the new user message with the updated content.
+    const updatedUserMessage: Message = { ...messages[index], content: newContent };
+    
+    // 3. Combine them to form the new history to be sent to the server.
+    const newHistoryForStream = [...historyUpToEdit, updatedUserMessage];
+    
+    // 4. Update the UI to reflect the change and show a waiting indicator.
+    const messagesForUi = [...newHistoryForStream, { role: 'assistant', content: '', isWaiting: true } as Message];
+    setMessages(messagesForUi);
     setEditingIndex(null);
-    const messagesWithPlaceholder = [...editedHistory, { role: 'assistant', content: '', isWaiting: true } as Message];
-    setMessages(messagesWithPlaceholder);
-    await streamAndSaveResponse(activeChatId, editedHistory);
+    
+    // 5. Call the stream function with the correct, truncated history.
+    await streamAndSaveResponse(activeChatId, newHistoryForStream, { isRegeneration: true });
+    // --- END: MODIFIED LOGIC FOR EDIT ---
   };
 
   const regenerateResponse = async (metadata?: Record<string, any>) => {
