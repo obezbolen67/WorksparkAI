@@ -1,3 +1,5 @@
+// src/contexts/ChatContext.tsx
+
 import { createContext, useContext, useState, useCallback, useEffect, ReactNode, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import type { Message, Attachment } from '../types';
@@ -129,8 +131,16 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
 
                       try {
                           const event = JSON.parse(jsonString);
-
-                          if (event.type === 'error') throw new Error(event.error.message || event.error);
+                          
+                          // --- START OF THE FIX ---
+                          // We now check for a server-sent error event first.
+                          // If found, we throw a new error with the server's message.
+                          // This will be caught by the outer `catch` block, which handles notifications.
+                          if (event.type === 'error') {
+                            const errorMessage = event.error?.message || (typeof event.error === 'string' ? event.error : "An unknown error occurred on the server.");
+                            throw new Error(errorMessage);
+                          }
+                          // --- END OF THE FIX ---
                           
                           switch (event.type) {
                               case 'USER_MESSAGE_ACK':
@@ -273,6 +283,10 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
                           }
                       } catch (error) {
                           console.error("[CLIENT] SSE Parse Error:", { jsonString, error });
+                          // --- START OF THE FIX ---
+                          // Also throw an error here to notify the user of a malformed response.
+                          throw new Error("Received a malformed response from the server.");
+                          // --- END OF THE FIX ---
                       }
                   }
                   boundary = buffer.indexOf('\n\n');
@@ -372,24 +386,13 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
   const saveAndSubmitEdit = async (index: number, newContent: string) => {
     if (!activeChatId) return;
 
-    // --- START: MODIFIED LOGIC FOR EDIT ---
-    // 1. Slice the history to ONLY include messages up to the edited one.
     const historyUpToEdit = messages.slice(0, index);
-    
-    // 2. Create the new user message with the updated content.
     const updatedUserMessage: Message = { ...messages[index], content: newContent };
-    
-    // 3. Combine them to form the new history to be sent to the server.
     const newHistoryForStream = [...historyUpToEdit, updatedUserMessage];
-    
-    // 4. Update the UI to reflect the change and show a waiting indicator.
     const messagesForUi = [...newHistoryForStream, { role: 'assistant', content: '', isWaiting: true } as Message];
     setMessages(messagesForUi);
     setEditingIndex(null);
-    
-    // 5. Call the stream function with the correct, truncated history.
     await streamAndSaveResponse(activeChatId, newHistoryForStream, { isRegeneration: true });
-    // --- END: MODIFIED LOGIC FOR EDIT ---
   };
 
   const regenerateResponse = async (metadata?: Record<string, any>) => {

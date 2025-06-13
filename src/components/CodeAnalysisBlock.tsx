@@ -6,18 +6,17 @@ import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { vscDarkPlus, oneLight } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import { useSettings } from '../contexts/SettingsContext';
 import type { Message } from '../types';
+import Tooltip from './Tooltip';
 import '../css/CodeAnalysisBlock.css';
 
-// --- START OF THE FIX (1/2) ---
 interface CodeAnalysisBlockProps {
   chatId: string | null;
   toolCodeMessage: Message;
   toolOutputMessage?: Message;
-  onView: (src: string) => void; // Add the onView prop
+  onView: (src: string) => void;
 }
 
 const CodeAnalysisBlock = ({ toolCodeMessage, toolOutputMessage, onView }: CodeAnalysisBlockProps) => {
-// --- END OF THE FIX (1/2) ---
   const state = toolCodeMessage.state || 'writing';
   const [isExpanded, setIsExpanded] = useState(true);
   const { theme } = useSettings();
@@ -58,6 +57,19 @@ const CodeAnalysisBlock = ({ toolCodeMessage, toolOutputMessage, onView }: CodeA
 
   const isImage = fileOutput?.mimeType.startsWith('image/');
 
+  // --- START OF THE FIX ---
+  // A helper function to programmatically trigger a file download.
+  const handleDownload = () => {
+    if (!dataUrl || !fileOutput) return;
+    const link = document.createElement('a');
+    link.href = dataUrl;
+    link.download = fileOutput.fileName;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+  // --- END OF THE FIX ---
+
   const OutputSection = (toolOutputMessage || ['executing', 'completed', 'error'].includes(state)) ? (
     <div className="analysis-section">
       <div className="analysis-section-title">
@@ -70,32 +82,49 @@ const CodeAnalysisBlock = ({ toolCodeMessage, toolOutputMessage, onView }: CodeA
     </div>
   ) : null;
 
-  // --- START OF THE FIX (2/2) ---
   const FileSection = fileOutput && dataUrl ? (
      <div className="analysis-section">
         <div className="analysis-section-title">File Output</div>
         {isImage ? (
-          // Make the wrapper a button and call `onView` when clicked
-          <button onClick={() => onView(dataUrl)} className="file-output-image-wrapper">
-            <img src={dataUrl} alt={fileOutput.fileName} className="file-output-image" />
-          </button>
+          <div className="image-output-container">
+            <button onClick={() => onView(dataUrl)} className="file-output-image-wrapper">
+              <img src={dataUrl} alt={fileOutput.fileName} className="file-output-image" />
+            </button>
+            <div className="file-output-actions">
+              <Tooltip text={fileOutput.fileName}>
+                {/* --- START OF THE FIX --- */}
+                {/* Replaced <a> tag with a <button> to prevent default tooltips */}
+                <button
+                  onClick={handleDownload}
+                  className="download-button"
+                >
+                  <FiDownload size={14} />
+                  <span>Download</span>
+                </button>
+                {/* --- END OF THE FIX --- */}
+              </Tooltip>
+            </div>
+          </div>
         ) : (
           <div className="file-output-content">
-            <FiFileText size={18} className="file-icon" />
+            <FiFileText size={20} className="file-icon" />
             <span className="file-name">{fileOutput.fileName}</span>
-            <a 
-              href={dataUrl} 
-              download={fileOutput.fileName}
-              className="download-button"
-            >
-              <FiDownload size={16} />
-              <span>Download</span>
-            </a>
+            <Tooltip text={fileOutput.fileName}>
+              {/* --- START OF THE FIX --- */}
+              {/* Also replaced this <a> tag with a <button> */}
+              <button
+                onClick={handleDownload}
+                className="download-button"
+              >
+                <FiDownload size={14} />
+                <span>Download</span>
+              </button>
+              {/* --- END OF THE FIX --- */}
+            </Tooltip>
           </div>
         )}
      </div>
   ) : null;
-  // --- END OF THE FIX (2/2) ---
 
   return (
     <div className={`code-analysis-container ${state} ${isExpanded ? 'expanded' : ''}`}>
@@ -117,10 +146,6 @@ const CodeAnalysisBlock = ({ toolCodeMessage, toolOutputMessage, onView }: CodeA
                   style={syntaxTheme}
                   language="python"
                   PreTag="div"
-                  customStyle={{
-                    maxWidth: '100%',
-                    overflow: 'auto',
-                  }}
                 >
                   {code}
                 </SyntaxHighlighter>
@@ -129,11 +154,6 @@ const CodeAnalysisBlock = ({ toolCodeMessage, toolOutputMessage, onView }: CodeA
                   <pre className="analysis-output-text">
                     {isWriting && <span className="streaming-cursor"></span>}
                   </pre>
-                </div>
-              )}
-              {isWriting && code && (
-                <div className="code-streaming-indicator">
-                  <span className="streaming-cursor"></span>
                 </div>
               )}
             </div>
