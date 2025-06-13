@@ -86,12 +86,6 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
       messageHistory: Message[], 
       metadata?: Record<string, any>
   ) => {
-      // console.log('%c[CLIENT] Starting Stream', 'color: blue; font-weight: bold;', {
-      //     chatId,
-      //     messageHistory: JSON.parse(JSON.stringify(messageHistory)),
-      //     metadata,
-      // });
-
       streamAbortControllerRef.current = new AbortController();
 
       setIsStreaming(true);
@@ -120,10 +114,7 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
           let buffer = '';
           while (true) {
               const { done, value } = await reader.read();
-              if (done) {
-                  // console.log('%c[CLIENT] Stream Finished', 'color: blue; font-weight: bold;');
-                  break;
-              }
+              if (done) break;
 
               buffer += decoder.decode(value, { stream: true });
               let boundary = buffer.indexOf('\n\n');
@@ -143,26 +134,16 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
                           if (event.type === 'error') throw new Error(event.error.message || event.error);
                           
                           switch (event.type) {
-                              // --- START OF FIX ---
                               case 'USER_MESSAGE_ACK':
                                   setMessages(prev => {
                                       const newMessages = [...prev];
-                                      // Find the last user message in the state, which is the one
-                                      // we optimistically added and now need to update.
-                                      const lastUserMessageIndex = newMessages.findLastIndex(
-                                          m => m.role === 'user'
-                                      );
-
+                                      const lastUserMessageIndex = newMessages.findLastIndex(m => m.role === 'user');
                                       if (lastUserMessageIndex !== -1) {
-                                          // console.log('%c[CLIENT] User Message ACK received, updating message with new IDs.', 'color: #22c55e; font-weight: bold;');
-                                          // Replace our optimistic message with the server's authoritative version.
                                           newMessages[lastUserMessageIndex] = event.message;
                                       }
                                       return newMessages;
                                   });
                                   break;
-                              // --- END OF FIX ---
-                              
                               case 'THINKING_START':
                                 setMessages(prev => {
                                     const newMessages = [...prev];
@@ -218,7 +199,6 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
                                     return newMessages;
                                 });
                                 break;
-
                               case 'ASSISTANT_DELTA':
                                 setMessages(prev => {
                                     const newMessages = [...prev];
@@ -228,14 +208,8 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
                                     }
                                     const currentMsg = newMessages[assistantMessageIndex];
                                      if (currentMsg && currentMsg.role === 'assistant') {
-                                         
-                                         // Combine the content
                                          let newContent = (currentMsg.content || '') + event.content;
-                                         
-                                         // Normalize any sequence of 2+ newlines into a single newline
-                                         // This prevents unwanted paragraph breaks during streaming.
                                          newContent = newContent.replace(/\n{2,}/g, '\n');
-                                         
                                          newMessages[assistantMessageIndex] = { 
                                              ...currentMsg, 
                                              content: newContent, 
@@ -247,7 +221,6 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
                                 break;
 
                               case 'ASSISTANT_COMPLETE':
-                                  // console.log('%c[CLIENT] Assistant Complete', 'color: green; font-weight: bold;')
                                   if (event.thinking !== undefined) {
                                       setMessages(prev => {
                                           const newMessages = [...prev];
@@ -261,7 +234,6 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
                                   assistantMessageIndex = -1;
                                   break;
                               case 'TOOL_CODE_CREATE':
-                                // console.log('%c[CLIENT] Tool Code Create', 'color: blue; font-weight: bold;');
                                 setMessages(prev => {
                                     const newMessages = [...prev];
                                     if (assistantMessageIndex === -1) {
@@ -281,7 +253,6 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
                                   });
                                   break;
                               case 'TOOL_CODE_COMPLETE':
-                                  // console.log('%c[CLIENT] Tool Code Complete', 'color: green; font-weight: bold;');
                                   setMessages(prev => {
                                       const newMessages = [...prev];
                                       const toolIndex = newMessages.findIndex(m => m.tool_id === event.tool_id);
@@ -298,7 +269,6 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
                                   });
                                   break;
                               case 'TOOL_RESULT':
-                                // console.log('%c[CLIENT] Tool Result Received', 'color: green; font-weight: bold;', event);
                                 setMessages(prev => {
                                     const newMessages = [...prev];
                                     const toolCodeIndex = newMessages.findIndex(m => m.role === 'tool_code' && m.tool_id === event.tool_id);
@@ -318,17 +288,15 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
           }
       } catch (error) {
           if (error instanceof DOMException && error.name === 'AbortError') {
-              // console.log('%c[CLIENT] Stream aborted by user.', 'color: orange; font-weight: bold;');
+              // User aborted stream
           } else {
               console.error("%c[CLIENT] Stream Error", 'color: red; font-weight: bold;', error);
               showNotification(error instanceof Error ? error.message : "Failed to get response.", "error");
           }
       } finally {
-          // console.log('%c[CLIENT] Stream Finally Block', 'color: blue; font-weight: bold;');
           setIsStreaming(false);
           setIsThinking(false);
           setThinkingContent(null);
-          // Clean up any lingering waiting message on error/abort
           setMessages(prev => prev.filter(m => !m.isWaiting));
           streamAbortControllerRef.current = null;
           await loadChatList();
@@ -354,16 +322,16 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
         setActiveChatId(newChat._id);
         navigate(`/c/${newChat._id}`, { replace: true });
         
-        // Add placeholder to the messages received from the server
         const messagesWithPlaceholder = [...newChat.messages, { role: 'assistant', content: '', isWaiting: true } as Message];
         setMessages(messagesWithPlaceholder); 
-        // Send original messages to stream function
-        await streamAndSaveResponse(newChat._id, newChat.messages, metadata);
+        
+        const streamMetadata = { ...metadata, userMessageAlreadySaved: true };
+        await streamAndSaveResponse(newChat._id, newChat.messages, streamMetadata);
+
       } else {
         const updatedMessages = [...messages, userMessage];
         const messagesWithPlaceholder = [...updatedMessages, { role: 'assistant', content: '', isWaiting: true } as Message];
         setMessages(messagesWithPlaceholder);
-        // Send original messages to stream function
         await streamAndSaveResponse(activeChatId, updatedMessages, metadata);
       }
     } catch (error) {
@@ -414,44 +382,19 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
     const editedHistory = messages.slice(0, index + 1);
     editedHistory[index] = { ...editedHistory[index], content: newContent };
     setEditingIndex(null);
-
-    // Set the UI state to show the edited history PLUS the waiting indicator.
     const messagesWithPlaceholder = [...editedHistory, { role: 'assistant', content: '', isWaiting: true } as Message];
     setMessages(messagesWithPlaceholder);
-
-    // Start the stream with the correct, edited history (without the placeholder).
     await streamAndSaveResponse(activeChatId, editedHistory);
   };
 
   const regenerateResponse = async (metadata?: Record<string, any>) => {
-    // console.log('%c[CLIENT] Regenerate Clicked', 'color: orange; font-weight: bold;');
-    if (!activeChatId || isStreaming || isSending) {
-        // console.warn('[CLIENT] Regenerate cancelled:', { activeChatId, isStreaming, isSending });
-        return;
-    }
-    
-    // Find the last user message to determine the history cutoff point.
+    if (!activeChatId || isStreaming || isSending) return;
     const lastUserIndex = messages.findLastIndex(m => m.role === 'user');
-    if (lastUserIndex === -1) {
-        console.error('[CLIENT] Could not find last user message for regeneration.');
-        return;
-    }
-    
-    // The history for regeneration is everything up to and including the last user message.
+    if (lastUserIndex === -1) return;
     const historyForRegeneration = messages.slice(0, lastUserIndex + 1);
-    // console.log('[CLIENT] History prepared for regeneration:', JSON.parse(JSON.stringify(historyForRegeneration)));
-    
-    const regenerationMetadata = { 
-      isRegeneration: true, 
-      hadCodeExecution: messages.some(m => m.role === 'tool_code'),
-      ...metadata 
-    };
-    
-    // Set the UI state to show the truncated history PLUS the waiting indicator.
+    const regenerationMetadata = { isRegeneration: true, ...metadata };
     const messagesWithPlaceholder = [...historyForRegeneration, { role: 'assistant', content: '', isWaiting: true } as Message];
     setMessages(messagesWithPlaceholder);
-    
-    // Start the stream with the correct history (without the placeholder).
     await streamAndSaveResponse(activeChatId, historyForRegeneration, regenerationMetadata);
   };
 
@@ -487,7 +430,7 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
     try {
       await api('/chats/all', { method: 'DELETE' });
       setChatList([]);
-      clearChat(); // This clears the active chat view and messages
+      clearChat();
       showNotification("All conversations cleared.", "success");
     } catch (error) {
       console.error(error);
