@@ -22,7 +22,7 @@ interface ChatContextType {
   isCreatingChat: boolean;
   isSending: boolean;
   sendMessage: (text: string, attachments: Attachment[], metadata?: Record<string, any>) => Promise<void>;
-  stopGeneration: () => void; // <-- NEW
+  stopGeneration: () => void;
   isStreaming: boolean;
   isThinking: boolean;
   thinkingContent: string | null;
@@ -53,7 +53,6 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
   const [isThinking, setIsThinking] = useState(false);
   const [thinkingContent, setThinkingContent] = useState<string | null>(null);
 
-  // --- NEW: Ref to hold the AbortController for the stream ---
   const streamAbortControllerRef = useRef<AbortController | null>(null);
 
   const loadChatList = useCallback(async () => {
@@ -75,7 +74,7 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
 
   const streamAndSaveResponse = async (
       chatId: string,
-      messageHistory: Message[],
+      messageHistory: Message[], 
       metadata?: Record<string, any>
   ) => {
       console.log('%c[CLIENT] Starting Stream', 'color: blue; font-weight: bold;', {
@@ -84,10 +83,8 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
           metadata,
       });
 
-      // --- NEW: Create and store a new AbortController for this request ---
       streamAbortControllerRef.current = new AbortController();
 
-      setMessages(messageHistory);
       setIsStreaming(true);
       setIsThinking(false);
       setThinkingContent(null);
@@ -99,7 +96,6 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
           const response = await api(`/chats/${chatId}/stream`, {
               method: 'POST',
               body: JSON.stringify({ messagesFromClient: messageHistory, metadata }),
-              // --- NEW: Pass the AbortSignal to the fetch request ---
               signal: streamAbortControllerRef.current.signal,
           });
 
@@ -134,7 +130,6 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
 
                       try {
                           const event = JSON.parse(jsonString);
-                          console.log(`%c[CLIENT] SSE Received:`, 'color: green;', event.type, event);
 
                           if (event.type === 'error') throw new Error(event.error.message || event.error);
                           
@@ -208,6 +203,7 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
                                 break;
 
                               case 'ASSISTANT_COMPLETE':
+                                  console.log('%c[CLIENT] Assistant Complete', 'color: green; font-weight: bold;')
                                   if (event.thinking !== undefined) {
                                       setMessages(prev => {
                                           const newMessages = [...prev];
@@ -218,11 +214,35 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
                                       });
                                   }
                                   currentAssistantThinking = '';
+                                  // *** FIX: Reset assistant index at the VERY END of a turn
+                                  assistantMessageIndex = -1;
                                   break;
+                              
+                              // *** ENTIRE 'TOOL_CODE_CREATE' CASE IS REPLACED ***
                               case 'TOOL_CODE_CREATE':
-                                assistantMessageIndex = -1;
-                                setMessages(prev => [...prev, event.message]);
+                                console.log('%c[CLIENT] Tool Code Create', 'color: blue; font-weight: bold;');
+                                setMessages(prev => {
+                                    const newMessages = [...prev];
+                                    
+                                    // Step 1: Ensure an 'assistant' message exists to be the "parent" of this turn.
+                                    // This handles cases where the model *starts* its response with a code block.
+                                    if (assistantMessageIndex === -1) {
+                                        assistantMessageIndex = newMessages.length;
+                                        newMessages.push({ role: 'assistant', content: '' });
+                                    }
+                                    
+                                    // Step 2: Add the new tool_code message immediately after the parent assistant message.
+                                    // In practice, since we append, it will be the last message.
+                                    newMessages.push(event.message);
+                                    
+                                    return newMessages;
+                                });
+                                
+                                // Step 3: CRITICAL - DO NOT reset assistantMessageIndex here.
+                                // This allows any text that comes *after* the code block to be appended
+                                // to the same "parent" assistant message, grouping the turn's text together.
                                 break;
+                              
                               case 'TOOL_CODE_DELTA':
                                   setMessages(prev => {
                                       const newMessages = [...prev];
@@ -232,6 +252,7 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
                                   });
                                   break;
                               case 'TOOL_CODE_COMPLETE':
+                                  console.log('%c[CLIENT] Tool Code Complete', 'color: green; font-weight: bold;');
                                   setMessages(prev => {
                                       const newMessages = [...prev];
                                       const toolIndex = newMessages.findIndex(m => m.tool_id === event.tool_id);
@@ -248,6 +269,7 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
                                   });
                                   break;
                               case 'TOOL_RESULT':
+                                console.log('%c[CLIENT] Tool Result Received', 'color: green; font-weight: bold;', event);
                                 setMessages(prev => {
                                     const newMessages = [...prev];
                                     const toolCodeIndex = newMessages.findIndex(m => m.role === 'tool_code' && m.tool_id === event.tool_id);
@@ -255,6 +277,8 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
                                     newMessages.push({ role: 'tool', content: event.result.content, tool_id: event.tool_id, fileOutput: event.result.fileOutput || undefined });
                                     return newMessages;
                                 });
+                                // A tool result means the assistant is about to speak again.
+                                // Reset the index to prepare for a new assistant message.
                                 assistantMessageIndex = -1;
                                 break;
                           }
@@ -266,22 +290,18 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
               }
           }
       } catch (error) {
-          // --- NEW: Gracefully handle user-initiated abort ---
           if (error instanceof DOMException && error.name === 'AbortError') {
               console.log('%c[CLIENT] Stream aborted by user.', 'color: orange; font-weight: bold;');
-              // Keep the last complete message state. No error notification needed.
-              // The finally block will handle state cleanup.
           } else {
               console.error("%c[CLIENT] Stream Error", 'color: red; font-weight: bold;', error);
               showNotification(error instanceof Error ? error.message : "Failed to get response.", "error");
-              setMessages(messageHistory);
           }
       } finally {
           console.log('%c[CLIENT] Stream Finally Block', 'color: blue; font-weight: bold;');
           setIsStreaming(false);
           setIsThinking(false);
           setThinkingContent(null);
-          streamAbortControllerRef.current = null; // Clear the controller
+          streamAbortControllerRef.current = null;
           await loadChatList();
       }
   };
@@ -304,14 +324,16 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
         const newChat = await createChatResponse.json();
         setActiveChatId(newChat._id);
         navigate(`/c/${newChat._id}`, { replace: true });
+        
+        setMessages(newChat.messages); 
         await streamAndSaveResponse(newChat._id, newChat.messages, metadata);
       } else {
         const updatedMessages = [...messages, userMessage];
+        setMessages(updatedMessages);
         await streamAndSaveResponse(activeChatId, updatedMessages, metadata);
       }
     } catch (error) {
       console.error(error);
-      // Don't show an error if it was a user-initiated abort
       if (!(error instanceof DOMException && error.name === 'AbortError')) {
         showNotification(error instanceof Error ? error.message : 'Could not send message.', 'error');
       }
@@ -323,7 +345,6 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  // --- NEW: Function to stop the ongoing stream ---
   const stopGeneration = () => {
     if (streamAbortControllerRef.current) {
         streamAbortControllerRef.current.abort();
@@ -359,6 +380,8 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
     const editedHistory = messages.slice(0, index + 1);
     editedHistory[index] = { ...editedHistory[index], content: newContent };
     setEditingIndex(null);
+
+    setMessages(editedHistory);
     await streamAndSaveResponse(activeChatId, editedHistory);
   };
 
@@ -368,8 +391,6 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
         console.warn('[CLIENT] Regenerate cancelled:', { activeChatId, isStreaming, isSending });
         return;
     }
-    
-    console.log('[CLIENT] Messages before regeneration:', JSON.parse(JSON.stringify(messages)));
     
     const lastUserIndex = messages.findLastIndex(m => m.role === 'user');
     if (lastUserIndex === -1) {
@@ -386,6 +407,7 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
       ...metadata 
     };
     
+    setMessages(historyForRegeneration);
     await streamAndSaveResponse(activeChatId, historyForRegeneration, regenerationMetadata);
   };
 
@@ -422,7 +444,7 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
     isCreatingChat, isSending, sendMessage, isStreaming, editingIndex, startEditing,
     cancelEditing, saveAndSubmitEdit, regenerateResponse, renameChat, deleteChat,
     isThinking, thinkingContent,
-    stopGeneration, // <-- NEW
+    stopGeneration,
   };
 
   return <ChatContext.Provider value={value}>{children}</ChatContext.Provider>;

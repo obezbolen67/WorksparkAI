@@ -151,7 +151,6 @@ const ChatMessage = ({ message, messages, chatId, index, isEditing, isStreaming,
   const renderAttachments = (attachments: Attachment[]) => (
     <div className="message-attachments">
       {attachments.map(att => {
-        console.log(att)
         if (!chatId || !att._id) return null;
         const key = att._id || att.gcsObjectName;
         if (att.mimeType.startsWith('image/')) {
