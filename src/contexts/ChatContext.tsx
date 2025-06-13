@@ -214,33 +214,24 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
                                       });
                                   }
                                   currentAssistantThinking = '';
-                                  // *** FIX: Reset assistant index at the VERY END of a turn
                                   assistantMessageIndex = -1;
                                   break;
                               
-                              // *** ENTIRE 'TOOL_CODE_CREATE' CASE IS REPLACED ***
                               case 'TOOL_CODE_CREATE':
                                 console.log('%c[CLIENT] Tool Code Create', 'color: blue; font-weight: bold;');
                                 setMessages(prev => {
                                     const newMessages = [...prev];
                                     
-                                    // Step 1: Ensure an 'assistant' message exists to be the "parent" of this turn.
-                                    // This handles cases where the model *starts* its response with a code block.
                                     if (assistantMessageIndex === -1) {
                                         assistantMessageIndex = newMessages.length;
                                         newMessages.push({ role: 'assistant', content: '' });
                                     }
                                     
-                                    // Step 2: Add the new tool_code message immediately after the parent assistant message.
-                                    // In practice, since we append, it will be the last message.
                                     newMessages.push(event.message);
                                     
                                     return newMessages;
                                 });
                                 
-                                // Step 3: CRITICAL - DO NOT reset assistantMessageIndex here.
-                                // This allows any text that comes *after* the code block to be appended
-                                // to the same "parent" assistant message, grouping the turn's text together.
                                 break;
                               
                               case 'TOOL_CODE_DELTA':
@@ -277,8 +268,6 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
                                     newMessages.push({ role: 'tool', content: event.result.content, tool_id: event.tool_id, fileOutput: event.result.fileOutput || undefined });
                                     return newMessages;
                                 });
-                                // A tool result means the assistant is about to speak again.
-                                // Reset the index to prepare for a new assistant message.
                                 assistantMessageIndex = -1;
                                 break;
                           }
