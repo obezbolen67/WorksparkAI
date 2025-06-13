@@ -190,32 +190,45 @@
 .chat-input-actions {
   display: flex;
   align-items: center;
-  gap: 8px;
+  /* The gap is now handled by the send-button's margin */
 }
 
 .mic-button {
   transition: opacity 0.2s, transform 0.2s;
 }
 
+/* --- START OF THE FIX --- */
 .send-button {
   background-color: #FFFFFF;
   color: #2f2f2f;
-  transition: opacity 0.2s ease, transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.2s ease;
+  /* ADD width and margin-left to the transition */
+  transition: opacity 0.2s ease, transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.2s ease, width 0.3s cubic-bezier(0.4, 0, 0.2, 1), margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  
+  /* HIDDEN STATE: Set initial width and margin to 0 */
   opacity: 0;
   transform: scale(0.7);
   pointer-events: none;
+  width: 0;
+  margin-left: 0;
+  overflow: hidden; /* Prevent icon from showing during shrink */
 }
 
 .chat-input-button:not(:disabled).send-button {
+  /* VISIBLE STATE: Animate to full width and add a margin */
   opacity: 1;
   transform: scale(1);
   pointer-events: auto;
+  width: 36px;
+  margin-left: 8px; /* This creates the gap only when the button is visible */
 }
+/* --- END OF THE FIX --- */
+
 
 .stop-button {
   border: 1px solid #ef4444;
   color: #ef4444;
   background-color: transparent;
+  margin-left: 8px; /* Ensure stop button has a gap */
 }
 .stop-button:hover {
   background-color: hsla(0, 84%, 60%, 0.1);
