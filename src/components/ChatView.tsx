@@ -102,7 +102,6 @@ const ChatView = (props: ChatViewProps) => {
                   chatId={activeChatId}
                   isEditing={editingIndex === index}
                   isStreaming={isStreaming}
-                  isThinking={isThinking}
                   onRegenerate={handleRegenerate}
                   onCopy={handleCopy}
                   onStartEdit={onStartEdit}

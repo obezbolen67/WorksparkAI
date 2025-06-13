@@ -58,6 +58,12 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
   const [thinkingContent, setThinkingContent] = useState<string | null>(null);
 
   const streamAbortControllerRef = useRef<AbortController | null>(null);
+  const messagesRef = useRef<Message[]>([]);
+
+  // Keep a ref to messages to avoid stale state in async callbacks
+  useEffect(() => {
+    messagesRef.current = messages;
+  }, [messages]);
 
   const loadChatList = useCallback(async () => {
     if (!token) {
@@ -294,9 +300,21 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
           }
       } catch (error) {
           if (error instanceof DOMException && error.name === 'AbortError') {
-              // User aborted stream
+              // User aborted stream, so we save the partial response.
+              if (activeChatId) {
+                  const finalMessages = messagesRef.current.filter(m => !m.isWaiting);
+                  try {
+                      await api(`/chats/${activeChatId}`, {
+                          method: 'PUT',
+                          body: JSON.stringify({ messages: finalMessages }),
+                      });
+                  } catch (saveError) {
+                      console.error('Failed to save chat state on abort:', saveError);
+                      showNotification('Could not save the partial response.', 'error');
+                  }
+              }
           } else {
-              console.error("%c[CLIENT] Stream Error", 'color: red; font-weight: bold;', error);
+              console.error("[CLIENT] Stream Error", error);
               showNotification(error instanceof Error ? error.message : "Failed to get response.", "error");
           }
       } finally {
