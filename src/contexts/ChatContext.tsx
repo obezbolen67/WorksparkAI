@@ -19,7 +19,7 @@ interface ChatContextType {
   loadChat: (chatId: string) => void;
   clearChat: () => void;
   isLoadingChat: boolean;
-  isLoadingChatList: boolean; // <-- NEW
+  isLoadingChatList: boolean; 
   isCreatingChat: boolean;
   isSending: boolean;
   sendMessage: (text: string, attachments: Attachment[], metadata?: Record<string, any>) => Promise<void>;
@@ -48,7 +48,7 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
   const [chatList, setChatList] = useState<ChatListItem[]>([]);
   const [activeChatId, setActiveChatId] = useState<string | null>(null);
   const [isLoadingChat, setIsLoadingChat] = useState(false);
-  const [isLoadingChatList, setIsLoadingChatList] = useState(true); // <-- NEW: Start as true
+  const [isLoadingChatList, setIsLoadingChatList] = useState(true); 
   const [isCreatingChat, setIsCreatingChat] = useState(false);
   const [isStreaming, setIsStreaming] = useState(false);
   const [isSending, setIsSending] = useState(false);
@@ -60,10 +60,10 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
 
   const loadChatList = useCallback(async () => {
     if (!token) {
-      setIsLoadingChatList(false); // <-- NEW
+      setIsLoadingChatList(false); 
       return;
     }
-    setIsLoadingChatList(true); // <-- NEW
+    setIsLoadingChatList(true); 
     try {
       const response = await api('/chats');
       if (!response.ok) throw new Error('Failed to fetch chat list');
@@ -73,7 +73,7 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
       console.error(error);
       showNotification('Could not load chat history.', 'error');
     } finally {
-      setIsLoadingChatList(false); // <-- NEW
+      setIsLoadingChatList(false); 
     }
   }, [token, showNotification]);
 
@@ -196,24 +196,27 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
                                         newMessages.push({ role: 'assistant', content: '', thinking: currentAssistantThinking || undefined });
                                     }
                                     const currentMsg = newMessages[assistantMessageIndex];
-                                    if (currentMsg && currentMsg.role === 'assistant') {
-                                        // --- START OF THE FIX ---
-                                        // Combine the content
-                                        let newContent = (currentMsg.content || '') + event.content;
-                                        // Normalize newlines to prevent more than two in a row
-                                        newContent = newContent.replace(/\n{3,}/g, '\n\n');
-                                        
-                                        newMessages[assistantMessageIndex] = { 
-                                            ...currentMsg, 
-                                            content: newContent, 
-                                            thinking: currentAssistantThinking || currentMsg.thinking 
-                                        };
-                                        // --- END OF THE FIX ---
-                                    }
-                                    return newMessages;
+                                     if (currentMsg && currentMsg.role === 'assistant') {
+                                         
+                                         // Combine the content
+                                         let newContent = (currentMsg.content || '') + event.content;
+                                         
+                                         // --- START OF THE FIX ---
+                                         // Normalize any sequence of 2+ newlines into a single newline
+                                         // This prevents unwanted paragraph breaks during streaming.
+                                         newContent = newContent.replace(/\n{2,}/g, '\n');
+                                         // --- END OF THE FIX ---
+                                         
+                                         newMessages[assistantMessageIndex] = { 
+                                             ...currentMsg, 
+                                             content: newContent, 
+                                             thinking: currentAssistantThinking || currentMsg.thinking 
+                                         };
+                                     }
+                                     return newMessages;
                                 });
                                 break;
-                              
+
                               // ... (The rest of the switch statement remains the same)
                               case 'ASSISTANT_COMPLETE':
                                   console.log('%c[CLIENT] Assistant Complete', 'color: green; font-weight: bold;')
@@ -450,7 +453,7 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
 
   const value = {
     messages, chatList, activeChatId, loadChat, clearChat, isLoadingChat,
-    isLoadingChatList, // <-- NEW
+    isLoadingChatList, 
     isCreatingChat, isSending, sendMessage, isStreaming, editingIndex, startEditing,
     cancelEditing, saveAndSubmitEdit, regenerateResponse, renameChat,
     isThinking, thinkingContent,

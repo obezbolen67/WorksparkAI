@@ -128,27 +128,45 @@ const AuthenticatedImage = ({ chatId, attachment, onView }: { chatId: string, at
 
 const AssistantTurn = memo(({ messages, chatId, startIndex, isStreaming, isThinking, onRegenerate, onCopy }: Omit<ChatMessageProps, 'message' | 'index' | 'isEditing' | 'onStartEdit' | 'onSaveEdit' | 'onCancelEdit'> & { startIndex: number }) => {
     
+    // --- START OF THE FIX ---
     const { turnParts, fullContent, lastMessageInTurnIndex } = useMemo(() => {
         const parts: React.ReactNode[] = [];
         const textParts: string[] = [];
         let lastIndex = startIndex;
         const processedToolIds = new Set<string>();
+        let currentTextBuffer = '';
+
+        const flushTextBuffer = (key: string) => {
+            if (currentTextBuffer.trim()) {
+                parts.push(
+                    <ReactMarkdown key={key} remarkPlugins={[remarkGfm]} components={{ code: CustomCode, p: Paragraph }}>
+                        {currentTextBuffer}
+                    </ReactMarkdown>
+                );
+            }
+            currentTextBuffer = '';
+        };
 
         for (let i = startIndex; i < messages.length; i++) {
             const currentMessage = messages[i];
 
-            if (currentMessage.role === 'user') break;
+            if (currentMessage.role === 'user') {
+                lastIndex = i - 1; // The turn ends at the message before the user's
+                break;
+            }
 
             if (currentMessage.role === 'assistant') {
                 if (currentMessage.thinking !== undefined) {
+                    flushTextBuffer(`text-before-thinking-${i}`);
                     const isCurrentlyStreamingThinking = isStreaming && i === messages.length - 1;
                     parts.push(<InlineThinking key={`thinking-${i}`} content={currentMessage.thinking || ''} isStreaming={isCurrentlyStreamingThinking} />);
                 }
                 if (currentMessage.content) {
                     textParts.push(currentMessage.content);
-                    parts.push(<ReactMarkdown key={`text-${i}`} remarkPlugins={[remarkGfm]} components={{ code: CustomCode, p: Paragraph }}>{currentMessage.content}</ReactMarkdown>);
+                    currentTextBuffer += currentMessage.content;
                 }
             } else if (currentMessage.role === 'tool_code' && currentMessage.tool_id && !processedToolIds.has(currentMessage.tool_id)) {
+                flushTextBuffer(`text-before-tool-${i}`);
                 const toolOutputMessage = messages.find(m => m.role === 'tool' && m.tool_id === currentMessage.tool_id);
                 parts.push(<CodeAnalysisBlock key={`code-${currentMessage.tool_id}`} chatId={chatId} toolCodeMessage={currentMessage} toolOutputMessage={toolOutputMessage} />);
                 processedToolIds.add(currentMessage.tool_id);
@@ -157,8 +175,11 @@ const AssistantTurn = memo(({ messages, chatId, startIndex, isStreaming, isThink
             lastIndex = i;
         }
         
+        flushTextBuffer('text-final');
+        
         return { turnParts: parts, fullContent: textParts.join('\n\n'), lastMessageInTurnIndex: lastIndex };
     }, [messages, chatId, startIndex, isStreaming]);
+    // --- END OF THE FIX ---
 
     const showThinkingIndicator = isThinking && isStreaming && startIndex === messages.length - 1 && !turnParts.some(part => React.isValidElement(part) && part.key?.toString().startsWith('thinking'));
 

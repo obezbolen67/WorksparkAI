@@ -14,7 +14,6 @@ interface CodeAnalysisBlockProps {
   toolOutputMessage?: Message;
 }
 
-// --- THE FIX ---
 // Removed `chatId` from the destructuring because it's not used in this component's logic.
 const CodeAnalysisBlock = ({ toolCodeMessage, toolOutputMessage }: CodeAnalysisBlockProps) => {
   const state = toolCodeMessage.state || 'writing';
@@ -54,6 +53,39 @@ const CodeAnalysisBlock = ({ toolCodeMessage, toolOutputMessage }: CodeAnalysisB
   const dataUrl = fileOutput
     ? `data:${fileOutput.mimeType};base64,${fileOutput.content}`
     : null;
+
+  // --- START OF THE FIX ---
+
+  // Create reusable components for the output and file sections
+  const OutputSection = (toolOutputMessage || ['executing', 'completed', 'error'].includes(state)) ? (
+    <div className="analysis-section">
+      <div className="analysis-section-title">
+        {state === 'executing' && !output ? 'Output (Executing...)' : 'Output'}
+      </div>
+      <pre className={`analysis-output-text ${isOutputError ? 'error' : ''}`}>
+        {output || (state === 'executing' ? '' : 'No text output.')}
+        {state === 'executing' && !output && <span className="streaming-cursor"></span>}
+      </pre>
+    </div>
+  ) : null;
+
+  const FileSection = fileOutput && dataUrl ? (
+     <div className="analysis-section">
+        <div className="analysis-section-title">File Output</div>
+        <div className="file-output-content">
+          <FiFileText size={18} className="file-icon" />
+          <span className="file-name">{fileOutput.fileName}</span>
+          <a 
+            href={dataUrl} 
+            download={fileOutput.fileName}
+            className="download-button"
+          >
+            <FiDownload size={16} />
+            <span>Download</span>
+          </a>
+        </div>
+     </div>
+  ) : null;
 
   return (
     <div className={`code-analysis-container ${state} ${isExpanded ? 'expanded' : ''}`}>
@@ -96,38 +128,20 @@ const CodeAnalysisBlock = ({ toolCodeMessage, toolOutputMessage }: CodeAnalysisB
               )}
             </div>
           </div>
-          {(toolOutputMessage || ['executing', 'completed', 'error'].includes(state)) && (
-            <div className="analysis-section">
-              <div className="analysis-section-title">
-                {state === 'executing' && !output ? 'Output (Executing...)' : 'Output'}
-              </div>
-              <pre className={`analysis-output-text ${isOutputError ? 'error' : ''}`}>
-                {output || (state === 'executing' ? '' : 'No text output.')}
-                {state === 'executing' && !output && <span className="streaming-cursor"></span>}
-              </pre>
-            </div>
-          )}
-          {fileOutput && dataUrl && (
-             <div className="analysis-section">
-                <div className="analysis-section-title">File Output</div>
-                <div className="file-output-content">
-                  <FiFileText size={18} className="file-icon" />
-                  <span className="file-name">{fileOutput.fileName}</span>
-                  <a 
-                    href={dataUrl} 
-                    download={fileOutput.fileName}
-                    className="download-button"
-                  >
-                    <FiDownload size={16} />
-                    <span>Download</span>
-                  </a>
-                </div>
-             </div>
-          )}
+          {OutputSection}
+          {FileSection}
+        </div>
+      )}
+
+      {!isExpanded && (OutputSection || FileSection) && (
+        <div className="analysis-content">
+          {OutputSection}
+          {FileSection}
         </div>
       )}
     </div>
   );
+  // --- END OF THE FIX ---
 };
 
 export default memo(CodeAnalysisBlock);
