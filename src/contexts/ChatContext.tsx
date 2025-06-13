@@ -86,11 +86,11 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
       messageHistory: Message[], 
       metadata?: Record<string, any>
   ) => {
-      console.log('%c[CLIENT] Starting Stream', 'color: blue; font-weight: bold;', {
-          chatId,
-          messageHistory: JSON.parse(JSON.stringify(messageHistory)),
-          metadata,
-      });
+      // console.log('%c[CLIENT] Starting Stream', 'color: blue; font-weight: bold;', {
+      //     chatId,
+      //     messageHistory: JSON.parse(JSON.stringify(messageHistory)),
+      //     metadata,
+      // });
 
       streamAbortControllerRef.current = new AbortController();
 
@@ -121,7 +121,7 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
           while (true) {
               const { done, value } = await reader.read();
               if (done) {
-                  console.log('%c[CLIENT] Stream Finished', 'color: blue; font-weight: bold;');
+                  // console.log('%c[CLIENT] Stream Finished', 'color: blue; font-weight: bold;');
                   break;
               }
 
@@ -143,7 +143,26 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
                           if (event.type === 'error') throw new Error(event.error.message || event.error);
                           
                           switch (event.type) {
-                              // ... (cases for THINKING_START, THINKING_DELTA, THINKING_END, ASSISTANT_START remain the same)
+                              // --- START OF FIX ---
+                              case 'USER_MESSAGE_ACK':
+                                  setMessages(prev => {
+                                      const newMessages = [...prev];
+                                      // Find the last user message in the state, which is the one
+                                      // we optimistically added and now need to update.
+                                      const lastUserMessageIndex = newMessages.findLastIndex(
+                                          m => m.role === 'user'
+                                      );
+
+                                      if (lastUserMessageIndex !== -1) {
+                                          // console.log('%c[CLIENT] User Message ACK received, updating message with new IDs.', 'color: #22c55e; font-weight: bold;');
+                                          // Replace our optimistic message with the server's authoritative version.
+                                          newMessages[lastUserMessageIndex] = event.message;
+                                      }
+                                      return newMessages;
+                                  });
+                                  break;
+                              // --- END OF FIX ---
+                              
                               case 'THINKING_START':
                                 setMessages(prev => {
                                     const newMessages = [...prev];
@@ -227,9 +246,8 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
                                 });
                                 break;
 
-                              // ... (The rest of the switch statement remains the same)
                               case 'ASSISTANT_COMPLETE':
-                                  console.log('%c[CLIENT] Assistant Complete', 'color: green; font-weight: bold;')
+                                  // console.log('%c[CLIENT] Assistant Complete', 'color: green; font-weight: bold;')
                                   if (event.thinking !== undefined) {
                                       setMessages(prev => {
                                           const newMessages = [...prev];
@@ -243,7 +261,7 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
                                   assistantMessageIndex = -1;
                                   break;
                               case 'TOOL_CODE_CREATE':
-                                console.log('%c[CLIENT] Tool Code Create', 'color: blue; font-weight: bold;');
+                                // console.log('%c[CLIENT] Tool Code Create', 'color: blue; font-weight: bold;');
                                 setMessages(prev => {
                                     const newMessages = [...prev];
                                     if (assistantMessageIndex === -1) {
@@ -263,7 +281,7 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
                                   });
                                   break;
                               case 'TOOL_CODE_COMPLETE':
-                                  console.log('%c[CLIENT] Tool Code Complete', 'color: green; font-weight: bold;');
+                                  // console.log('%c[CLIENT] Tool Code Complete', 'color: green; font-weight: bold;');
                                   setMessages(prev => {
                                       const newMessages = [...prev];
                                       const toolIndex = newMessages.findIndex(m => m.tool_id === event.tool_id);
@@ -280,7 +298,7 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
                                   });
                                   break;
                               case 'TOOL_RESULT':
-                                console.log('%c[CLIENT] Tool Result Received', 'color: green; font-weight: bold;', event);
+                                // console.log('%c[CLIENT] Tool Result Received', 'color: green; font-weight: bold;', event);
                                 setMessages(prev => {
                                     const newMessages = [...prev];
                                     const toolCodeIndex = newMessages.findIndex(m => m.role === 'tool_code' && m.tool_id === event.tool_id);
@@ -300,13 +318,13 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
           }
       } catch (error) {
           if (error instanceof DOMException && error.name === 'AbortError') {
-              console.log('%c[CLIENT] Stream aborted by user.', 'color: orange; font-weight: bold;');
+              // console.log('%c[CLIENT] Stream aborted by user.', 'color: orange; font-weight: bold;');
           } else {
               console.error("%c[CLIENT] Stream Error", 'color: red; font-weight: bold;', error);
               showNotification(error instanceof Error ? error.message : "Failed to get response.", "error");
           }
       } finally {
-          console.log('%c[CLIENT] Stream Finally Block', 'color: blue; font-weight: bold;');
+          // console.log('%c[CLIENT] Stream Finally Block', 'color: blue; font-weight: bold;');
           setIsStreaming(false);
           setIsThinking(false);
           setThinkingContent(null);
@@ -406,9 +424,9 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const regenerateResponse = async (metadata?: Record<string, any>) => {
-    console.log('%c[CLIENT] Regenerate Clicked', 'color: orange; font-weight: bold;');
+    // console.log('%c[CLIENT] Regenerate Clicked', 'color: orange; font-weight: bold;');
     if (!activeChatId || isStreaming || isSending) {
-        console.warn('[CLIENT] Regenerate cancelled:', { activeChatId, isStreaming, isSending });
+        // console.warn('[CLIENT] Regenerate cancelled:', { activeChatId, isStreaming, isSending });
         return;
     }
     
@@ -421,7 +439,7 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
     
     // The history for regeneration is everything up to and including the last user message.
     const historyForRegeneration = messages.slice(0, lastUserIndex + 1);
-    console.log('[CLIENT] History prepared for regeneration:', JSON.parse(JSON.stringify(historyForRegeneration)));
+    // console.log('[CLIENT] History prepared for regeneration:', JSON.parse(JSON.stringify(historyForRegeneration)));
     
     const regenerationMetadata = { 
       isRegeneration: true, 
