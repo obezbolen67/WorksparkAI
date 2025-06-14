@@ -113,15 +113,7 @@ const SettingsModal = ({ isOpen, onClose }: SettingsModalProps) => {
     setFetchError('');
     setModels([]); 
     
-    if (selectedProvider === 'anthropic') {
-      setBaseUrl('https://api.anthropic.com/v1');
-      fetchProviderModels('anthropic');
-    } else {
-      if (baseUrl === 'https://api.anthropic.com/v1') {
-          setBaseUrl(user?.baseUrl || '');
-      }
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    fetchProviderModels(selectedProvider);
   }, [selectedProvider]);
 
   const handleApiKeyChange = (newKey: string) => {

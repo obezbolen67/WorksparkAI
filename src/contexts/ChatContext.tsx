@@ -93,6 +93,9 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
   ) => {
       streamAbortControllerRef.current = new AbortController();
 
+      streamAbortControllerRef.current.signal.addEventListener('abort', () => {
+      });
+
       setIsStreaming(true);
       setIsThinking(false);
       setThinkingContent(null);
@@ -231,18 +234,24 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
                                 break;
 
                               case 'ASSISTANT_COMPLETE':
-                                  currentAssistantThinking = '';
-                                  assistantMessageIndex = -1;
                                   break;
                               case 'TOOL_CODE_CREATE':
                                 setMessages(prev => {
-                                    const newMessages = [...prev];
-                                    if (assistantMessageIndex === -1) {
-                                        assistantMessageIndex = newMessages.length;
-                                        newMessages.push({ role: 'assistant', content: '' });
-                                    }
-                                    newMessages.push(event.message);
-                                    return newMessages;
+                                    
+                                  
+                                  const newMessages = [...prev];
+                                  const lastMessage = newMessages[newMessages.length - 1];
+
+                                  if (lastMessage?.isWaiting) {
+                                    assistantMessageIndex = newMessages.length - 1;
+                                    newMessages[assistantMessageIndex] = { role: 'assistant', content: '', thinking: currentAssistantThinking || undefined };
+                                  } else if (assistantMessageIndex === -1 || (lastMessage && (lastMessage.role === 'tool' || lastMessage.role === 'tool_code' || lastMessage.role === 'user'))) {
+                                    assistantMessageIndex = newMessages.length;
+                                    newMessages.push({ role: 'assistant', content: '', thinking: currentAssistantThinking || undefined });
+                                  }
+                                  
+                                  newMessages.push(event.message);
+                                  return newMessages;
                                 });
                                 break;
                               case 'TOOL_CODE_DELTA':
@@ -285,9 +294,10 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
                           throw new Error("Received a malformed response from the server.");
                       }
                   }
+
                   boundary = buffer.indexOf('\n\n');
               }
-          }
+        }
       } catch (error) {
           if (error instanceof DOMException && error.name === 'AbortError') {
               // User aborted stream, so we save the partial response.
@@ -308,10 +318,10 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
               showNotification(error instanceof Error ? error.message : "Failed to get response.", "error");
           }
       } finally {
-          setIsStreaming(false);
-          setIsThinking(false);
-          setThinkingContent(null);
-          setMessages(prev => prev.filter(m => !m.isWaiting));
+        setIsStreaming(false);
+        setIsThinking(false);
+        setThinkingContent(null);
+        setMessages(prev => prev.filter(m => !m.isWaiting));
           streamAbortControllerRef.current = null;
           await loadChatList();
       }
@@ -321,6 +331,7 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
     if (isStreaming || isSending) return;
     const userMessage: Message = { role: 'user', content: text, attachments };
     const originalMessages = messages;
+
     setIsSending(true);
 
     try {
