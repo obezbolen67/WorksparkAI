@@ -235,7 +235,7 @@ const SettingsModal = ({ isOpen, onClose }: SettingsModalProps) => {
         <div className="input-wrapper">
           <input 
             id="apiKey" 
-            type={isApiKeyVisible ? 'text' : 'password'}
+            type={isApiKeyVisible ? 'text' : 'apikey'}
             value={currentApiKey} 
             onChange={(e) => handleApiKeyChange(e.target.value)} 
             placeholder={ selectedProvider === 'openai' ? "Required: sk-..." : "Required: sk-ant-..." }
