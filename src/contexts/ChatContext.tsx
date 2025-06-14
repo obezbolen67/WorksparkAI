@@ -1,5 +1,3 @@
-// src/contexts/ChatContext.tsx
-
 import { createContext, useContext, useState, useCallback, useEffect, ReactNode, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import type { Message, Attachment } from '../types';
@@ -138,15 +136,10 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
                       try {
                           const event = JSON.parse(jsonString);
                           
-                          // --- START OF THE FIX ---
-                          // We now check for a server-sent error event first.
-                          // If found, we throw a new error with the server's message.
-                          // This will be caught by the outer `catch` block, which handles notifications.
                           if (event.type === 'error') {
                             const errorMessage = event.error?.message || (typeof event.error === 'string' ? event.error : "An unknown error occurred on the server.");
                             throw new Error(errorMessage);
                           }
-                          // --- END OF THE FIX ---
                           
                           switch (event.type) {
                               case 'USER_MESSAGE_ACK':
@@ -289,10 +282,7 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
                           }
                       } catch (error) {
                           console.error("[CLIENT] SSE Parse Error:", { jsonString, error });
-                          // --- START OF THE FIX ---
-                          // Also throw an error here to notify the user of a malformed response.
                           throw new Error("Received a malformed response from the server.");
-                          // --- END OF THE FIX ---
                       }
                   }
                   boundary = buffer.indexOf('\n\n');
