@@ -1,4 +1,3 @@
-// src/contexts/SettingsContext.tsx
 import { createContext, useState, useEffect, useContext, type ReactNode, useCallback } from 'react';
 import api, { API_BASE_URL } from '../utils/api'; 
 
@@ -15,14 +14,18 @@ type ModelConfig = {
 
 type Theme = 'dark' | 'light';
 
-// --- UPDATED: Add 'theme' to the User type ---
+type ApiKeyEntry = {
+  provider: string;
+  key: string;
+};
+
 type User = {
   _id: string;
   email: string;
-  apiKey: string;
+  apiKeys: ApiKeyEntry[];
   baseUrl: string;
   selectedModel: string;
-  theme: Theme; // <-- ADDED
+  theme: Theme;
   quickAccessModels?: string[];
   modelConfigs?: ModelConfig[];
 };
@@ -53,7 +56,6 @@ export const SettingsProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [models, setModels] = useState<Model[]>([]);
   
-  // Initialize from localStorage as a fallback for the initial render
   const [theme, setThemeState] = useState<Theme>(() => (localStorage.getItem('fexo-theme') as Theme) || 'light');
 
   const updateSettings = async (settings: Partial<User>) => {
@@ -65,28 +67,22 @@ export const SettingsProvider = ({ children }: { children: ReactNode }) => {
       });
       if (!res.ok) throw new Error('Failed to update settings');
       const updatedUser = await res.json();
-      setUser(updatedUser); // Update the local user state with the response from the server
+      setUser(updatedUser);
     } catch (err) {
       console.error(err);
       throw err;
     }
   };
 
-  // --- UPDATED: The setTheme function now saves to the database ---
   const setTheme = (newTheme: Theme) => {
-    // 1. Update the UI optimistically for instant feedback
     setThemeState(newTheme);
-    // 2. If the user is logged in, save the preference to the database
     if (isAuthenticated) {
-      // We can "fire and forget" this. The updateSettings function will handle errors.
       updateSettings({ theme: newTheme }).catch(err => {
-        // This catch is for any unhandled promise rejection, though updateSettings logs it.
         console.error("Could not save theme preference to the database.", err);
       });
     }
   };
 
-  // This effect synchronizes the theme with the DOM and localStorage
   useEffect(() => {
     document.body.setAttribute('data-theme', theme);
     localStorage.setItem('fexo-theme', theme);
@@ -101,7 +97,6 @@ export const SettingsProvider = ({ children }: { children: ReactNode }) => {
         const userData: User = await res.json();
         setUser(userData);
         setIsAuthenticated(true);
-        // --- ADDED: Set theme from loaded user data ---
         if (userData.theme) {
           setThemeState(userData.theme);
         }
@@ -121,19 +116,29 @@ export const SettingsProvider = ({ children }: { children: ReactNode }) => {
 
   useEffect(() => {
     const fetchModelsOnLoad = async () => {
-      if (user && user.apiKey) {
-        try {
-          const res = await api('/models', { method: 'POST' });
-          if (res.ok) {
-            const data = await res.json();
-            setModels(data);
-          } else {
-            console.error('Failed to auto-load models on startup.');
-            setModels([]);
-          }
-        } catch (err) {
-          console.error('Error auto-loading models:', err);
-          setModels([]);
+      // Check for user and keys before proceeding
+      if (user && user.apiKeys && user.apiKeys.length > 0) {
+        // Default to 'openai', but switch if a Claude model was last selected.
+        // This is safer than assuming user.selectedModel is always present.
+        const provider = user.selectedModel?.includes('claude') ? 'anthropic' : 'openai';
+        
+        // Only fetch if a key for the determined provider exists.
+        if (user.apiKeys.some(k => k.provider === provider && k.key)) {
+            try {
+                const res = await api('/models', { method: 'POST', body: JSON.stringify({ provider }) });
+                if (res.ok) {
+                    const data = await res.json();
+                    setModels(data);
+                } else {
+                    // With the backend change, a 401 will no longer trigger this else block.
+                    // This will now only catch other server errors (like 500).
+                    console.error('Failed to auto-load models on startup.');
+                    setModels([]);
+                }
+            } catch (err) {
+                console.error('Error auto-loading models:', err);
+                setModels([]);
+            }
         }
       }
     };
@@ -152,7 +157,7 @@ export const SettingsProvider = ({ children }: { children: ReactNode }) => {
     }
     localStorage.setItem('fexo-token', data.token);
     setToken(data.token);
-    await loadUser(); // loadUser will now also set the theme
+    await loadUser();
   };
 
   const login = (email: string, password: string) => apiAuthRequest('login', { email, password });
@@ -160,7 +165,6 @@ export const SettingsProvider = ({ children }: { children: ReactNode }) => {
 
   const logout = () => {
     localStorage.removeItem('fexo-token');
-    // On logout, reset the theme to the default light theme.
     setThemeState('light'); 
     setToken(null);
     setIsAuthenticated(false);

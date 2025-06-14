@@ -8,6 +8,9 @@
     "lib": ["ES2023", "DOM", "DOM.Iterable"],
     "module": "ESNext",
     "skipLibCheck": true,
+    
+    /* ADD THIS "types" ARRAY */
+    "types": ["vite/client", "vite-plugin-svgr/client"], // <-- ADD THIS LINE
 
     /* Bundler mode */
     "moduleResolution": "bundler",
@@ -23,5 +26,6 @@
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true
   },
-  "include": ["src", "src/utils"]
+  // "src/utils" is redundant because "src" already includes it.
+  "include": ["src"] // <-- CLEANED UP
 }
