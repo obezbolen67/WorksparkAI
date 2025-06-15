@@ -91,12 +91,14 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
       messageHistory: Message[], 
       metadata?: Record<string, any>
   ) => {
-      streamAbortControllerRef.current = new AbortController();
 
+
+      setIsSending(true)
       setIsStreaming(true);
       setIsThinking(false);
       setThinkingContent(null);
-
+    
+      streamAbortControllerRef.current = new AbortController();
       let currentAssistantThinking = '';
       let assistantMessageIndex = -1;
 
@@ -134,6 +136,9 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
 
                       try {
                           const event = JSON.parse(jsonString);
+                          if (event.type === "[INFO]") {
+                            console.log("[INFO]", event.content)
+                          }
                           
                           if (event.type === 'error') {
                             const errorMessage = event.error?.message || (typeof event.error === 'string' ? event.error : "An unknown error occurred on the server.");
@@ -313,6 +318,14 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
               showNotification(error instanceof Error ? error.message : "Failed to get response.", "error");
           }
       } finally {
+        setIsThinking(false);
+        setIsSending(false);
+        setIsStreaming(false);
+        setThinkingContent(null);
+        setMessages(prev => prev.filter(m => !m.isWaiting));
+
+        streamAbortControllerRef.current = null;
+
         await loadChatList();
       }
   };
@@ -321,8 +334,6 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
     if (isStreaming || isSending) return;
     const userMessage: Message = { role: 'user', content: text, attachments };
     const originalMessages = messages;
-
-    setIsSending(true);
 
     try {
       if (!activeChatId) {
@@ -357,7 +368,6 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
       if (activeChatId) { setMessages(originalMessages); }
       else { setMessages([]); setActiveChatId(null); navigate('/', { replace: true }); }
     } finally {
-      setIsSending(false);
       setIsCreatingChat(false);
     }
   };
@@ -369,6 +379,7 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
         setIsThinking(false);
         setThinkingContent(null);
         setMessages(prev => prev.filter(m => !m.isWaiting));
+
         setIsSending(false)
         streamAbortControllerRef.current = null;
     }
@@ -408,7 +419,6 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
     const messagesForUi = [...newHistoryForStream, { role: 'assistant', content: '', isWaiting: true } as Message];
     setMessages(messagesForUi);
     setEditingIndex(null);
-    setIsSending(true)
     await streamAndSaveResponse(activeChatId, newHistoryForStream, { isRegeneration: true });
   };
 
