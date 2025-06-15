@@ -29,7 +29,7 @@ interface ChatContextType {
   editingIndex: number | null;
   startEditing: (index: number) => void;
   cancelEditing: () => void;
-  saveAndSubmitEdit: (index: number, newContent: string) => Promise<void>;
+  saveAndSubmitEdit: (index: number, newContent: string, metadata?: Record<string, any>) => Promise<void>;
   regenerateResponse: (metadata?: Record<string, any>) => Promise<void>;
   renameChat: (chatId: string, newTitle: string) => Promise<void>;
   deleteChat: (chatId: string) => Promise<void>;
@@ -324,6 +324,8 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
     const userMessage: Message = { role: 'user', content: text, attachments };
     const originalMessages = messages;
 
+    console.log(metadata)
+
     try {
       if (!activeChatId) {
         setIsCreatingChat(true);
@@ -401,7 +403,7 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
   const startEditing = (index: number) => setEditingIndex(index);
   const cancelEditing = () => setEditingIndex(null);
 
-  const saveAndSubmitEdit = async (index: number, newContent: string) => {
+  const saveAndSubmitEdit = async (index: number, newContent: string, metadata?: Record<string, any>,) => {
     if (!activeChatId) return;
     stopGeneration()
 
@@ -411,7 +413,7 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
     const messagesForUi = [...newHistoryForStream, { role: 'assistant', content: '', isWaiting: true } as Message];
     setMessages(messagesForUi);
     setEditingIndex(null);
-    await streamAndSaveResponse(activeChatId, newHistoryForStream, { isRegeneration: true });
+    await streamAndSaveResponse(activeChatId, newHistoryForStream, { isRegeneration: true, ...metadata });
   };
 
   const regenerateResponse = async (metadata?: Record<string, any>) => {

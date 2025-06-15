@@ -24,12 +24,14 @@ const ChatInput = ({ onSendMessage, onStopGeneration, isSending, isThinkingVisib
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [text, setText] = useState('');
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [isDragging, setIsDragging] = useState(false);
   
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const plusButtonRef = useRef<HTMLButtonElement>(null);
+  const dragCounterRef = useRef(0);
 
   const hasContent = text.trim().length > 0 || selectedFiles.length > 0;
   const isGenerating = isSending;
@@ -50,27 +52,96 @@ const ChatInput = ({ onSendMessage, onStopGeneration, isSending, isThinkingVisib
     };
   }, [isMenuOpen]);
 
+  const validateAndAddFiles = (files: File[]) => {
+    const containsImage = files.some(f => f.type.startsWith('image/'));
+
+    if (containsImage) {
+      const modelConfigs = user?.modelConfigs || [];
+      const modelConfig = modelConfigs.find(c => c.id === selectedModel);
+      const supportsImage = modelConfig?.modalities.includes('image');
+
+      if (!supportsImage) {
+        showNotification('This model does not support image inputs. Please select a vision-capable model.', 'error');
+        return;
+      }
+    }
+
+    const remainingSlots = 10 - selectedFiles.length;
+    if (remainingSlots <= 0) {
+      showNotification('Maximum 10 files allowed', 'error');
+      return;
+    }
+
+    const filesToAdd = files.slice(0, remainingSlots);
+    setSelectedFiles(prev => [...prev, ...filesToAdd]);
+    
+    if (files.length > remainingSlots) {
+      showNotification(`Only ${remainingSlots} file(s) added. Maximum 10 files allowed.`, 'error');
+    }
+  };
+
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     if (event.target.files) {
       const files = Array.from(event.target.files);
-      const containsImage = files.some(f => f.type.startsWith('image/'));
-
-      if (containsImage) {
-        const modelConfigs = user?.modelConfigs || [];
-        const modelConfig = modelConfigs.find(c => c.id === selectedModel);
-        const supportsImage = modelConfig?.modalities.includes('image');
-
-        if (!supportsImage) {
-          showNotification('This model does not support image inputs. Please select a vision-capable model.', 'error');
-          event.target.value = '';
-          return;
-        }
-      }
-
-      const filesToAdd = files.slice(0, 5);
-      setSelectedFiles(prev => [...prev, ...filesToAdd]);
+      validateAndAddFiles(files);
     }
     event.target.value = '';
+  };
+
+  // Handle paste events
+  const handlePaste = (e: React.ClipboardEvent) => {
+    const items = Array.from(e.clipboardData.items);
+    const files: File[] = [];
+
+    items.forEach(item => {
+      if (item.kind === 'file') {
+        const file = item.getAsFile();
+        if (file) files.push(file);
+      }
+    });
+
+    if (files.length > 0) {
+      e.preventDefault();
+      validateAndAddFiles(files);
+    }
+  };
+
+  // Handle drag events
+  const handleDragEnter = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dragCounterRef.current++;
+    
+    if (e.dataTransfer.items && e.dataTransfer.items.length > 0) {
+      setIsDragging(true);
+    }
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dragCounterRef.current--;
+    
+    if (dragCounterRef.current === 0) {
+      setIsDragging(false);
+    }
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+    dragCounterRef.current = 0;
+
+    const files = Array.from(e.dataTransfer.files);
+    if (files.length > 0) {
+      validateAndAddFiles(files);
+    }
   };
   
   const triggerFileInput = (ref: React.RefObject<HTMLInputElement | null>) => {
@@ -149,7 +220,13 @@ const ChatInput = ({ onSendMessage, onStopGeneration, isSending, isThinkingVisib
   }, [text]);
 
   return (
-    <div className="chat-input-container">
+    <div 
+      className={`chat-input-container ${isDragging ? 'drag-active' : ''}`}
+      onDragEnter={handleDragEnter}
+      onDragLeave={handleDragLeave}
+      onDragOver={handleDragOver}
+      onDrop={handleDrop}
+    >
       {selectedFiles.length > 0 && (
         <div className="attachment-preview-area">
           {selectedFiles.map((file, index) => {
@@ -186,7 +263,6 @@ const ChatInput = ({ onSendMessage, onStopGeneration, isSending, isThinkingVisib
             <button
               className={`chat-tool-button ${isThinkingVisible ? 'active' : ''}`}
               onClick={onToggleThinking}
-              disabled={isGenerating}
             >
               <FiCpu size={18} />
             </button>
@@ -199,7 +275,6 @@ const ChatInput = ({ onSendMessage, onStopGeneration, isSending, isThinkingVisib
           ref={plusButtonRef}
           className="chat-input-button"
           onClick={() => setIsMenuOpen(prev => !prev)}
-          disabled={isGenerating}
         >
           <FiPlus size={20} />
         </button>
@@ -220,13 +295,13 @@ const ChatInput = ({ onSendMessage, onStopGeneration, isSending, isThinkingVisib
         <textarea
           ref={textareaRef}
           className="chat-input"
-          placeholder="Message Fexo..."
+          placeholder="Message Fexo"
           value={text}
           onChange={(e) => setText(e.target.value)}
           onKeyDown={handleKeyDown}
           onInput={handleInput}
+          onPaste={handlePaste}
           rows={1}
-          disabled={isGenerating}
         />
         <div className="chat-input-actions">
           {isGenerating ? (
@@ -240,7 +315,7 @@ const ChatInput = ({ onSendMessage, onStopGeneration, isSending, isThinkingVisib
             </Tooltip>
           ) : (
             <>
-              <button className="chat-input-button mic-button" disabled={isGenerating}>
+              <button className="chat-input-button mic-button">
                 <HiOutlineMicrophone size={20} />
               </button>
               <button

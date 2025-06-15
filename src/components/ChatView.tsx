@@ -20,7 +20,7 @@ interface ChatViewProps {
   editingIndex: number | null;
   onStartEdit: (index: number) => void;
   onCancelEdit: () => void;
-  onSaveEdit: (index: number, newContent: string) => void;
+  onSaveEdit: (index: number, newContent: string, metadata?: Record<string, any>) => void;
   onRegenerate: (metadata?: Record<string, any>) => void;
 }
 
@@ -127,7 +127,7 @@ const ChatView = (props: ChatViewProps) => {
           )}
           <ChatInput 
             onSendMessage={handleSendMessage} 
-            onStopGeneration={onStopGeneration} // <-- NEW
+            onStopGeneration={onStopGeneration}
             isSending={isSending || isStreaming}
             isThinkingVisible={isThinkingEnabled}
             onToggleThinking={() => setIsThinkingEnabled(prev => !prev)}

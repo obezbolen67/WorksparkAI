@@ -17,6 +17,7 @@ import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
 
+
 interface CodeComponentProps {
   node?: any;
   inline?: boolean;
@@ -25,6 +26,7 @@ interface CodeComponentProps {
   style?: React.CSSProperties;
   [key: string]: any;
 }
+
 
 const useTheme = () => {
     const [theme, setTheme] = useState(
@@ -231,7 +233,7 @@ interface ChatMessageProps {
   onRegenerate: () => void;
   onCopy: (content: string) => void;
   onStartEdit: (index: number) => void;
-  onSaveEdit: (index: number, newContent: string) => void;
+  onSaveEdit: (index: number, newContent: string, metadata?: Record<string, any>) => void;
   onCancelEdit: () => void;
 }
 
@@ -288,7 +290,7 @@ const ChatMessage = ({ message, messages, chatId, index, isEditing, onStartEdit,
                 </div>
               ) : (
                 <div className="message-editor-content">
-                    <textarea value={editedContent} onChange={(e) => setEditedContent(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); onSaveEdit(index, editedContent); } if (e.key === 'Escape') onCancelEdit(); }} rows={1} />
+                    <textarea value={editedContent} onChange={(e) => setEditedContent(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); onSaveEdit(index, editedContent, { }); } if (e.key === 'Escape') onCancelEdit(); }} rows={1} />
                     <div className="editor-actions">
                         <button className="editor-button cancel" onClick={onCancelEdit}>Cancel</button>
                         <button className="editor-button save" onClick={() => onSaveEdit(index, editedContent)}>Save & Submit</button>
