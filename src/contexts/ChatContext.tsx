@@ -315,15 +315,7 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
               showNotification(error instanceof Error ? error.message : "Failed to get response.", "error");
           }
       } finally {
-        setIsThinking(false);
-        setIsSending(false);
-        setIsStreaming(false);
-        setThinkingContent(null);
-        setMessages(prev => prev.filter(m => !m.isWaiting));
-
-        streamAbortControllerRef.current = null;
-
-        await loadChatList();
+        stopGeneration();
       }
   };
 
@@ -350,6 +342,8 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
         
         const streamMetadata = { ...metadata, userMessageAlreadySaved: true };
         await streamAndSaveResponse(newChat._id, newChat.messages, streamMetadata);
+
+        await loadChatList();
 
       } else {
         const updatedMessages = [...messages, userMessage];
@@ -379,6 +373,7 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
 
         setIsSending(false)
         streamAbortControllerRef.current = null;
+        
     }
   };
 
