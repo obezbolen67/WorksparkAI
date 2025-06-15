@@ -8,12 +8,14 @@ import ImageViewer from './ImageViewer';
 import Tooltip from './Tooltip';
 import ReactMarkdown from 'react-markdown';
 import type { Components } from 'react-markdown';
-import remarkGfm from 'remark-gfm';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { vscDarkPlus, oneLight } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import CodeAnalysisBlock from './CodeAnalysisBlock';
 import InlineThinking from './InlineThinking';
 import { getFileIcon } from '../utils/fileIcons';
+import remarkGfm from 'remark-gfm';
+import remarkMath from 'remark-math';
+import rehypeKatex from 'rehype-katex';
 
 interface CodeComponentProps {
   node?: any;
@@ -155,7 +157,7 @@ const AssistantTurn = memo(({ messages, chatId, startIndex, isStreaming, onRegen
         const flushTextBuffer = (key: string) => {
             if (currentTextBuffer.trim()) {
                 parts.push(
-                    <ReactMarkdown key={key} remarkPlugins={[remarkGfm]} components={{ code: CustomCode, p: Paragraph }}>
+                    <ReactMarkdown key={key} remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[rehypeKatex]} components={{ code: CustomCode, p: Paragraph }}>
                         {currentTextBuffer}
                     </ReactMarkdown>
                 );
@@ -281,7 +283,7 @@ const ChatMessage = ({ message, messages, chatId, index, isEditing, onStartEdit,
               {!isEditing ? (
                 <div className="message-content">
                   {message.attachments && message.attachments.length > 0 && renderAttachments(message.attachments)}
-                  {message.content && <ReactMarkdown remarkPlugins={[remarkGfm]} components={{ code: CustomCode, p: Paragraph }}>{message.content}</ReactMarkdown>}
+                  {message.content && <ReactMarkdown remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[rehypeKatex]} components={{ code: CustomCode, p: Paragraph }}>{message.content}</ReactMarkdown>}
                   {!message.content && !message.attachments?.length && '\u00A0'}
                 </div>
               ) : (

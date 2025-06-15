@@ -7,6 +7,7 @@ import './css/Notification.css';
 import './css/AuthPage.css';
 import './css/Tooltip.css';
 import './css/CodeAnalysisBlock.css';
+import 'katex/dist/katex.min.css';
 
 import PrivateRoute from './routing/PrivateRoute';
 import MainAppLayout from './pages/MainAppLayout';

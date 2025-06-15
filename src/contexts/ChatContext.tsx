@@ -93,9 +93,6 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
   ) => {
       streamAbortControllerRef.current = new AbortController();
 
-      streamAbortControllerRef.current.signal.addEventListener('abort', () => {
-      });
-
       setIsStreaming(true);
       setIsThinking(false);
       setThinkingContent(null);
@@ -118,11 +115,10 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
           const reader = response.body?.getReader();
           const decoder = new TextDecoder();
           if (!reader) throw new Error("Failed to read stream.");
-
           let buffer = '';
           while (true) {
               const { done, value } = await reader.read();
-              if (done) break;
+              if (done) break
 
               buffer += decoder.decode(value, { stream: true });
               let boundary = buffer.indexOf('\n\n');
@@ -300,7 +296,6 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
         }
       } catch (error) {
           if (error instanceof DOMException && error.name === 'AbortError') {
-              // User aborted stream, so we save the partial response.
               if (activeChatId) {
                   const finalMessages = messagesRef.current.filter(m => !m.isWaiting);
                   try {
@@ -318,12 +313,7 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
               showNotification(error instanceof Error ? error.message : "Failed to get response.", "error");
           }
       } finally {
-        setIsStreaming(false);
-        setIsThinking(false);
-        setThinkingContent(null);
-        setMessages(prev => prev.filter(m => !m.isWaiting));
-          streamAbortControllerRef.current = null;
-          await loadChatList();
+        await loadChatList();
       }
   };
 
@@ -375,6 +365,12 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
   const stopGeneration = () => {
     if (streamAbortControllerRef.current) {
         streamAbortControllerRef.current.abort();
+        setIsStreaming(false);
+        setIsThinking(false);
+        setThinkingContent(null);
+        setMessages(prev => prev.filter(m => !m.isWaiting));
+        setIsSending(false)
+        streamAbortControllerRef.current = null;
     }
   };
 
@@ -404,6 +400,7 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
 
   const saveAndSubmitEdit = async (index: number, newContent: string) => {
     if (!activeChatId) return;
+    stopGeneration()
 
     const historyUpToEdit = messages.slice(0, index);
     const updatedUserMessage: Message = { ...messages[index], content: newContent };
@@ -411,6 +408,7 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
     const messagesForUi = [...newHistoryForStream, { role: 'assistant', content: '', isWaiting: true } as Message];
     setMessages(messagesForUi);
     setEditingIndex(null);
+    setIsSending(true)
     await streamAndSaveResponse(activeChatId, newHistoryForStream, { isRegeneration: true });
   };
 

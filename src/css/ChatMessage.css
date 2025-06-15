@@ -54,6 +54,12 @@
   opacity: 1;
 }
 
+
+.katex {
+  font-size: 1.1em;
+  color: var(--primary-text-color);
+}
+
 .action-button {
   background: var(--main-bg-color);
   border: 1px solid var(--border-color);
