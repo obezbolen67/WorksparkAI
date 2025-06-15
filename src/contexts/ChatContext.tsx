@@ -136,9 +136,6 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
 
                       try {
                           const event = JSON.parse(jsonString);
-                          if (event.type === "[INFO]") {
-                            console.log("[INFO]", event.content)
-                          }
                           
                           if (event.type === 'error') {
                             const errorMessage = event.error?.message || (typeof event.error === 'string' ? event.error : "An unknown error occurred on the server.");
