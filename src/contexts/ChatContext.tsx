@@ -140,8 +140,6 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
 
                       try {
                           const event = JSON.parse(jsonString);
-
-                          // console.log(event.type)
                           
                           if (event.type === 'error') {
                             const errorMessage = event.error?.message || (typeof event.error === 'string' ? event.error : "An unknown error occurred on the server.");
@@ -248,7 +246,6 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
                                   const lastMessage = newMessages[newMessages.length - 1];
 
                                   if (lastMessage?.isWaiting) {
-                                    console.log(event.message)
                                     assistantMessageIndex = newMessages.length - 1;
                                     newMessages[assistantMessageIndex] = event.message;
                                   } else  {
@@ -257,7 +254,6 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
                                   }
                                   
                                   // newMessages.push(event.message);
-                                  console.log("[MESSAGES]", newMessages)
                                   return newMessages;
                                 });
                                 break;
@@ -303,7 +299,6 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
                                   const lastMessage = newMessages[newMessages.length - 1];
 
                                   if (lastMessage?.isWaiting) {
-                                    console.log(event.message)
                                     assistantMessageIndex = newMessages.length - 1;
                                     newMessages[assistantMessageIndex] = event.message;
                                   } else  {
@@ -352,7 +347,8 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
                           }
                       } catch (error) {
                           console.error("[CLIENT] SSE Parse Error:", { jsonString, error });
-                          throw new Error(`Received error from the server.\n${jsonString}`);
+                          let errorMessage = JSON.parse(jsonString)?.error?.message
+                          throw new Error(`Received error from the server.\n${errorMessage}`);
                       }
                   }
 

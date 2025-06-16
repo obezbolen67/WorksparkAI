@@ -131,22 +131,22 @@ type AssistantTurnProps = Omit<ChatMessageProps, 'message' | 'index' | 'isEditin
   onView: (src: string) => void; 
 };
 
-const AssistantTurn = memo(({ messages, chatId, startIndex, isStreaming, onRegenerate, onCopy, onView }: AssistantTurnProps) => { 
+const AssistantTurn = memo(({ messages, chatId, startIndex, isStreaming, onRegenerate, onCopy, onView }: AssistantTurnProps) => {
     const firstMessageOfTurn = messages[startIndex];
     if (firstMessageOfTurn?.isWaiting) {
-      return (
-        <div className="chat-message-wrapper assistant">
-            <div className="chat-message-container">
-                <div className="message-content-wrapper">
-                    <div className="waiting-indicator">
-                        <div className="dot"></div>
-                        <div className="dot"></div>
-                        <div className="dot"></div>
+        return (
+            <div className="chat-message-wrapper assistant">
+                <div className="chat-message-container">
+                    <div className="message-content-wrapper">
+                        <div className="waiting-indicator">
+                            <div className="dot"></div>
+                            <div className="dot"></div>
+                            <div className="dot"></div>
+                        </div>
                     </div>
                 </div>
             </div>
-        </div>
-      );
+        );
     }
 
     const { turnParts, fullContent, lastMessageInTurnIndex } = useMemo(() => {
@@ -156,11 +156,43 @@ const AssistantTurn = memo(({ messages, chatId, startIndex, isStreaming, onRegen
         const processedToolIds = new Set<string>();
         let currentTextBuffer = '';
 
+        // Helper function to process markdown content and prevent unintended header parsing
+        const processMarkdownContent = (content: string, isPartialStream: boolean = false) => {
+            if (!isPartialStream) return content;
+            
+            // During streaming, escape lines that might be incorrectly parsed as headers
+            // but aren't actually markdown headers
+            return content.split('\n').map((line, index, lines) => {
+                // If line starts with --- and is followed by regular text (not another ---),
+                // add a zero-width space to prevent it from being parsed as a horizontal rule
+                if (line.trim() === '---' && index < lines.length - 1 && lines[index + 1].trim() !== '---') {
+                    return line + '\u200B'; // Add zero-width space
+                }
+                
+                // If a line after --- looks like it might be incorrectly parsed as a header,
+                // add a zero-width space at the beginning
+                if (index > 0 && lines[index - 1].trim() === '---' && line.trim() && !line.trim().startsWith('#')) {
+                    return '\u200B' + line;
+                }
+                
+                return line;
+            }).join('\n');
+        };
+
         const flushTextBuffer = (key: string) => {
             if (currentTextBuffer.trim()) {
+                // Check if we're in the middle of streaming this content
+                const isPartialStream = isStreaming && parts.length === 0;
+                const processedContent = processMarkdownContent(currentTextBuffer, isPartialStream);
+                
                 parts.push(
-                    <ReactMarkdown key={key} remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[rehypeKatex]} components={{ code: CustomCode, p: Paragraph }}>
-                        {currentTextBuffer}
+                    <ReactMarkdown 
+                        key={key} 
+                        remarkPlugins={[remarkGfm, remarkMath]} 
+                        rehypePlugins={[rehypeKatex]} 
+                        components={{ code: CustomCode, p: Paragraph }}
+                    >
+                        {processedContent}
                     </ReactMarkdown>
                 );
             }
@@ -193,10 +225,7 @@ const AssistantTurn = memo(({ messages, chatId, startIndex, isStreaming, onRegen
             } else if (currentMessage.role === 'tool_search' && currentMessage.tool_id && !processedToolIds.has(currentMessage.tool_id)) {
                 flushTextBuffer(`text-before-tool-search-${i}`);
                 const toolOutputMessage = messages.find(m => m.role === 'tool_search_result' && m.tool_id === currentMessage.tool_id);
-                // --- START OF THE FIX ---
-                // Removed the unnecessary `chatId` and `onView` props.
                 parts.push(<SearchBlock key={`search-${currentMessage.tool_id}`} toolSearchMessage={currentMessage} toolOutputMessage={toolOutputMessage} />);
-                // --- END OF THE FIX ---
                 processedToolIds.add(currentMessage.tool_id);
             }
             
