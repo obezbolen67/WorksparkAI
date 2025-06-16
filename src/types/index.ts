@@ -16,11 +16,11 @@ export type FileOutput = {
 };
 
 export type Message = {
-  role: 'user' | 'assistant' | 'tool' | 'tool_code';
+  role: 'user' | 'assistant' | 'tool_code_result' | 'tool_code' | 'tool_search_result' | 'tool_search';
   content: string | null;
   attachments?: Attachment[];
   tool_id?: string;
-  state?: 'writing' | 'ready_to_execute' | 'executing' | 'completed' | 'error';
+  state?: 'writing' | 'ready_to_execute' | 'executing' | 'completed' | 'error' | 'searching' | 'searched';
   thinking?: string;
   fileOutput?: FileOutput;
   isWaiting?: boolean;

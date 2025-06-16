@@ -170,7 +170,7 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
                                         assistantMessageIndex = lastMessageIndex;
                                         newMessages[lastMessageIndex] = { role: 'assistant', content: '', thinking: '' };
                                     } else {
-                                        const needsNewMessage = assistantMessageIndex === -1 || (lastMessage && (lastMessage.role === 'tool' || lastMessage.role === 'tool_code' || lastMessage.role === 'user'));
+                                        const needsNewMessage = assistantMessageIndex === -1 || (lastMessage && (lastMessage.role === 'tool_code_result' || lastMessage.role === 'tool_code' || lastMessage.role === 'user'));
                                         if (needsNewMessage) {
                                             assistantMessageIndex = newMessages.length;
                                             newMessages.push({ role: 'assistant', content: '', thinking: '' });
@@ -207,7 +207,7 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
                                     if (lastMessage?.isWaiting) {
                                       assistantMessageIndex = newMessages.length - 1;
                                       newMessages[assistantMessageIndex] = { role: 'assistant', content: '', thinking: currentAssistantThinking || undefined };
-                                    } else if (assistantMessageIndex === -1 || (lastMessage && (lastMessage.role === 'tool' || lastMessage.role === 'tool_code' || lastMessage.role === 'user'))) {
+                                    } else if (assistantMessageIndex === -1 || (lastMessage && (lastMessage.role === 'tool_code_result' || lastMessage.role === 'tool_code' || lastMessage.role === 'user'))) {
                                         assistantMessageIndex = newMessages.length;
                                         newMessages.push({ role: 'assistant', content: '', thinking: currentAssistantThinking || undefined });
                                     }
@@ -237,6 +237,62 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
 
                               case 'ASSISTANT_COMPLETE':
                                   break;
+                              
+                              case 'TOOL_SEARCH_CREATE':
+                                setMessages(prev => {
+                                    
+                                  
+                                  const newMessages = [...prev];
+                                  const lastMessage = newMessages[newMessages.length - 1];
+
+                                  if (lastMessage?.isWaiting) {
+                                    assistantMessageIndex = newMessages.length - 1;
+                                    newMessages[assistantMessageIndex] = { role: 'assistant', content: '', thinking: currentAssistantThinking || undefined };
+                                  } else if (assistantMessageIndex === -1 || (lastMessage && (lastMessage.role.includes('tool_') || lastMessage.role === 'user'))) {
+                                    assistantMessageIndex = newMessages.length;
+                                    newMessages.push({ role: 'assistant', content: '', thinking: currentAssistantThinking || undefined });
+                                  }
+                                  
+                                  newMessages.push(event.message);
+                                  return newMessages;
+                                });
+                                break;
+                              case 'TOOL_SEARCH_DELTA':
+                                  setMessages(prev => {
+                                      const newMessages = [...prev];
+                                      const toolIndex = newMessages.findIndex(m => m.tool_id === event.tool_id);
+                                      if (toolIndex !== -1) newMessages[toolIndex] = { ...newMessages[toolIndex], content: (newMessages[toolIndex].content || '') + event.content };
+                                      return newMessages;
+                                  });
+                                  break;
+                              case 'TOOL_SEARCH_COMPLETE':
+                                  setMessages(prev => {
+                                      const newMessages = [...prev];
+                                      const toolIndex = newMessages.findIndex(m => m.tool_id === event.tool_id);
+                                      if (toolIndex !== -1) newMessages[toolIndex].state = 'ready_to_execute';
+                                      return newMessages;
+                                  });
+                                  break;
+                              case 'TOOL_SEARCH_STATE_UPDATE':
+                                  setMessages(prev => {
+                                      const newMessages = [...prev];
+                                      const toolIndex = newMessages.findIndex(m => m.tool_id === event.tool_id);
+                                      if (toolIndex !== -1) newMessages[toolIndex].state = event.state;
+                                      return newMessages;
+                                  });
+                                  break;
+                              case 'TOOL_SEARCH_RESULT':
+                                setMessages(prev => {
+                                    const newMessages = [...prev];
+                                    const toolSearchIndex = newMessages.findIndex(m => m.role === 'tool_search' && m.tool_id === event.tool_id);
+                                    if (toolSearchIndex !== -1) newMessages[toolSearchIndex].state = event.state;
+                                    newMessages.push({ role: 'tool_search_result', content: event.result.content, tool_id: event.tool_id, fileOutput: event.result.fileOutput || undefined });
+                                    return newMessages;
+                                });
+                                assistantMessageIndex = -1;
+                                currentAssistantThinking = '';
+                                break;
+
                               case 'TOOL_CODE_CREATE':
                                 setMessages(prev => {
                                     
@@ -247,7 +303,7 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
                                   if (lastMessage?.isWaiting) {
                                     assistantMessageIndex = newMessages.length - 1;
                                     newMessages[assistantMessageIndex] = { role: 'assistant', content: '', thinking: currentAssistantThinking || undefined };
-                                  } else if (assistantMessageIndex === -1 || (lastMessage && (lastMessage.role === 'tool' || lastMessage.role === 'tool_code' || lastMessage.role === 'user'))) {
+                                  } else if (assistantMessageIndex === -1 || (lastMessage && (lastMessage.role.includes('tool_') || lastMessage.role === 'user'))) {
                                     assistantMessageIndex = newMessages.length;
                                     newMessages.push({ role: 'assistant', content: '', thinking: currentAssistantThinking || undefined });
                                   }
@@ -280,12 +336,12 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
                                       return newMessages;
                                   });
                                   break;
-                              case 'TOOL_RESULT':
+                              case 'TOOL_CODE_RESULT':
                                 setMessages(prev => {
                                     const newMessages = [...prev];
                                     const toolCodeIndex = newMessages.findIndex(m => m.role === 'tool_code' && m.tool_id === event.tool_id);
                                     if (toolCodeIndex !== -1) newMessages[toolCodeIndex].state = event.state;
-                                    newMessages.push({ role: 'tool', content: event.result.content, tool_id: event.tool_id, fileOutput: event.result.fileOutput || undefined });
+                                    newMessages.push({ role: 'tool_code_result', content: event.result.content, tool_id: event.tool_id, fileOutput: event.result.fileOutput || undefined });
                                     return newMessages;
                                 });
                                 assistantMessageIndex = -1;
@@ -294,7 +350,7 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
                           }
                       } catch (error) {
                           console.error("[CLIENT] SSE Parse Error:", { jsonString, error });
-                          throw new Error("Received a malformed response from the server.");
+                          throw new Error(`Received error from the server.\n${jsonString}`);
                       }
                   }
 
