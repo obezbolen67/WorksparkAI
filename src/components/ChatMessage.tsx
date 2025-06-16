@@ -94,7 +94,7 @@ const CustomCode = ({ node, inline, className, children, style, ...props }: Code
 const Paragraph: Components['p'] = ({ node, ...props }) => {
     const child = node?.children[0];
     const childClassName = (child?.type === 'element' && child.properties?.className?.toString()) || '';
-    if (node?.children.length === 1 && child?.type === 'element' && (child?.tagName === 'pre' || childClassName.includes('code-analysis-container') || childClassName.includes('inline-thinking-container'))) {
+    if (node?.children.length === 1 && child?.type === 'element' && (child?.tagName === 'pre' || childClassName.includes('tool-block-container') || childClassName.includes('inline-thinking-container'))) {
         return <>{props.children}</>;
     }
     return <p {...props} />;
@@ -186,14 +186,17 @@ const AssistantTurn = memo(({ messages, chatId, startIndex, isStreaming, onRegen
                     currentTextBuffer += currentMessage.content;
                 }
             } else if (currentMessage.role === 'tool_code' && currentMessage.tool_id && !processedToolIds.has(currentMessage.tool_id)) {
-                flushTextBuffer(`text-before-tool-search-${i}`);
+                flushTextBuffer(`text-before-tool-code-${i}`);
                 const toolOutputMessage = messages.find(m => m.role === 'tool_code_result' && m.tool_id === currentMessage.tool_id);
                 parts.push(<CodeAnalysisBlock key={`code-${currentMessage.tool_id}`} chatId={chatId} toolCodeMessage={currentMessage} toolOutputMessage={toolOutputMessage} onView={onView} />);
                 processedToolIds.add(currentMessage.tool_id);
             } else if (currentMessage.role === 'tool_search' && currentMessage.tool_id && !processedToolIds.has(currentMessage.tool_id)) {
                 flushTextBuffer(`text-before-tool-search-${i}`);
                 const toolOutputMessage = messages.find(m => m.role === 'tool_search_result' && m.tool_id === currentMessage.tool_id);
-                parts.push(<SearchBlock key={`search-${currentMessage.tool_id}`} chatId={chatId} toolSearchMessage={currentMessage} toolOutputMessage={toolOutputMessage} onView={onView} />);
+                // --- START OF THE FIX ---
+                // Removed the unnecessary `chatId` and `onView` props.
+                parts.push(<SearchBlock key={`search-${currentMessage.tool_id}`} toolSearchMessage={currentMessage} toolOutputMessage={toolOutputMessage} />);
+                // --- END OF THE FIX ---
                 processedToolIds.add(currentMessage.tool_id);
             }
             

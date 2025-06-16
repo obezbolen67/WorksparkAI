@@ -140,6 +140,8 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
 
                       try {
                           const event = JSON.parse(jsonString);
+
+                          // console.log(event.type)
                           
                           if (event.type === 'error') {
                             const errorMessage = event.error?.message || (typeof event.error === 'string' ? event.error : "An unknown error occurred on the server.");
@@ -246,14 +248,16 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
                                   const lastMessage = newMessages[newMessages.length - 1];
 
                                   if (lastMessage?.isWaiting) {
+                                    console.log(event.message)
                                     assistantMessageIndex = newMessages.length - 1;
-                                    newMessages[assistantMessageIndex] = { role: 'assistant', content: '', thinking: currentAssistantThinking || undefined };
-                                  } else if (assistantMessageIndex === -1 || (lastMessage && (lastMessage.role.includes('tool_') || lastMessage.role === 'user'))) {
+                                    newMessages[assistantMessageIndex] = event.message;
+                                  } else  {
                                     assistantMessageIndex = newMessages.length;
-                                    newMessages.push({ role: 'assistant', content: '', thinking: currentAssistantThinking || undefined });
+                                    newMessages.push(event.message);
                                   }
                                   
-                                  newMessages.push(event.message);
+                                  // newMessages.push(event.message);
+                                  console.log("[MESSAGES]", newMessages)
                                   return newMessages;
                                 });
                                 break;
@@ -295,20 +299,18 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
 
                               case 'TOOL_CODE_CREATE':
                                 setMessages(prev => {
-                                    
-                                  
                                   const newMessages = [...prev];
                                   const lastMessage = newMessages[newMessages.length - 1];
 
                                   if (lastMessage?.isWaiting) {
+                                    console.log(event.message)
                                     assistantMessageIndex = newMessages.length - 1;
-                                    newMessages[assistantMessageIndex] = { role: 'assistant', content: '', thinking: currentAssistantThinking || undefined };
-                                  } else if (assistantMessageIndex === -1 || (lastMessage && (lastMessage.role.includes('tool_') || lastMessage.role === 'user'))) {
+                                    newMessages[assistantMessageIndex] = event.message;
+                                  } else  {
                                     assistantMessageIndex = newMessages.length;
-                                    newMessages.push({ role: 'assistant', content: '', thinking: currentAssistantThinking || undefined });
+                                    newMessages.push(event.message);
                                   }
                                   
-                                  newMessages.push(event.message);
                                   return newMessages;
                                 });
                                 break;
@@ -384,8 +386,6 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
     if (isStreaming || isSending) return;
     const userMessage: Message = { role: 'user', content: text, attachments };
     const originalMessages = messages;
-
-    console.log(metadata)
 
     try {
       if (!activeChatId) {
@@ -482,6 +482,7 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
     if (!activeChatId || isStreaming || isSending) return;
     const lastUserIndex = messages.findLastIndex(m => m.role === 'user');
     if (lastUserIndex === -1) return;
+
     const historyForRegeneration = messages.slice(0, lastUserIndex + 1);
     const regenerationMetadata = { isRegeneration: true, ...metadata, isThinking };
     const messagesWithPlaceholder = [...historyForRegeneration, { role: 'assistant', content: '', isWaiting: true } as Message];

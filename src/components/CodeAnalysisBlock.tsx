@@ -70,7 +70,7 @@ const CodeAnalysisBlock = ({ toolCodeMessage, toolOutputMessage, onView }: CodeA
   };
   // --- END OF THE FIX ---
 
-  const OutputSection = (toolOutputMessage || ['executing', 'completed', 'error'].includes(state)) ? (
+  const OutputSection = (toolOutputMessage || ['completed', 'error'].includes(state)) ? (
     <div className="analysis-section">
       <div className="analysis-section-title">
         {state === 'executing' && !output ? 'Output (Executing...)' : 'Output'}
