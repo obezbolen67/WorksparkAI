@@ -12,10 +12,13 @@ const ChatPage = () => {
     clearChat, 
     isLoadingChat, 
     isCreatingChat,
+    isThinkingEnabled,
+    toggleThinking,
     isSending,
     isThinking,
     sendMessage,
     stopGeneration, // <-- NEW
+
     isStreaming, 
     editingIndex, 
     startEditing, 
@@ -40,6 +43,8 @@ const ChatPage = () => {
   return (
     <ChatView 
       messages={messages}
+      isThinkingEnabled={isThinkingEnabled}
+      toggleThinkingEnabled={toggleThinking}
       activeChatId={activeChatId}
       isStreaming={isStreaming}
       isLoading={isLoadingChat}

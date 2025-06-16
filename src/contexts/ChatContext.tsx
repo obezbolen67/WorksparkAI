@@ -25,6 +25,8 @@ interface ChatContextType {
   stopGeneration: () => void;
   isStreaming: boolean;
   isThinking: boolean;
+  isThinkingEnabled: boolean;
+  toggleThinking: () => void;
   thinkingContent: string | null;
   editingIndex: number | null;
   startEditing: (index: number) => void;
@@ -54,6 +56,8 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [isThinking, setIsThinking] = useState(false);
   const [thinkingContent, setThinkingContent] = useState<string | null>(null);
+  const [isThinkingEnabled, setThinkingEnabled] = useState(false);
+  const toggleThinking = () => setThinkingEnabled(prev => !prev);
 
   const streamAbortControllerRef = useRef<AbortController | null>(null);
   const messagesRef = useRef<Message[]>([]);
@@ -285,6 +289,7 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
                                     return newMessages;
                                 });
                                 assistantMessageIndex = -1;
+                                currentAssistantThinking = '';
                                 break;
                           }
                       } catch (error) {
@@ -341,8 +346,9 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
         
         const messagesWithPlaceholder = [...newChat.messages, { role: 'assistant', content: '', isWaiting: true } as Message];
         setMessages(messagesWithPlaceholder); 
+
         
-        const streamMetadata = { ...metadata, userMessageAlreadySaved: true };
+        const streamMetadata = {  ...metadata, isThinkingEnabled, userMessageAlreadySaved: true };
         await streamAndSaveResponse(newChat._id, newChat.messages, streamMetadata);
 
         await loadChatList();
@@ -403,7 +409,7 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
   const startEditing = (index: number) => setEditingIndex(index);
   const cancelEditing = () => setEditingIndex(null);
 
-  const saveAndSubmitEdit = async (index: number, newContent: string, metadata?: Record<string, any>,) => {
+  const saveAndSubmitEdit = async (index: number, newContent: string) => {
     if (!activeChatId) return;
     stopGeneration()
 
@@ -413,7 +419,7 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
     const messagesForUi = [...newHistoryForStream, { role: 'assistant', content: '', isWaiting: true } as Message];
     setMessages(messagesForUi);
     setEditingIndex(null);
-    await streamAndSaveResponse(activeChatId, newHistoryForStream, { isRegeneration: true, ...metadata });
+    await streamAndSaveResponse(activeChatId, newHistoryForStream, { isRegeneration: true, isThinkingEnabled: isThinkingEnabled });
   };
 
   const regenerateResponse = async (metadata?: Record<string, any>) => {
@@ -421,7 +427,7 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
     const lastUserIndex = messages.findLastIndex(m => m.role === 'user');
     if (lastUserIndex === -1) return;
     const historyForRegeneration = messages.slice(0, lastUserIndex + 1);
-    const regenerationMetadata = { isRegeneration: true, ...metadata };
+    const regenerationMetadata = { isRegeneration: true, ...metadata, isThinking };
     const messagesWithPlaceholder = [...historyForRegeneration, { role: 'assistant', content: '', isWaiting: true } as Message];
     setMessages(messagesWithPlaceholder);
     await streamAndSaveResponse(activeChatId, historyForRegeneration, regenerationMetadata);
@@ -473,7 +479,7 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
     isLoadingChatList, 
     isCreatingChat, isSending, sendMessage, isStreaming, editingIndex, startEditing,
     cancelEditing, saveAndSubmitEdit, regenerateResponse, renameChat,
-    isThinking, thinkingContent,
+    isThinking, thinkingContent, isThinkingEnabled, toggleThinking,
     stopGeneration, deleteChat, clearAllChats,
   };
 

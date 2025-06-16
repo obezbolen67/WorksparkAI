@@ -22,6 +22,8 @@ interface ChatViewProps {
   onCancelEdit: () => void;
   onSaveEdit: (index: number, newContent: string, metadata?: Record<string, any>) => void;
   onRegenerate: (metadata?: Record<string, any>) => void;
+  isThinkingEnabled: boolean;
+  toggleThinkingEnabled : () => void;
 }
 
 const ChatView = (props: ChatViewProps) => {
@@ -29,14 +31,13 @@ const ChatView = (props: ChatViewProps) => {
     messages, activeChatId, isStreaming, isThinking, isLoading, isSending, onSendMessage, 
     onStopGeneration, // <-- NEW
     editingIndex, onStartEdit, onCancelEdit, 
-    onSaveEdit, onRegenerate,
+    onSaveEdit, onRegenerate, isThinkingEnabled, toggleThinkingEnabled
   } = props;
 
   const chatContentRef = useRef<HTMLDivElement>(null);
   const { showNotification } = useNotification();
   const [isReady, setIsReady] = useState(false);
   const [showScrollToBottom, setShowScrollToBottom] = useState(false);
-  const [isThinkingEnabled, setIsThinkingEnabled] = useState(false);
 
   useEffect(() => {
     const timer = setTimeout(() => setIsReady(true), 100);
@@ -70,11 +71,11 @@ const ChatView = (props: ChatViewProps) => {
   };
 
   const handleSendMessage = (text: string, attachments: Attachment[]) => {
-    onSendMessage(text, attachments, { isThinkingEnabled });
+    onSendMessage(text, attachments);
   };
   
   const handleRegenerate = () => {
-    onRegenerate({ isThinkingEnabled });
+    onRegenerate();
   };
 
   return (
@@ -130,7 +131,7 @@ const ChatView = (props: ChatViewProps) => {
             onStopGeneration={onStopGeneration}
             isSending={isSending || isStreaming}
             isThinkingVisible={isThinkingEnabled}
-            onToggleThinking={() => setIsThinkingEnabled(prev => !prev)}
+            onToggleThinking={toggleThinkingEnabled}
           />
         </div>
       </main>
