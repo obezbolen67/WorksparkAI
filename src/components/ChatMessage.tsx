@@ -1,5 +1,4 @@
-// src/components/ChatMessage.tsx
-import { useState, useEffect, memo, useMemo } from 'react';
+import { useState, useEffect, memo, useMemo, useRef } from 'react';
 import type { Message, Attachment } from '../types';
 import api, { API_BASE_URL } from '../utils/api';
 import '../css/ChatMessage.css';
@@ -275,12 +274,45 @@ const ChatMessage = ({ message, messages, chatId, index, isEditing, onStartEdit,
   const [editedContent, setEditedContent] = useState(message.content || '');
   const [viewerSrc, setViewerSrc] = useState<string | null>(null);
   const [isViewerOpen, setIsViewerOpen] = useState(false);
+  const editTextAreaRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
-    if (isEditing) setEditedContent(message.content || '');
+    if (isEditing) {
+      setEditedContent(message.content || '');
+    }
   }, [isEditing, message.content]);
 
+  // Effect to focus and auto-resize the textarea when editing starts
+  useEffect(() => {
+    if (isEditing && editTextAreaRef.current) {
+      const textarea = editTextAreaRef.current;
+      textarea.focus();
+      textarea.setSelectionRange(textarea.value.length, textarea.value.length);
+      
+      // Auto-resize after a short delay to ensure correct scrollHeight
+      setTimeout(() => {
+        textarea.style.height = 'auto';
+        textarea.style.height = `${textarea.scrollHeight}px`;
+      }, 0);
+    }
+  }, [isEditing]);
+
   const handleOpenViewer = (src: string) => { setViewerSrc(src); setIsViewerOpen(true); };
+
+  const handleEditContentChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setEditedContent(e.target.value);
+    // Auto-resize on input
+    const textarea = e.target;
+    textarea.style.height = 'auto';
+    textarea.style.height = `${textarea.scrollHeight}px`;
+  };
+
+  const handleEditKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    // Only handle Escape key. Enter and Shift+Enter will create new lines by default.
+    if (e.key === 'Escape') {
+      onCancelEdit();
+    }
+  };
 
   const renderAttachments = (attachments: Attachment[]) => (
     <div className="message-attachments">
@@ -324,7 +356,13 @@ const ChatMessage = ({ message, messages, chatId, index, isEditing, onStartEdit,
                 </div>
               ) : (
                 <div className="message-editor-content">
-                    <textarea value={editedContent} onChange={(e) => setEditedContent(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); onSaveEdit(index, editedContent, { }); } if (e.key === 'Escape') onCancelEdit(); }} rows={1} />
+                    <textarea 
+                      ref={editTextAreaRef}
+                      value={editedContent} 
+                      onChange={handleEditContentChange} 
+                      onKeyDown={handleEditKeyDown}
+                      rows={1} 
+                    />
                     <div className="editor-actions">
                         <button className="editor-button cancel" onClick={onCancelEdit}>Cancel</button>
                         <button className="editor-button save" onClick={() => onSaveEdit(index, editedContent)}>Save & Submit</button>
