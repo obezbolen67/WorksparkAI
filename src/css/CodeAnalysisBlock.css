@@ -296,6 +296,27 @@
     background-color: transparent;
 }
 /* --- END OF THE FIX --- */
+.file-outputs-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.file-output-item {
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 8px;
+  background-color: var(--bg-secondary);
+}
+
+.file-output-item .image-output-container {
+  margin: 0;
+}
+
+.file-output-item .file-output-content {
+  padding: 8px;
+}
 
 
 @media (max-width: 640px) {
@@ -321,3 +342,4 @@
     justify-content: center;
   }
 }
+

@@ -23,5 +23,6 @@ export type Message = {
   state?: 'writing' | 'ready_to_execute' | 'executing' | 'completed' | 'error' | 'searching' | 'searched';
   thinking?: string;
   fileOutput?: FileOutput;
+  fileOutputs?: FileOutput[]; 
   isWaiting?: boolean;
 };

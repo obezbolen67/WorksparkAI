@@ -1,5 +1,3 @@
-// src/components/CodeAnalysisBlock.tsx
-
 import { useState, useMemo, memo, useEffect } from 'react';
 import { FiChevronDown, FiCheckCircle, FiXCircle, FiLoader, FiDownload, FiFileText } from 'react-icons/fi';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
@@ -50,17 +48,12 @@ const CodeAnalysisBlock = ({ toolCodeMessage, toolOutputMessage, onView }: CodeA
   const output = toolOutputMessage?.content || '';
   const isOutputError = hasError || (state === 'completed' && output.toLowerCase().includes('error:'));
   
-  const fileOutput = toolOutputMessage?.fileOutput;
-  const dataUrl = fileOutput
-    ? `data:${fileOutput.mimeType};base64,${fileOutput.content}`
-    : null;
+  // Handle both single fileOutput (backward compatibility) and multiple fileOutputs
+  const fileOutputs = toolOutputMessage?.fileOutputs || 
+    (toolOutputMessage?.fileOutput ? [toolOutputMessage.fileOutput] : []);
 
-  const isImage = fileOutput?.mimeType.startsWith('image/');
-
-  // --- START OF THE FIX ---
-  // A helper function to programmatically trigger a file download.
-  const handleDownload = () => {
-    if (!dataUrl || !fileOutput) return;
+  const handleDownload = (fileOutput: any) => {
+    const dataUrl = `data:${fileOutput.mimeType};base64,${fileOutput.content}`;
     const link = document.createElement('a');
     link.href = dataUrl;
     link.download = fileOutput.fileName;
@@ -68,7 +61,6 @@ const CodeAnalysisBlock = ({ toolCodeMessage, toolOutputMessage, onView }: CodeA
     link.click();
     document.body.removeChild(link);
   };
-  // --- END OF THE FIX ---
 
   const OutputSection = (toolOutputMessage || ['completed', 'error'].includes(state)) ? (
     <div className="analysis-section">
@@ -82,48 +74,55 @@ const CodeAnalysisBlock = ({ toolCodeMessage, toolOutputMessage, onView }: CodeA
     </div>
   ) : null;
 
-  const FileSection = fileOutput && dataUrl ? (
-     <div className="analysis-section">
-        <div className="analysis-section-title">File Output</div>
-        {isImage ? (
-          <div className="image-output-container">
-            <button onClick={() => onView(dataUrl)} className="file-output-image-wrapper">
-              <img src={dataUrl} alt={fileOutput.fileName} className="file-output-image" />
-            </button>
-            <div className="file-output-actions">
-              <Tooltip text={fileOutput.fileName}>
-                {/* --- START OF THE FIX --- */}
-                {/* Replaced <a> tag with a <button> to prevent default tooltips */}
-                <button
-                  onClick={handleDownload}
-                  className="download-button"
-                >
-                  <FiDownload size={14} />
-                  <span>Download</span>
-                </button>
-                {/* --- END OF THE FIX --- */}
-              </Tooltip>
+  const FilesSection = fileOutputs.length > 0 ? (
+    <div className="analysis-section">
+      <div className="analysis-section-title">
+        File Output{fileOutputs.length > 1 ? 's' : ''} ({fileOutputs.length})
+      </div>
+      <div className={fileOutputs.length > 1 ? "file-outputs-grid" : ""}>
+        {fileOutputs.map((fileOutput, index) => {
+          const dataUrl = `data:${fileOutput.mimeType};base64,${fileOutput.content}`;
+          const isImage = fileOutput.mimeType.startsWith('image/');
+          
+          return (
+            <div key={index} className="file-output-item">
+              {isImage ? (
+                <div className="image-output-container">
+                  <button onClick={() => onView(dataUrl)} className="file-output-image-wrapper">
+                    <img src={dataUrl} alt={fileOutput.fileName} className="file-output-image" />
+                  </button>
+                  <div className="file-output-actions">
+                    <Tooltip text={fileOutput.fileName}>
+                      <button
+                        onClick={() => handleDownload(fileOutput)}
+                        className="download-button"
+                      >
+                        <FiDownload size={14} />
+                        <span>Download</span>
+                      </button>
+                    </Tooltip>
+                  </div>
+                </div>
+              ) : (
+                <div className="file-output-content">
+                  <FiFileText size={20} className="file-icon" />
+                  <span className="file-name">{fileOutput.fileName}</span>
+                  <Tooltip text={fileOutput.fileName}>
+                    <button
+                      onClick={() => handleDownload(fileOutput)}
+                      className="download-button"
+                    >
+                      <FiDownload size={14} />
+                      <span>Download</span>
+                    </button>
+                  </Tooltip>
+                </div>
+              )}
             </div>
-          </div>
-        ) : (
-          <div className="file-output-content">
-            <FiFileText size={20} className="file-icon" />
-            <span className="file-name">{fileOutput.fileName}</span>
-            <Tooltip text={fileOutput.fileName}>
-              {/* --- START OF THE FIX --- */}
-              {/* Also replaced this <a> tag with a <button> */}
-              <button
-                onClick={handleDownload}
-                className="download-button"
-              >
-                <FiDownload size={14} />
-                <span>Download</span>
-              </button>
-              {/* --- END OF THE FIX --- */}
-            </Tooltip>
-          </div>
-        )}
-     </div>
+          );
+        })}
+      </div>
+    </div>
   ) : null;
 
   return (
@@ -159,14 +158,14 @@ const CodeAnalysisBlock = ({ toolCodeMessage, toolOutputMessage, onView }: CodeA
             </div>
           </div>
           {OutputSection}
-          {FileSection}
+          {FilesSection}
         </div>
       )}
 
-      {!isExpanded && (OutputSection || FileSection) && (
+      {!isExpanded && (OutputSection || FilesSection) && (
         <div className="analysis-content">
           {OutputSection}
-          {FileSection}
+          {FilesSection}
         </div>
       )}
     </div>

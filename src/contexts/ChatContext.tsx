@@ -338,12 +338,19 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
                                     const newMessages = [...prev];
                                     const toolCodeIndex = newMessages.findIndex(m => m.role === 'tool_code' && m.tool_id === event.tool_id);
                                     if (toolCodeIndex !== -1) newMessages[toolCodeIndex].state = event.state;
-                                    newMessages.push({ role: 'tool_code_result', content: event.result.content, tool_id: event.tool_id, fileOutput: event.result.fileOutput || undefined });
+                                    newMessages.push({ 
+                                        role: 'tool_code_result', 
+                                        content: event.result.content, 
+                                        tool_id: event.tool_id, 
+                                        fileOutputs: event.result.fileOutputs || undefined 
+                                    });
                                     return newMessages;
                                 });
                                 assistantMessageIndex = -1;
                                 currentAssistantThinking = '';
                                 break;
+
+
                           }
                       } catch (error) {
                           console.error("[CLIENT] SSE Parse Error:", { jsonString, error });
