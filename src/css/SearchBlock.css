@@ -99,7 +99,7 @@
 }
 
 .tool-block-content.expanded {
-    max-height: 1000px; /* A value larger than the content will ever be */
+    max-height: 1500px; /* Increased value to accommodate many images */
     opacity: 1;
     padding-top: 0;
     padding-bottom: 16px;
@@ -109,6 +109,27 @@
                 transform 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94),
                 padding 0.4s ease-in-out;
 }
+
+/* --- Collapsed Preview Styles --- */
+.tool-block-preview {
+    padding: 0 16px 12px 16px;
+}
+
+.search-image-gallery-preview {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.search-image-item-preview img {
+    width: 40px;
+    height: 40px;
+    object-fit: cover;
+    border-radius: 6px;
+    border: 1px solid var(--color-border);
+    background-color: var(--color-background-tertiary);
+}
+
 
 .spinner-icon {
     animation: spin 1.5s linear infinite;
@@ -234,3 +255,76 @@
 }
 .searching-placeholder .dot:nth-child(1) { animation-delay: -0.32s; }
 .searching-placeholder .dot:nth-child(2) { animation-delay: -0.16s; }
+
+/* --- Styling for Image Gallery in Search Results --- */
+.search-image-gallery {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 12px;
+}
+
+.search-image-item {
+    background-color: var(--color-background-code);
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    overflow: hidden;
+    transition: all 0.2s ease-in-out;
+    display: flex;
+    flex-direction: column;
+}
+
+.search-image-item:hover {
+    border-color: var(--color-border-hover);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.05);
+}
+
+.search-image-item img {
+    width: 100%;
+    height: 120px;
+    object-fit: cover;
+    display: block;
+    background-color: var(--color-background-tertiary); /* Placeholder bg */
+}
+
+.search-image-info {
+    padding: 8px 10px;
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+}
+
+.search-image-title {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--color-text-primary);
+    line-height: 1.4;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    line-clamp: 2; /* Standard property for compatibility */
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-bottom: 6px;
+}
+
+.search-image-source {
+    font-size: 11px;
+    color: var(--color-text-secondary);
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    margin-top: auto; /* Pushes it to the bottom */
+}
+
+.search-image-source:hover {
+    color: var(--color-accent);
+    text-decoration: underline;
+}
+
+.search-image-source svg {
+    width: 12px;
+    height: 12px;
+}
