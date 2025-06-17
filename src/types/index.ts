@@ -16,11 +16,11 @@ export type FileOutput = {
 };
 
 export type Message = {
-  role: 'user' | 'assistant' | 'tool_code_result' | 'tool_code' | 'tool_search_result' | 'tool_search';
+  role: 'user' | 'assistant' | 'tool_code_result' | 'tool_code' | 'tool_search_result' | 'tool_search' | 'tool_doc_extract' | 'tool_doc_extract_result';
   content: string | null;
   attachments?: Attachment[];
   tool_id?: string;
-  state?: 'writing' | 'ready_to_execute' | 'executing' | 'completed' | 'error' | 'searching' | 'searched';
+  state?: 'writing' | 'ready_to_execute' | 'executing' | 'completed' | 'error' | 'searching' | 'searched' | 'analyzing' | null;
   thinking?: string;
   fileOutput?: FileOutput;
   fileOutputs?: FileOutput[]; 

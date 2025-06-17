@@ -1,3 +1,4 @@
+// src/components/ChatMessage.tsx
 import { useState, useEffect, memo, useMemo } from 'react';
 import type { Message, Attachment } from '../types';
 import api, { API_BASE_URL } from '../utils/api';
@@ -17,6 +18,8 @@ import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
 import SearchBlock from './SearchBlock';
+import AnalysisBlock from './AnalysisBlock';
+import '../css/AnalysisBlock.css';
 
 
 interface CodeComponentProps {
@@ -156,32 +159,21 @@ const AssistantTurn = memo(({ messages, chatId, startIndex, isStreaming, onRegen
         const processedToolIds = new Set<string>();
         let currentTextBuffer = '';
 
-        // Helper function to process markdown content and prevent unintended header parsing
         const processMarkdownContent = (content: string, isPartialStream: boolean = false) => {
             if (!isPartialStream) return content;
-            
-            // During streaming, escape lines that might be incorrectly parsed as headers
-            // but aren't actually markdown headers
             return content.split('\n').map((line, index, lines) => {
-                // If line starts with --- and is followed by regular text (not another ---),
-                // add a zero-width space to prevent it from being parsed as a horizontal rule
                 if (line.trim() === '---' && index < lines.length - 1 && lines[index + 1].trim() !== '---') {
-                    return line + '\u200B'; // Add zero-width space
+                    return line + '\u200B';
                 }
-                
-                // If a line after --- looks like it might be incorrectly parsed as a header,
-                // add a zero-width space at the beginning
                 if (index > 0 && lines[index - 1].trim() === '---' && line.trim() && !line.trim().startsWith('#')) {
                     return '\u200B' + line;
                 }
-                
                 return line;
             }).join('\n');
         };
 
         const flushTextBuffer = (key: string) => {
             if (currentTextBuffer.trim()) {
-                // Check if we're in the middle of streaming this content
                 const isPartialStream = isStreaming && parts.length === 0;
                 const processedContent = processMarkdownContent(currentTextBuffer, isPartialStream);
                 
@@ -226,6 +218,11 @@ const AssistantTurn = memo(({ messages, chatId, startIndex, isStreaming, onRegen
                 flushTextBuffer(`text-before-tool-search-${i}`);
                 const toolOutputMessage = messages.find(m => m.role === 'tool_search_result' && m.tool_id === currentMessage.tool_id);
                 parts.push(<SearchBlock key={`search-${currentMessage.tool_id}`} toolSearchMessage={currentMessage} toolOutputMessage={toolOutputMessage} />);
+                processedToolIds.add(currentMessage.tool_id);
+            } else if (currentMessage.role === 'tool_doc_extract' && currentMessage.tool_id && !processedToolIds.has(currentMessage.tool_id)) {
+                flushTextBuffer(`text-before-tool-extract-${i}`);
+                const toolOutputMessage = messages.find(m => m.role === 'tool_doc_extract_result' && m.tool_id === currentMessage.tool_id);
+                parts.push(<AnalysisBlock key={`extract-${currentMessage.tool_id}`} toolMessage={currentMessage} outputMessage={toolOutputMessage} />);
                 processedToolIds.add(currentMessage.tool_id);
             }
             

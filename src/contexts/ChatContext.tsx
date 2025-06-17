@@ -1,3 +1,4 @@
+// src/contexts/ChatContext.tsx
 import { createContext, useContext, useState, useCallback, useEffect, ReactNode, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import type { Message, Attachment } from '../types';
@@ -62,7 +63,6 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
   const streamAbortControllerRef = useRef<AbortController | null>(null);
   const messagesRef = useRef<Message[]>([]);
 
-  // Keep a ref to messages to avoid stale state in async callbacks
   useEffect(() => {
     messagesRef.current = messages;
   }, [messages]);
@@ -145,18 +145,8 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
                             const errorMessage = event.error?.message || (typeof event.error === 'string' ? event.error : "An unknown error occurred on the server.");
                             throw new Error(errorMessage);
                           }
-                          
+
                           switch (event.type) {
-                              case 'USER_MESSAGE_ACK':
-                                  setMessages(prev => {
-                                      const newMessages = [...prev];
-                                      const lastUserMessageIndex = newMessages.findLastIndex(m => m.role === 'user');
-                                      if (lastUserMessageIndex !== -1) {
-                                          newMessages[lastUserMessageIndex] = event.message;
-                                      }
-                                      return newMessages;
-                                  });
-                                  break;
                               case 'THINKING_START':
                                 setMessages(prev => {
                                     const newMessages = [...prev];
@@ -170,7 +160,7 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
                                         assistantMessageIndex = lastMessageIndex;
                                         newMessages[lastMessageIndex] = { role: 'assistant', content: '', thinking: '' };
                                     } else {
-                                        const needsNewMessage = assistantMessageIndex === -1 || (lastMessage && (lastMessage.role === 'tool_code_result' || lastMessage.role === 'tool_code' || lastMessage.role === 'user'));
+                                        const needsNewMessage = assistantMessageIndex === -1 || (lastMessage && (lastMessage.role !== 'assistant' || (lastMessage.content && lastMessage.content.trim() !== '')));
                                         if (needsNewMessage) {
                                             assistantMessageIndex = newMessages.length;
                                             newMessages.push({ role: 'assistant', content: '', thinking: '' });
@@ -207,7 +197,7 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
                                     if (lastMessage?.isWaiting) {
                                       assistantMessageIndex = newMessages.length - 1;
                                       newMessages[assistantMessageIndex] = { role: 'assistant', content: '', thinking: currentAssistantThinking || undefined };
-                                    } else if (assistantMessageIndex === -1 || (lastMessage && (lastMessage.role === 'tool_code_result' || lastMessage.role === 'tool_code' || lastMessage.role === 'user'))) {
+                                    } else if (assistantMessageIndex === -1 || (lastMessage && (lastMessage.role !== 'assistant'))) {
                                         assistantMessageIndex = newMessages.length;
                                         newMessages.push({ role: 'assistant', content: '', thinking: currentAssistantThinking || undefined });
                                     }
@@ -224,7 +214,6 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
                                     const currentMsg = newMessages[assistantMessageIndex];
                                      if (currentMsg && currentMsg.role === 'assistant') {
                                          let newContent = (currentMsg.content || '') + event.content;
-                                         newContent = newContent.replace(/\n{2,}/g, '\n');
                                          newMessages[assistantMessageIndex] = { 
                                              ...currentMsg, 
                                              content: newContent, 
@@ -234,70 +223,27 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
                                      return newMessages;
                                 });
                                 break;
-
+                              
+                              case 'USER_MESSAGE_ACK':
+                                  setMessages(prev => {
+                                      const newMessages = [...prev];
+                                      const lastUserMessageIndex = newMessages.findLastIndex(m => m.role === 'user');
+                                      if (lastUserMessageIndex !== -1) {
+                                          newMessages[lastUserMessageIndex] = event.message;
+                                      }
+                                      return newMessages;
+                                  });
+                                  break;
                               case 'ASSISTANT_COMPLETE':
                                   break;
                               
-                              case 'TOOL_SEARCH_CREATE':
-                                setMessages(prev => {
-                                    
-                                  
-                                  const newMessages = [...prev];
-                                  const lastMessage = newMessages[newMessages.length - 1];
-
-                                  if (lastMessage?.isWaiting) {
-                                    assistantMessageIndex = newMessages.length - 1;
-                                    newMessages[assistantMessageIndex] = event.message;
-                                  } else  {
-                                    assistantMessageIndex = newMessages.length;
-                                    newMessages.push(event.message);
-                                  }
-                                  
-                                  // newMessages.push(event.message);
-                                  return newMessages;
-                                });
-                                break;
-                              case 'TOOL_SEARCH_DELTA':
-                                  setMessages(prev => {
-                                      const newMessages = [...prev];
-                                      const toolIndex = newMessages.findIndex(m => m.tool_id === event.tool_id);
-                                      if (toolIndex !== -1) newMessages[toolIndex] = { ...newMessages[toolIndex], content: (newMessages[toolIndex].content || '') + event.content };
-                                      return newMessages;
-                                  });
-                                  break;
-                              case 'TOOL_SEARCH_COMPLETE':
-                                  setMessages(prev => {
-                                      const newMessages = [...prev];
-                                      const toolIndex = newMessages.findIndex(m => m.tool_id === event.tool_id);
-                                      if (toolIndex !== -1) newMessages[toolIndex].state = 'ready_to_execute';
-                                      return newMessages;
-                                  });
-                                  break;
-                              case 'TOOL_SEARCH_STATE_UPDATE':
-                                  setMessages(prev => {
-                                      const newMessages = [...prev];
-                                      const toolIndex = newMessages.findIndex(m => m.tool_id === event.tool_id);
-                                      if (toolIndex !== -1) newMessages[toolIndex].state = event.state;
-                                      return newMessages;
-                                  });
-                                  break;
-                              case 'TOOL_SEARCH_RESULT':
-                                setMessages(prev => {
-                                    const newMessages = [...prev];
-                                    const toolSearchIndex = newMessages.findIndex(m => m.role === 'tool_search' && m.tool_id === event.tool_id);
-                                    if (toolSearchIndex !== -1) newMessages[toolSearchIndex].state = event.state;
-                                    newMessages.push({ role: 'tool_search_result', content: event.result.content, tool_id: event.tool_id, fileOutput: event.result.fileOutput || undefined });
-                                    return newMessages;
-                                });
-                                assistantMessageIndex = -1;
-                                currentAssistantThinking = '';
-                                break;
-
+                              // Tool cases (re-ordered for clarity)
                               case 'TOOL_CODE_CREATE':
+                              case 'TOOL_SEARCH_CREATE':
+                              case 'TOOL_DOC_EXTRACT_CREATE':
                                 setMessages(prev => {
                                   const newMessages = [...prev];
                                   const lastMessage = newMessages[newMessages.length - 1];
-
                                   if (lastMessage?.isWaiting) {
                                     assistantMessageIndex = newMessages.length - 1;
                                     newMessages[assistantMessageIndex] = event.message;
@@ -305,11 +251,13 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
                                     assistantMessageIndex = newMessages.length;
                                     newMessages.push(event.message);
                                   }
-                                  
                                   return newMessages;
                                 });
                                 break;
+
                               case 'TOOL_CODE_DELTA':
+                              case 'TOOL_SEARCH_DELTA':
+                              case 'TOOL_DOC_EXTRACT_DELTA':
                                   setMessages(prev => {
                                       const newMessages = [...prev];
                                       const toolIndex = newMessages.findIndex(m => m.tool_id === event.tool_id);
@@ -317,7 +265,10 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
                                       return newMessages;
                                   });
                                   break;
+
                               case 'TOOL_CODE_COMPLETE':
+                              case 'TOOL_SEARCH_COMPLETE':
+                              case 'TOOL_DOC_EXTRACT_COMPLETE':
                                   setMessages(prev => {
                                       const newMessages = [...prev];
                                       const toolIndex = newMessages.findIndex(m => m.tool_id === event.tool_id);
@@ -325,7 +276,10 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
                                       return newMessages;
                                   });
                                   break;
+
                               case 'TOOL_CODE_STATE_UPDATE':
+                              case 'TOOL_SEARCH_STATE_UPDATE':
+                              case 'TOOL_DOC_EXTRACT_STATE_UPDATE':
                                   setMessages(prev => {
                                       const newMessages = [...prev];
                                       const toolIndex = newMessages.findIndex(m => m.tool_id === event.tool_id);
@@ -333,13 +287,19 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
                                       return newMessages;
                                   });
                                   break;
+
                               case 'TOOL_CODE_RESULT':
+                              case 'TOOL_SEARCH_RESULT':
+                              case 'TOOL_DOC_EXTRACT_RESULT':
                                 setMessages(prev => {
                                     const newMessages = [...prev];
-                                    const toolCodeIndex = newMessages.findIndex(m => m.role === 'tool_code' && m.tool_id === event.tool_id);
-                                    if (toolCodeIndex !== -1) newMessages[toolCodeIndex].state = event.state;
+                                    const toolReqRole = event.type.replace('_RESULT', '').toLowerCase();
+                                    const toolIndex = newMessages.findIndex(m => m.role === toolReqRole && m.tool_id === event.tool_id);
+                                    if (toolIndex !== -1) newMessages[toolIndex].state = event.state;
+                                    
+                                    const resultRole = (toolReqRole + '_result') as Message['role'];
                                     newMessages.push({ 
-                                        role: 'tool_code_result', 
+                                        role: resultRole,
                                         content: event.result.content, 
                                         tool_id: event.tool_id, 
                                         fileOutputs: event.result.fileOutputs || undefined 
@@ -349,8 +309,6 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
                                 assistantMessageIndex = -1;
                                 currentAssistantThinking = '';
                                 break;
-
-
                           }
                       } catch (error) {
                           console.error("[CLIENT] SSE Parse Error:", { jsonString, error });

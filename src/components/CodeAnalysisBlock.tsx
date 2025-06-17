@@ -1,3 +1,4 @@
+// src/components/CodeAnalysisBlock.tsx
 import { useState, useMemo, memo, useEffect } from 'react';
 import { FiChevronDown, FiCheckCircle, FiXCircle, FiLoader, FiDownload, FiFileText } from 'react-icons/fi';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';

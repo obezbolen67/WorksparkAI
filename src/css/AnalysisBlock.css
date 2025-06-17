@@ -1,0 +1,103 @@
+/* src/css/AnalysisBlock.css */
+
+/* Using generic tool-block classes for consistency, from SearchBlock.css */
+/* No need to redefine them if they are globally available or imported from a shared CSS file. */
+/* For this example, we'll assume they are available. */
+
+/* --- AnalysisBlock Specific Styles & Colors --- */
+.analysis-container .status {
+    transition: color 0.2s ease;
+}
+
+.analysis-container.state-analyzing .status,
+.analysis-container.state-analyzing .status-icon-wrapper {
+    color: #3b82f6; /* Blue */
+}
+.analysis-container.state-analyzing::before {
+    background-color: #3b82f6;
+}
+
+.analysis-container.state-completed .status {
+    color: #22c55e; /* Green */
+}
+.analysis-container.state-completed::before {
+    background-color: #22c55e;
+}
+
+.analysis-container.state-error .status,
+.analysis-container.state-error .status-icon-wrapper {
+    color: #ef4444; /* Red */
+}
+.analysis-container.state-error::before {
+    background-color: #ef4444;
+}
+
+.analysis-section {
+    margin-top: 12px;
+}
+
+.analysis-section .section-title {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--secondary-text-color);
+    margin-bottom: 8px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.analysis-source-file {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background-color: var(--color-background-code);
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-family: var(--font-mono);
+    font-size: 14px;
+    color: var(--primary-text-color);
+    border: 1px solid var(--color-border);
+}
+.analysis-source-file .file-name {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+
+.analysis-output-text {
+    font-size: 14px;
+    line-height: 1.6;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    color: var(--primary-text-color);
+}
+
+.analysis-output-text.error {
+    color: var(--color-error);
+    background-color: var(--color-background-error);
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-family: var(--font-mono);
+}
+
+.analyzing-placeholder {
+    display: flex;
+    align-items: center;
+    padding: 10px 0;
+}
+.analyzing-placeholder .dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background-color: var(--color-text-secondary);
+    animation: waiting-animation 1.4s infinite ease-in-out both;
+    margin: 0 4px;
+}
+.analyzing-placeholder .dot:nth-child(1) { animation-delay: -0.32s; }
+.analyzing-placeholder .dot:nth-child(2) { animation-delay: -0.16s; }
+
+/* Light Theme Adjustments */
+[data-theme="light"] .analysis-container.state-analyzing .status { color: #2563eb; }
+[data-theme="light"] .analysis-container.state-completed .status { color: #166534; }
+[data-theme="light"] .analysis-container.state-error .status { color: #b91c1c; }
+[data-theme="light"] .analysis-source-file { background-color: #f3f4f6; }
