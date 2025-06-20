@@ -28,7 +28,7 @@ const SuspensionInfoModal = ({ isOpen, onClose }: SuspensionInfoModalProps) => {
             That message is only visible to you. App won't stop working and i'll still work with you despite suspensions, i hope it's temporary issue.
           </p>
           <p>
-            For contact, please use my email <a href="mailto:miacc9576@gmail.com">miacc9576@gmail.com</a>
+            For contact, please use my email <a href="mailto:miacc9576@gmail.com">miacc9576@gmail.com</a> or my <a href="https://t.me/caffeinatedschizo" >Telegram</a>
           </p>
         </div>
         <div className="suspension-modal-actions">
