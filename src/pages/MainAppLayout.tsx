@@ -1,15 +1,19 @@
 // src/pages/MainAppLayout.tsx
-import { useState, Suspense } from 'react';
+import { useState, Suspense, useEffect } from 'react';
 import { Outlet, useNavigate } from 'react-router-dom';
 import Sidebar from '../components/Sidebar';
 import SettingsModal from '../components/SettingsModal';
 import Notification from '../components/Notification';
 import { ChatProvider } from '../contexts/ChatContext';
-// --- NEW IMPORTS ---
 import MobileHeader from '../components/MobileHeader';
+import SuspensionBanner from '../components/SuspensionBanner';
+import SuspensionInfoModal from '../components/SuspensionInfoModal';
+import { useSettings } from '../contexts/SettingsContext'; // Import useSettings
 import '../css/MobileHeader.css';
+import '../css/SuspensionBanner.css';
+import '../css/SuspensionInfoModal.css';
 
-// --- UPDATED: Fallback now uses the bouncing loader structure ---
+
 const RouteFallback = () => (
   <div style={{
     display: 'flex',
@@ -29,20 +33,41 @@ const RouteFallback = () => (
 const MainAppLayout = () => {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isMobileSidebarOpen, setMobileSidebarOpen] = useState(false);
-  // --- NEW: State for sidebar collapse ---
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [isSuspensionModalOpen, setIsSuspensionModalOpen] = useState(false);
   const navigate = useNavigate();
 
+  // --- START OF LOGIC TO SHOW BANNER ---
+  const { user } = useSettings();
+  const suspendedUserIds = ["684ab97ebfb3f163a6f41b45", "68472ce3cc93764b63447857"];
+  const showSuspensionBanner = user ? suspendedUserIds.includes(user._id) : false;
+
+  useEffect(() => {
+    const bodyClass = 'with-suspension-banner';
+    if (showSuspensionBanner) {
+      document.body.classList.add(bodyClass);
+    } else {
+      document.body.classList.remove(bodyClass);
+    }
+    // Cleanup function to remove the class when the component unmounts
+    return () => {
+      document.body.classList.remove(bodyClass);
+    };
+  }, [showSuspensionBanner]);
+  // --- END OF LOGIC TO SHOW BANNER ---
+
   return (
-    // This provider makes all chat functionality available to its children
     <ChatProvider>
       <Notification />
-      {/* --- NEW: Add Mobile Header --- */}
+      
+      {/* Conditionally render the banner itself */}
+      {showSuspensionBanner && <SuspensionBanner onSeeMoreClick={() => setIsSuspensionModalOpen(true)} />}
+
       <MobileHeader 
         onToggleSidebar={() => setMobileSidebarOpen(true)}
         onNewChat={() => {
           navigate('/');
-          setMobileSidebarOpen(false); // Close sidebar if open
+          setMobileSidebarOpen(false);
         }}
       />
       <div className="app-container">
@@ -50,11 +75,9 @@ const MainAppLayout = () => {
           onOpenSettings={() => setIsSettingsOpen(true)} 
           isMobileOpen={isMobileSidebarOpen}
           onClose={() => setMobileSidebarOpen(false)}
-          // --- NEW PROPS for collapse functionality ---
           isCollapsed={isSidebarCollapsed}
           onToggleCollapse={() => setIsSidebarCollapsed(prev => !prev)}
         />
-        {/* --- Wrap Outlet in Suspense to handle lazy-loaded routes --- */}
         <Suspense fallback={<RouteFallback />}>
           <Outlet />
         </Suspense>
@@ -63,6 +86,14 @@ const MainAppLayout = () => {
         isOpen={isSettingsOpen}
         onClose={() => setIsSettingsOpen(false)}
       />
+      
+      {/* Conditionally render the modal */}
+      {showSuspensionBanner && (
+        <SuspensionInfoModal
+          isOpen={isSuspensionModalOpen}
+          onClose={() => setIsSuspensionModalOpen(false)}
+        />
+      )}
     </ChatProvider>
   );
 };

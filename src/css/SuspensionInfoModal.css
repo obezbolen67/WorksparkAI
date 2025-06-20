@@ -1,0 +1,129 @@
+/* src/css/SuspensionInfoModal.css */
+.suspension-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background-color: hsla(0, 0%, 0%, 0.6);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 2000;
+  opacity: 0;
+  animation: fadeIn 0.2s ease-out forwards;
+}
+
+@keyframes fadeIn {
+  to { opacity: 1; }
+}
+
+.suspension-modal-content {
+  background-color: var(--sidebar-bg-color);
+  padding: 1.5rem 2rem;
+  border-radius: 12px;
+  width: 90%;
+  max-width: 500px;
+  border: 1px solid var(--border-color);
+  color: var(--primary-text-color);
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
+  transform: scale(0.95);
+  opacity: 0;
+  animation: scaleIn 0.2s 0.05s ease-out forwards;
+  position: relative;
+}
+
+@keyframes scaleIn {
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.suspension-modal-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 2px solid var(--border-color);
+  margin-bottom: 1rem;
+}
+
+.suspension-modal-icon {
+  color: #f59e0b; /* Amber/Warning color */
+  flex-shrink: 0;
+}
+
+.suspension-modal-content h3 {
+  margin: 0;
+  font-size: 1.125rem;
+  font-weight: 600;
+  text-align: left;
+  flex-grow: 1;
+}
+
+.suspension-modal-close-btn {
+  background: none;
+  border: none;
+  color: var(--secondary-text-color);
+  padding: 4px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background-color 0.2s, color 0.2s;
+}
+
+.suspension-modal-close-btn:hover {
+  background-color: var(--button-hover-bg);
+  color: var(--primary-text-color);
+}
+
+.suspension-modal-body {
+  margin-bottom: 1.5rem;
+}
+
+.suspension-modal-body p {
+  color: var(--secondary-text-color);
+  font-size: 0.95rem;
+  line-height: 1.6;
+  margin: 0 0 1rem 0;
+}
+.suspension-modal-body p:last-child {
+  margin-bottom: 0;
+}
+
+.suspension-modal-body a {
+  color: #60a5fa; /* Blue link color */
+  font-weight: 500;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+[data-theme="light"] .suspension-modal-body a {
+  color: #2563eb;
+}
+
+.suspension-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.suspension-modal-button {
+  border: none;
+  padding: 0.5rem 1.25rem;
+  border-radius: 9999px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease-in-out;
+  font-size: 0.875rem;
+  min-width: 100px;
+  background-color: var(--main-bg-color);
+  color: var(--primary-text-color);
+  border: 1px solid var(--border-color);
+}
+.suspension-modal-button:hover {
+  background-color: var(--button-hover-bg);
+}
+
+[data-theme="light"] .suspension-modal-content {
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
+}

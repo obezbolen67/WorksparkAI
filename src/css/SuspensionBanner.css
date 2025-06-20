@@ -1,0 +1,64 @@
+/* src/css/SuspensionBanner.css */
+.suspension-banner {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  background-color: #ef4444; /* Red */
+  color: white;
+  padding: 0.75rem 1.5rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  z-index: 9998; /* High z-index but below modals */
+  font-size: 0.9rem;
+  font-weight: 500;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  height: 48px;
+  box-sizing: border-box;
+}
+
+.banner-content {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.banner-icon {
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+}
+
+.banner-button {
+  background-color: rgba(255, 255, 255, 0.2);
+  color: white;
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  padding: 0.3rem 0.8rem;
+  border-radius: 9999px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: background-color 0.2s ease;
+  font-size: 0.8rem;
+}
+
+.banner-button:hover {
+  background-color: rgba(255, 255, 255, 0.3);
+}
+
+[data-theme="light"] .suspension-banner {
+  background-color: #f8d7da; /* Light red */
+  color: #721c24; /* Dark red text */
+  border-bottom: 1px solid #f5c6cb;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+[data-theme="light"] .banner-button {
+  background-color: #dc2626; /* Red-700 */
+  color: white;
+  border: 1px solid #ef4444; /* Red-500 */
+}
+
+[data-theme="light"] .banner-button:hover {
+  background-color: #b91c1c; /* Red-800 */
+}

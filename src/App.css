@@ -42,16 +42,28 @@ body {
   width: 100vw;
   background-color: var(--main-bg-color);
   overflow: hidden; /* Prevent body scroll */
+  box-sizing: border-box;
 }
 
-/* --- NEW: Responsive styles for the main container --- */
+/* --- UPDATED: Apply padding conditionally based on body class --- */
+body.with-suspension-banner .app-container {
+  padding-top: 48px; /* Height of the banner */
+}
+
+
+/* --- UPDATED: Responsive styles for the main container --- */
 @media (max-width: 768px) {
   /* On mobile, the flex container itself doesn't need to do much,
      as the sidebar is now position:fixed and out of the flow. */
   .app-container {
-    padding-top: 56px; /* Space for the fixed mobile header */
+    padding-top: 56px; /* Space for ONLY the fixed mobile header by default */
     height: 100vh; /* Use full viewport height */
     box-sizing: border-box;
+  }
+  
+  /* When banner is active, add its height to the padding */
+  body.with-suspension-banner .app-container {
+    padding-top: calc(48px + 56px); /* Banner height + Mobile Header height */
   }
 }
 

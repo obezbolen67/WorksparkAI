@@ -2,7 +2,7 @@
 .mobile-header {
   display: none; /* Hidden by default, shown in media query */
   position: fixed;
-  top: 0;
+  top: 0; /* Default position when no banner is present */
   left: 0;
   right: 0;
   height: 56px;
@@ -12,9 +12,14 @@
   align-items: center;
   justify-content: space-between;
   z-index: 500;
+  transition: top 0.3s ease-in-out;
 }
 
-/* DELETED: The .mobile-header-title class is no longer used */
+/* --- NEW: When banner is present, push the header down --- */
+body.with-suspension-banner .mobile-header {
+  top: 48px; /* Height of the suspension banner */
+}
+
 
 .mobile-header-button {
   background: none;
@@ -27,7 +32,6 @@
   justify-content: center;
   cursor: pointer;
   transition: background-color 0.2s;
-  /* UPDATED: Prevent buttons from shrinking */
   flex-shrink: 0;
 }
 
