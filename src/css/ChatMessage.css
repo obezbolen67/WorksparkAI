@@ -486,3 +486,40 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
+
+/* --- NEW: Markdown Image Styling --- */
+.markdown-image-wrapper {
+  display: block;
+  max-width: 450px;
+  max-height: 400px;
+  width: auto;
+  border-radius: 12px;
+  overflow: hidden;
+  cursor: pointer;
+  border: 1px solid var(--border-color);
+  margin-top: 0.5rem;
+  margin-bottom: 0.5rem;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  background-color: var(--button-hover-bg);
+}
+
+.markdown-image-wrapper:hover {
+  transform: scale(1.02);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+.markdown-image-wrapper img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.user .message-content .markdown-image-wrapper {
+  align-self: flex-end;
+}
+
+.message-content li .markdown-image-wrapper {
+  margin-top: 0.75rem;
+  margin-bottom: 0.25rem;
+}

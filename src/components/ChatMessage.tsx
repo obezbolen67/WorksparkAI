@@ -96,7 +96,7 @@ const CustomCode = ({ node, inline, className, children, style, ...props }: Code
 const Paragraph: Components['p'] = ({ node, ...props }) => {
     const child = node?.children[0];
     const childClassName = (child?.type === 'element' && child.properties?.className?.toString()) || '';
-    if (node?.children.length === 1 && child?.type === 'element' && (child?.tagName === 'pre' || childClassName.includes('tool-block-container') || childClassName.includes('inline-thinking-container'))) {
+    if (node?.children.length === 1 && child?.type === 'element' && (child?.tagName === 'pre' || childClassName.includes('tool-block-container') || childClassName.includes('inline-thinking-container') || childClassName.includes('markdown-image-wrapper'))) {
         return <>{props.children}</>;
     }
     return <p {...props} />;
@@ -151,6 +151,15 @@ const AssistantTurn = memo(({ messages, chatId, startIndex, isStreaming, onRegen
         );
     }
 
+    const ImageRenderer: Components['img'] = ({ src, alt }) => {
+        if (!src) return null;
+        return (
+            <a href={src} onClick={(e) => { e.preventDefault(); onView(src); }} className="markdown-image-wrapper">
+                <img src={src} alt={alt || 'image from message'} />
+            </a>
+        );
+    };
+
     const { turnParts, fullContent, lastMessageInTurnIndex } = useMemo(() => {
         const parts: React.ReactNode[] = [];
         const textParts: string[] = [];
@@ -181,7 +190,7 @@ const AssistantTurn = memo(({ messages, chatId, startIndex, isStreaming, onRegen
                         key={key} 
                         remarkPlugins={[remarkGfm, remarkMath]} 
                         rehypePlugins={[rehypeKatex]} 
-                        components={{ code: CustomCode, p: Paragraph }}
+                        components={{ code: CustomCode, p: Paragraph, img: ImageRenderer }}
                     >
                         {processedContent}
                     </ReactMarkdown>
@@ -314,6 +323,15 @@ const ChatMessage = ({ message, messages, chatId, index, isEditing, onStartEdit,
     }
   };
 
+  const ImageRenderer: Components['img'] = ({ src, alt }) => {
+    if (!src) return null;
+    return (
+        <a href={src} onClick={(e) => { e.preventDefault(); handleOpenViewer(src); }} className="markdown-image-wrapper">
+            <img src={src} alt={alt || 'image from message'} />
+        </a>
+    );
+  };
+
   const renderAttachments = (attachments: Attachment[]) => (
     <div className="message-attachments">
       {attachments.map(att => {
@@ -351,7 +369,7 @@ const ChatMessage = ({ message, messages, chatId, index, isEditing, onStartEdit,
               {!isEditing ? (
                 <div className="message-content">
                   {message.attachments && message.attachments.length > 0 && renderAttachments(message.attachments)}
-                  {message.content && <ReactMarkdown remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[rehypeKatex]} components={{ code: CustomCode, p: Paragraph }}>{message.content}</ReactMarkdown>}
+                  {message.content && <ReactMarkdown remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[rehypeKatex]} components={{ code: CustomCode, p: Paragraph, img: ImageRenderer }}>{message.content}</ReactMarkdown>}
                   {!message.content && !message.attachments?.length && '\u00A0'}
                 </div>
               ) : (
