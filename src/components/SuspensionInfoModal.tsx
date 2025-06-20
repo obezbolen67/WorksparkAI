@@ -4,10 +4,11 @@ import '../css/SuspensionInfoModal.css';
 
 interface SuspensionInfoModalProps {
   isOpen: boolean;
-  onClose: () => void;
+  onClose: () => void; // For closing the modal only (e.g., 'X' button)
+  onDismissAndClose: () => void; // For dismissing the banner and closing the modal
 }
 
-const SuspensionInfoModal = ({ isOpen, onClose }: SuspensionInfoModalProps) => {
+const SuspensionInfoModal = ({ isOpen, onClose, onDismissAndClose }: SuspensionInfoModalProps) => {
   if (!isOpen) return null;
 
   return (
@@ -28,11 +29,12 @@ const SuspensionInfoModal = ({ isOpen, onClose }: SuspensionInfoModalProps) => {
             That message is only visible to you. App won't stop working and i'll still work with you despite suspensions, i hope it's temporary issue.
           </p>
           <p>
-            For contact, please use my email <a href="mailto:miacc9576@gmail.com">miacc9576@gmail.com</a> or my <a href="https://t.me/caffeinatedschizo" >Telegram</a>
+            For contact, please use my email <a href="mailto:miacc9576@gmail.com">miacc9576@gmail.com</a> or my <a href="https://wa.me/3800688406881/" target="_blank" rel="noopener noreferrer">WhatsApp</a>
           </p>
         </div>
         <div className="suspension-modal-actions">
-          <button className="suspension-modal-button" onClick={onClose}>
+          {/* This button now triggers the dismissal function */}
+          <button className="suspension-modal-button" onClick={onDismissAndClose}>
             Close
           </button>
         </div>
