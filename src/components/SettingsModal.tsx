@@ -29,6 +29,13 @@ const providers: Provider[] = [
   { id: 'gemini', name: 'Gemini', Icon: GeminiIcon },
 ];
 
+const MIN_CONTEXT = 4096;
+const MAX_CONTEXT = 1000000;
+// --- START OF CHANGE ---
+const MIN_OUTPUT_TOKENS = 256;
+const MAX_OUTPUT_TOKENS = 64000;
+// --- END OF CHANGE ---
+
 const SettingsModal = ({ isOpen, onClose }: SettingsModalProps) => {
   const { user, models, setModels, updateSettings, theme, setTheme } = useSettings();
   const { showNotification } = useNotification();
@@ -42,6 +49,10 @@ const SettingsModal = ({ isOpen, onClose }: SettingsModalProps) => {
   const [selectedModel, setSelectedModel] = useState(user?.selectedModel || '');
   const [quickAccessModels, setQuickAccessModels] = useState<string[]>(user?.quickAccessModels || []);
   const [modelConfigs, setModelConfigs] = useState<ModelConfig[]>(user?.modelConfigs || []);
+  const [contextLength, setContextLength] = useState(user?.contextLength || MIN_CONTEXT);
+  // --- START OF CHANGE ---
+  const [maxOutputTokens, setMaxOutputTokens] = useState(user?.maxOutputTokens || 4096);
+  // --- END OF CHANGE ---
   
   const [isFetching, setIsFetching] = useState(false);
   const [fetchError, setFetchError] = useState('');
@@ -51,6 +62,27 @@ const SettingsModal = ({ isOpen, onClose }: SettingsModalProps) => {
   const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
   const configMenuRef = useRef<HTMLDivElement>(null);
 
+  const [isEditingContext, setIsEditingContext] = useState(false);
+  const [editableContextValue, setEditableContextValue] = useState(String(contextLength));
+  // --- START OF CHANGE ---
+  const [isEditingMaxOutput, setIsEditingMaxOutput] = useState(false);
+  const [editableMaxOutputValue, setEditableMaxOutputValue] = useState(String(maxOutputTokens));
+  // --- END OF CHANGE ---
+
+  useEffect(() => {
+    if (!isEditingContext) {
+      setEditableContextValue(String(contextLength));
+    }
+  }, [contextLength, isEditingContext]);
+
+  // --- START OF CHANGE ---
+  useEffect(() => {
+    if (!isEditingMaxOutput) {
+      setEditableMaxOutputValue(String(maxOutputTokens));
+    }
+  }, [maxOutputTokens, isEditingMaxOutput]);
+  // --- END OF CHANGE ---
+
   useEffect(() => {
     if (user) {
       setApiKeys(user.apiKeys || []);
@@ -58,6 +90,10 @@ const SettingsModal = ({ isOpen, onClose }: SettingsModalProps) => {
       setSelectedModel(user.selectedModel || '');
       setQuickAccessModels(user.quickAccessModels || []);
       setModelConfigs(user.modelConfigs || []);
+      setContextLength(user.contextLength || MIN_CONTEXT);
+      // --- START OF CHANGE ---
+      setMaxOutputTokens(user.maxOutputTokens || 4096);
+      // --- END OF CHANGE ---
     }
   }, [user]);
 
@@ -65,9 +101,14 @@ const SettingsModal = ({ isOpen, onClose }: SettingsModalProps) => {
     if (!isOpen) {
       setIsApiKeyVisible(false);
       setOpenConfigMenuId(null);
+      setIsEditingContext(false);
+      // --- START OF CHANGE ---
+      setIsEditingMaxOutput(false);
+      // --- END OF CHANGE ---
     }
   }, [isOpen]);
   
+  // ... (rest of useEffects for click handling remain the same) ...
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (configMenuRef.current && !configMenuRef.current.contains(event.target as Node)) {
@@ -81,7 +122,8 @@ const SettingsModal = ({ isOpen, onClose }: SettingsModalProps) => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, [openConfigMenuId]);
-
+  
+  // ... (fetchProviderModels and related useEffects remain the same) ...
   const fetchProviderModels = useCallback(async (provider: ProviderId) => {
     const keyForProvider = apiKeys.find(k => k.provider === provider)?.key;
     if (!keyForProvider) {
@@ -159,7 +201,17 @@ const SettingsModal = ({ isOpen, onClose }: SettingsModalProps) => {
     }
     try {
       const configsToSave = modelConfigs.filter(config => quickAccessModels.includes(config.id));
-      await updateSettings({ apiKeys, baseUrl, selectedModel, quickAccessModels, modelConfigs: configsToSave });
+      // --- START OF CHANGE ---
+      await updateSettings({ 
+        apiKeys, 
+        baseUrl, 
+        selectedModel, 
+        quickAccessModels, 
+        modelConfigs: configsToSave, 
+        contextLength,
+        maxOutputTokens // Save the new field
+      });
+      // --- END OF CHANGE ---
       showNotification('Settings Saved!');
       handleClose();
     } catch (err) {
@@ -181,6 +233,7 @@ const SettingsModal = ({ isOpen, onClose }: SettingsModalProps) => {
     );
   };
   
+  // ... (handleModalityChange and handleMenuToggle remain the same) ...
   const handleModalityChange = (modelId: string, modalityToToggle: Modality, isEnabled: boolean) => {
     setModelConfigs(prevConfigs => {
       const newConfigs = [...prevConfigs];
@@ -211,6 +264,55 @@ const SettingsModal = ({ isOpen, onClose }: SettingsModalProps) => {
     }
   };
 
+  const handleProcessAndSetContextValue = () => {
+    let numValue = parseInt(editableContextValue, 10);
+    if (isNaN(numValue)) {
+      numValue = contextLength;
+    }
+    const clampedValue = Math.max(MIN_CONTEXT, Math.min(numValue, MAX_CONTEXT));
+    setContextLength(clampedValue);
+    setIsEditingContext(false);
+  };
+
+  const handleContextInputBlur = () => {
+    handleProcessAndSetContextValue();
+  };
+
+  const handleContextInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      handleProcessAndSetContextValue();
+    } else if (e.key === 'Escape') {
+      setEditableContextValue(String(contextLength));
+      setIsEditingContext(false);
+    }
+  };
+
+  // --- START OF CHANGE ---
+  // New handlers for the Max Output Tokens input
+  const handleProcessAndSetMaxOutput = () => {
+    let numValue = parseInt(editableMaxOutputValue, 10);
+    if (isNaN(numValue)) {
+      numValue = maxOutputTokens;
+    }
+    const clampedValue = Math.max(MIN_OUTPUT_TOKENS, Math.min(numValue, MAX_OUTPUT_TOKENS));
+    setMaxOutputTokens(clampedValue);
+    setIsEditingMaxOutput(false);
+  };
+
+  const handleMaxOutputInputBlur = () => {
+    handleProcessAndSetMaxOutput();
+  };
+
+  const handleMaxOutputInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      handleProcessAndSetMaxOutput();
+    } else if (e.key === 'Escape') {
+      setEditableMaxOutputValue(String(maxOutputTokens));
+      setIsEditingMaxOutput(false);
+    }
+  };
+  // --- END OF CHANGE ---
+
   if (!isOpen) return null;
 
   const renderGptTab = () => {
@@ -232,7 +334,8 @@ const SettingsModal = ({ isOpen, onClose }: SettingsModalProps) => {
       <h3>GPT Settings</h3>
       <p>Configure your connection to a compatible LLM provider.</p>
       
-      <div className="form-group">
+      {/* ... Provider, API Key, Base URL form groups remain the same ... */}
+       <div className="form-group">
         <label>Provider</label>
         <ProviderSelector 
             providers={providers}
@@ -246,7 +349,7 @@ const SettingsModal = ({ isOpen, onClose }: SettingsModalProps) => {
         <div className="input-wrapper">
           <input 
             id="apiKey" 
-            type={isApiKeyVisible ? 'text' : 'apikey'}
+            type={isApiKeyVisible ? 'text' : 'password'}
             className={!isApiKeyVisible ? 'input-hidden' : ''}
             value={currentApiKey} 
             onChange={(e) => handleApiKeyChange(e.target.value)} 
@@ -273,6 +376,89 @@ const SettingsModal = ({ isOpen, onClose }: SettingsModalProps) => {
         </div>
       )}
 
+      {/* --- START OF CHANGE: Renamed first slider and added the new one --- */}
+      <div className="form-group">
+        <div className="label-with-value">
+          <label htmlFor="contextLength">Total Context Length</label>
+          {isEditingContext ? (
+            <input
+              type="number"
+              value={editableContextValue}
+              onChange={(e) => setEditableContextValue(e.target.value)}
+              onBlur={handleContextInputBlur}
+              onKeyDown={handleContextInputKeyDown}
+              className="context-value-input"
+              autoFocus
+              onFocus={(e) => e.target.select()}
+            />
+          ) : (
+            <span
+              onClick={() => setIsEditingContext(true)}
+              className="context-value-span"
+            >
+              {contextLength}
+            </span>
+          )}
+        </div>
+        <p className="description">
+          The total token window for the model (input + output). Set this to your selected model's maximum context.
+        </p>
+        <div className="context-slider-group">
+            <input 
+                type="range" 
+                id="contextLength"
+                min={MIN_CONTEXT}
+                max={MAX_CONTEXT}
+                step="1024"
+                value={contextLength}
+                onChange={(e) => setContextLength(parseInt(e.target.value, 10))}
+                className="context-slider"
+            />
+        </div>
+      </div>
+
+      <div className="form-group">
+        <div className="label-with-value">
+          <label htmlFor="maxOutputTokens">Max Output Tokens</label>
+          {isEditingMaxOutput ? (
+            <input
+              type="number"
+              value={editableMaxOutputValue}
+              onChange={(e) => setEditableMaxOutputValue(e.target.value)}
+              onBlur={handleMaxOutputInputBlur}
+              onKeyDown={handleMaxOutputInputKeyDown}
+              className="context-value-input"
+              autoFocus
+              onFocus={(e) => e.target.select()}
+            />
+          ) : (
+            <span
+              onClick={() => setIsEditingMaxOutput(true)}
+              className="context-value-span"
+            >
+              {maxOutputTokens}
+            </span>
+          )}
+        </div>
+        <p className="description">
+          Controls the maximum tokens the model can generate in one response. This is reserved from the total context length.
+        </p>
+        <div className="context-slider-group">
+            <input 
+                type="range" 
+                id="maxOutputTokens"
+                min={MIN_OUTPUT_TOKENS}
+                max={MAX_OUTPUT_TOKENS}
+                step="256"
+                value={maxOutputTokens}
+                onChange={(e) => setMaxOutputTokens(parseInt(e.target.value, 10))}
+                className="context-slider"
+            />
+        </div>
+      </div>
+      {/* --- END OF CHANGE --- */}
+
+      {/* ... Quick Access and Default Model sections remain the same ... */}
       {models.length > 0 && (
         <>
         <div className="form-group">
@@ -370,6 +556,7 @@ const SettingsModal = ({ isOpen, onClose }: SettingsModalProps) => {
     );
   };
 
+  // ... (renderAppearanceTab and the main return statement remain the same) ...
   const renderAppearanceTab = () => (
     <>
       <h3>Appearance</h3>

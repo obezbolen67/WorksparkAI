@@ -1,3 +1,4 @@
+// Fexo/src/contexts/SettingsContext.tsx
 import { createContext, useState, useEffect, useContext, type ReactNode, useCallback } from 'react';
 import api, { API_BASE_URL } from '../utils/api'; 
 
@@ -19,6 +20,7 @@ type ApiKeyEntry = {
   key: string;
 };
 
+// --- START OF CHANGE ---
 type User = {
   _id: string;
   email: string;
@@ -28,7 +30,10 @@ type User = {
   theme: Theme;
   quickAccessModels?: string[];
   modelConfigs?: ModelConfig[];
+  contextLength?: number;
+  maxOutputTokens?: number; // Add the new field
 };
+// --- END OF CHANGE ---
 
 interface SettingsContextType {
   token: string | null;

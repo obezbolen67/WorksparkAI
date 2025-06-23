@@ -1,4 +1,4 @@
-/* src/css/SettingsModal.css */
+/* Fexo/src/css/SettingsModal.css */
 
 /* --- OVERLAY & MODAL CONTAINER --- */
 .modal-overlay {
@@ -320,7 +320,7 @@
 
 /* --- FORM ELEMENTS --- */
 .form-group { margin-bottom: 1.25rem; }
-.form-group label { margin-bottom: 0.5rem; font-weight: 500; font-size: 0.875rem; color: var(--primary-text-color); }
+.form-group label { margin-bottom: 0.5rem; font-weight: 500; font-size: 0.875rem; color: var(--primary-text-color); display: block; }
 .form-group input, .form-group select { width: 100%; padding: 0.75rem 1rem; border-radius: 8px; border: 1px solid var(--border-color); background-color: var(--main-bg-color); color: var(--primary-text-color); font-size: 1rem; box-sizing: border-box; transition: border-color 0.2s, box-shadow 0.2s; }
 .form-group input:focus, .form-group select:focus { outline: none; border-color: #19c37d; box-shadow: 0 0 0 2px hsla(145, 63%, 42%, 0.3); }
 
@@ -367,6 +367,109 @@
 .theme-card[data-theme-name="dark"] .theme-preview { background-color: #212121; border: 1px solid hsl(0, 0%, 22%); color: #e5e5e5; }
 .theme-card span { font-weight: 500; color: var(--primary-text-color); }
 
+/* --- Context Length Slider & Input Styles --- */
+.label-with-value {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.25rem;
+}
+
+.context-value-span {
+  font-family: var(--font-mono, monospace);
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--primary-text-color);
+  background-color: var(--button-hover-bg);
+  padding: 2px 8px;
+  border-radius: 6px;
+  cursor: text;
+  min-width: 50px;
+  text-align: center;
+  transition: background-color 0.2s;
+}
+
+.context-value-span:hover {
+  background-color: var(--border-color);
+}
+
+.context-value-input {
+  font-family: var(--font-mono, monospace);
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--primary-text-color);
+  background-color: var(--main-bg-color);
+  border: 1px solid #19c37d;
+  box-shadow: 0 0 0 2px hsla(145, 63%, 42%, 0.3);
+  border-radius: 6px;
+  padding: 1px 7px;
+  width: 80px;
+  text-align: center;
+  outline: none;
+}
+
+/* Hide the default number input spinners */
+.context-value-input::-webkit-outer-spin-button,
+.context-value-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+.context-value-input[type=number] {
+  appearance: textfield; /* Firefox */
+}
+
+.context-slider-group {
+  padding-top: 8px;
+}
+
+.context-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 6px;
+  background: var(--border-color);
+  outline: none;
+  border-radius: 3px;
+  opacity: 0.9;
+  transition: opacity .2s;
+}
+
+.context-slider:hover {
+  opacity: 1;
+}
+
+.context-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 20px;
+  height: 20px;
+  background: #ffffff;
+  cursor: pointer;
+  border-radius: 50%;
+  border: 2px solid var(--primary-text-color);
+  transition: background-color 0.2s, border-color 0.2s;
+}
+
+.context-slider::-moz-range-thumb {
+  width: 20px;
+  height: 20px;
+  background: #ffffff;
+  cursor: pointer;
+  border-radius: 50%;
+  border: 2px solid var(--primary-text-color);
+  transition: background-color 0.2s, border-color 0.2s;
+}
+
+[data-theme="light"] .context-slider::-webkit-slider-thumb {
+  background: var(--primary-text-color);
+  border-color: #ffffff;
+}
+[data-theme="light"] .context-slider::-moz-range-thumb {
+  background: var(--primary-text-color);
+  border-color: #ffffff;
+}
+
+
 /* --- LIGHT THEME STYLES --- */
 [data-theme="light"] .modal-content { box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1); }
 [data-theme="light"] .form-group input:focus, [data-theme="light"] .form-group select:focus { box-shadow: 0 0 0 2px hsla(145, 63%, 42%, 0.4); }
@@ -374,7 +477,12 @@
 [data-theme="light"] .modal-button-save:hover { background-color: #374151; }
 [data-theme="light"] .quick-access-item input[type="checkbox"]:checked + .checkbox-visual { background-color: #374151; border-color: #374151; }
 [data-theme="light"] .config-menu-item input[type="checkbox"]:checked + .checkbox-visual { background-color: #374151; border-color: #374151; }
-
+[data-theme="light"] .context-value-span {
+  background-color: #e5e7eb;
+}
+[data-theme="light"] .context-value-span:hover {
+  background-color: #d1d5db;
+}
 
 /* --- RESPONSIVE SETTINGS --- */
 @media (max-width: 768px) {
