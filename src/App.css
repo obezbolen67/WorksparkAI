@@ -45,11 +45,6 @@ body {
   box-sizing: border-box;
 }
 
-/* --- UPDATED: Apply padding conditionally based on body class --- */
-body.with-suspension-banner .app-container {
-  padding-top: 48px; /* Height of the banner */
-}
-
 
 /* --- UPDATED: Responsive styles for the main container --- */
 @media (max-width: 768px) {
@@ -59,11 +54,6 @@ body.with-suspension-banner .app-container {
     padding-top: 56px; /* Space for ONLY the fixed mobile header by default */
     height: 100vh; /* Use full viewport height */
     box-sizing: border-box;
-  }
-  
-  /* When banner is active, add its height to the padding */
-  body.with-suspension-banner .app-container {
-    padding-top: calc(48px + 56px); /* Banner height + Mobile Header height */
   }
 }
 

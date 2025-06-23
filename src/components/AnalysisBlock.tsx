@@ -33,6 +33,7 @@ const AnalysisBlock = memo(({ toolMessage, outputMessage }: AnalysisBlockProps) 
 
   const output = outputMessage?.content || '';
   const isOutputError = hasError || (state === 'completed' && output.toLowerCase().startsWith('error:'));
+  const isDocExtraction = toolMessage.role === 'tool_doc_extract';
 
   const hasContent = output || state === 'analyzing';
   if (!hasContent) {
@@ -67,7 +68,12 @@ const AnalysisBlock = memo(({ toolMessage, outputMessage }: AnalysisBlockProps) 
                   <div className="dot"></div>
               </div>
             ) : (
-              <pre className={`analysis-output-text ${isOutputError ? 'error' : ''}`}>{output}</pre>
+              <pre className={`analysis-output-text ${isOutputError ? 'error' : ''}`}>
+                {isDocExtraction && state === 'completed' && !isOutputError
+                  ? 'Success.'
+                  : output
+                }
+              </pre>
             )}
           </div>
         )}

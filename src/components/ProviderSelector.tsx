@@ -1,4 +1,3 @@
-// src/components/ProviderSelector.tsx
 import { useState, useRef, useEffect, type FC, type SVGProps } from 'react';
 import { FiChevronDown } from 'react-icons/fi';
 import '../css/ProviderSelector.css';

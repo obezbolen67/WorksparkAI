@@ -5,6 +5,7 @@ import '../css/SettingsModal.css';
 import { FiRefreshCw, FiCpu, FiSliders, FiEye, FiEyeOff, FiMoreVertical } from "react-icons/fi";
 import OpenAIIcon from '../icons/openai.svg?react';
 import AnthropicIcon from '../icons/anthropic.svg?react';
+import GeminiIcon from '../icons/gemini.svg?react';
 import api from '../utils/api';
 import Tooltip from './Tooltip';
 import Portal from './Portal';
@@ -20,11 +21,12 @@ type ApiKeyEntry = { provider: string; key: string; };
 
 interface SettingsModalProps { isOpen: boolean; onClose: () => void; }
 type ActiveTab = 'GPT' | 'Appearance';
-type ProviderId = 'openai' | 'anthropic';
+type ProviderId = 'openai' | 'anthropic' | 'gemini';
 
 const providers: Provider[] = [
   { id: 'openai', name: 'OpenAI', Icon: OpenAIIcon },
   { id: 'anthropic', name: 'Anthropic', Icon: AnthropicIcon },
+  { id: 'gemini', name: 'Gemini', Icon: GeminiIcon },
 ];
 
 const SettingsModal = ({ isOpen, onClose }: SettingsModalProps) => {
@@ -33,7 +35,7 @@ const SettingsModal = ({ isOpen, onClose }: SettingsModalProps) => {
   
   const [activeTab, setActiveTab] = useState<ActiveTab>('GPT');
   const [selectedProvider, setSelectedProvider] = useState<ProviderId>(() => 
-    user?.selectedModel?.includes('claude') ? 'anthropic' : 'openai'
+    user?.selectedModel?.includes('claude') ? 'anthropic' : (user?.selectedModel?.includes('gemini') ? 'gemini' : 'openai')
   );
   const [apiKeys, setApiKeys] = useState<ApiKeyEntry[]>(user?.apiKeys || []);
   const [baseUrl, setBaseUrl] = useState(user?.baseUrl || '');
@@ -114,7 +116,7 @@ const SettingsModal = ({ isOpen, onClose }: SettingsModalProps) => {
     setModels([]); 
     
     fetchProviderModels(selectedProvider);
-  }, [selectedProvider]);
+  }, [selectedProvider, fetchProviderModels]);
 
   const handleApiKeyChange = (newKey: string) => {
     setApiKeys(prev => {
@@ -146,7 +148,7 @@ const SettingsModal = ({ isOpen, onClose }: SettingsModalProps) => {
   };
 
   const handleSave = async () => {
-    const finalProvider = selectedModel.includes('claude') ? 'anthropic' : 'openai';
+    const finalProvider = selectedModel.includes('claude') ? 'anthropic' : (selectedModel.includes('gemini') ? 'gemini' : 'openai');
     if (selectedModel && finalProvider !== selectedProvider) {
         showNotification('Provider and selected model do not match. Please re-select your default model.', 'error');
         return;
@@ -216,6 +218,15 @@ const SettingsModal = ({ isOpen, onClose }: SettingsModalProps) => {
     
     const defaultModelOptions = models.filter(model => quickAccessModels.includes(model.id));
 
+    const getApiKeyPlaceholder = () => {
+        switch (selectedProvider) {
+            case 'openai': return 'Required: sk-...';
+            case 'anthropic': return 'Required: sk-ant-...';
+            case 'gemini': return 'Required: Your Gemini API Key';
+            default: return 'API Key';
+        }
+    };
+
     return (
     <>
       <h3>GPT Settings</h3>
@@ -236,9 +247,10 @@ const SettingsModal = ({ isOpen, onClose }: SettingsModalProps) => {
           <input 
             id="apiKey" 
             type={isApiKeyVisible ? 'text' : 'apikey'}
+            className={!isApiKeyVisible ? 'input-hidden' : ''}
             value={currentApiKey} 
             onChange={(e) => handleApiKeyChange(e.target.value)} 
-            placeholder={ selectedProvider === 'openai' ? "Required: sk-..." : "Required: sk-ant-..." }
+            placeholder={ getApiKeyPlaceholder() }
           />
           <Tooltip text={isApiKeyVisible ? "Hide API Key" : "Show API Key"}>
             <button type="button" className="visibility-toggle-btn" onClick={() => setIsApiKeyVisible(prev => !prev)}>
@@ -248,20 +260,19 @@ const SettingsModal = ({ isOpen, onClose }: SettingsModalProps) => {
         </div>
       </div>
       
-      {selectedProvider === 'openai' && (
+      {(selectedProvider === 'openai' || selectedProvider === 'gemini') && (
         <div className="form-group">
-          <label htmlFor="baseUrl">Base URL (optional)</label>
+          <label htmlFor="baseUrl">Base URL ({selectedProvider === 'gemini' ? 'required' : 'optional'})</label>
           <input 
               id="baseUrl" 
               type="text" 
               value={baseUrl} 
               onChange={(e) => setBaseUrl(e.target.value)} 
-              placeholder="e.g., https://api.groq.com/openai/v1"
+              placeholder={selectedProvider === 'gemini' ? "e.g., https://generativelanguage.googleapis.com/v1beta" : "e.g., https://api.groq.com/openai/v1"}
           />
         </div>
       )}
 
-      {/* This section appears if models have been loaded */}
       {models.length > 0 && (
         <>
         <div className="form-group">
@@ -309,7 +320,6 @@ const SettingsModal = ({ isOpen, onClose }: SettingsModalProps) => {
         <div className="form-group">
             <label htmlFor="model">Default Model</label>
             <div className="model-select-wrapper">
-            {/* CORRECTED: The invalid comment has been removed from this component's props */}
             <CustomModelSelector
                 models={defaultModelOptions}
                 selectedModel={selectedModel}
@@ -331,7 +341,6 @@ const SettingsModal = ({ isOpen, onClose }: SettingsModalProps) => {
         </>
       )}
 
-      {/* This section shows when there are no models loaded yet */}
       {models.length === 0 && (
          <div className="form-group">
             <label htmlFor="model">Models</label>

@@ -116,13 +116,9 @@ export const SettingsProvider = ({ children }: { children: ReactNode }) => {
 
   useEffect(() => {
     const fetchModelsOnLoad = async () => {
-      // Check for user and keys before proceeding
       if (user && user.apiKeys && user.apiKeys.length > 0) {
-        // Default to 'openai', but switch if a Claude model was last selected.
-        // This is safer than assuming user.selectedModel is always present.
-        const provider = user.selectedModel?.includes('claude') ? 'anthropic' : 'openai';
+        const provider = user.selectedModel?.includes('claude') ? 'anthropic' : (user.selectedModel?.includes('gemini') ? 'gemini' : 'openai');
         
-        // Only fetch if a key for the determined provider exists.
         if (user.apiKeys.some(k => k.provider === provider && k.key)) {
             try {
                 const res = await api('/models', { method: 'POST', body: JSON.stringify({ provider }) });
@@ -130,8 +126,6 @@ export const SettingsProvider = ({ children }: { children: ReactNode }) => {
                     const data = await res.json();
                     setModels(data);
                 } else {
-                    // With the backend change, a 401 will no longer trigger this else block.
-                    // This will now only catch other server errors (like 500).
                     console.error('Failed to auto-load models on startup.');
                     setModels([]);
                 }

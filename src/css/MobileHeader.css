@@ -15,12 +15,6 @@
   transition: top 0.3s ease-in-out;
 }
 
-/* --- NEW: When banner is present, push the header down --- */
-body.with-suspension-banner .mobile-header {
-  top: 48px; /* Height of the suspension banner */
-}
-
-
 .mobile-header-button {
   background: none;
   border: none;

@@ -1,5 +1,5 @@
 // src/components/CodeAnalysisBlock.tsx
-import { useState, useMemo, memo, useEffect } from 'react';
+import { useState, useMemo, memo } from 'react';
 import { FiChevronDown, FiCheckCircle, FiXCircle, FiLoader, FiDownload, FiFileText } from 'react-icons/fi';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { vscDarkPlus, oneLight } from 'react-syntax-highlighter/dist/esm/styles/prism';
@@ -17,17 +17,11 @@ interface CodeAnalysisBlockProps {
 
 const CodeAnalysisBlock = ({ toolCodeMessage, toolOutputMessage, onView }: CodeAnalysisBlockProps) => {
   const state = toolCodeMessage.state || 'writing';
-  const [isExpanded, setIsExpanded] = useState(true);
+  
+  const [isExpanded, setIsExpanded] = useState(false);
+
   const { theme } = useSettings();
   const syntaxTheme = theme === 'light' ? oneLight : vscDarkPlus;
-
-  useEffect(() => {
-    if (state === 'writing' || state === 'executing' || state === 'error') {
-      setIsExpanded(true);
-    } else {
-      setIsExpanded(false);
-    }
-  }, [state]);
 
   const code = toolCodeMessage.content || '';
   const hasError = state === 'error';
@@ -35,7 +29,7 @@ const CodeAnalysisBlock = ({ toolCodeMessage, toolOutputMessage, onView }: CodeA
 
   const { statusText, StatusIcon } = useMemo(() => {
     if (state === 'writing') {
-      return { statusText: 'Writing code...', StatusIcon: <FiLoader className="spinner-icon" /> };
+      return { statusText: 'Processing...', StatusIcon: <FiLoader className="spinner-icon" /> };
     }
     if (state === 'ready_to_execute' || state === 'executing') {
       return { statusText: 'Executing...', StatusIcon: <FiLoader className="spinner-icon" /> };
@@ -43,13 +37,12 @@ const CodeAnalysisBlock = ({ toolCodeMessage, toolOutputMessage, onView }: CodeA
     if (hasError) {
       return { statusText: 'Error', StatusIcon: <FiXCircle /> };
     }
-    return { statusText: 'Code Executed', StatusIcon: <FiCheckCircle /> };
+    return { statusText: 'Finished', StatusIcon: <FiCheckCircle /> };
   }, [state, hasError]);
   
   const output = toolOutputMessage?.content || '';
   const isOutputError = hasError || (state === 'completed' && output.toLowerCase().includes('error:'));
   
-  // Handle both single fileOutput (backward compatibility) and multiple fileOutputs
   const fileOutputs = toolOutputMessage?.fileOutputs || 
     (toolOutputMessage?.fileOutput ? [toolOutputMessage.fileOutput] : []);
 
@@ -163,9 +156,8 @@ const CodeAnalysisBlock = ({ toolCodeMessage, toolOutputMessage, onView }: CodeA
         </div>
       )}
 
-      {!isExpanded && (OutputSection || FilesSection) && (
+      {!isExpanded && FilesSection && (
         <div className="analysis-content">
-          {OutputSection}
           {FilesSection}
         </div>
       )}
