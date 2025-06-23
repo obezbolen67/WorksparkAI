@@ -1,4 +1,3 @@
-/* src/css/ModelSelector.css */
 .model-selector {
   position: relative;
   display: inline-block;
@@ -33,6 +32,24 @@
 /*
 .model-selector-button .model-selector-current { ... }
 */
+
+/* --- NEW: Beta tag styling --- */
+.beta-tag {
+  position: relative;
+  top: 2px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  line-height: 1;
+  padding: 3px 9px;
+  border-radius: 6px;
+  color: var(--primary-text-color); /* Adapts to light/dark theme */
+  border: 2px solid #834ab5; /* Bright purple outline */
+  /* Gradient background with shades of purple and white */
+  background: linear-gradient(111deg, #d2bfe8, #ad6cef);
+  display: inline-flex;
+  align-items: center;
+}
+
 
 .model-selector-button svg {
   color: var(--secondary-text-color);

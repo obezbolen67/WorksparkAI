@@ -1,4 +1,3 @@
-// src/components/ModelSelector.tsx
 import { useState, useRef, useEffect } from 'react';
 import { useSettings } from '../contexts/SettingsContext';
 import { FiChevronDown, FiCheck, FiCpu } from 'react-icons/fi';
@@ -43,9 +42,10 @@ const ModelSelector = () => {
 
   return (
     <div className="model-selector" ref={selectorRef}>
-      {/* --- UPDATED: Simplified button to always show "FexoAI" --- */}
+      {/* --- UPDATED: Button now includes a "Beta" tag --- */}
       <button className="model-selector-button" onClick={() => setIsOpen(!isOpen)}>
         <span>FexoAI</span>
+        <span className="beta-tag">Beta</span>
         <FiChevronDown size={16} className={isOpen ? 'open' : ''} />
       </button>
 
