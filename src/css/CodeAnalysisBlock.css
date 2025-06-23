@@ -201,7 +201,6 @@
   background: transparent !important;
 }
 
-
 /* --- START OF THE FIX --- */
 
 /* For non-image files like CSV, TXT, etc. */
@@ -224,6 +223,11 @@
   overflow: hidden;
   text-overflow: ellipsis;
   min-width: 100px;
+}
+
+/* When in grid view, allow filename to shrink to prevent overflow */
+.file-outputs-grid .file-output-content .file-name {
+  min-width: 0;
 }
 
 /* For image files (plots, etc.) */
@@ -281,6 +285,13 @@
   transform: translateY(-1px);
 }
 
+/* When in grid view, make the download button a smaller, icon-only circle */
+.file-outputs-grid .download-button {
+  padding: 0.5rem;
+  gap: 0;
+}
+
+
 [data-theme="light"] .download-button {
   background-color: #f3f4f6;
   border-color: #d1d5db;
@@ -296,28 +307,33 @@
     background-color: transparent;
 }
 /* --- END OF THE FIX --- */
+
 .file-outputs-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-  gap: 12px;
-  margin-top: 8px;
+  gap: 0.5rem;
+  padding: 0.5rem;
 }
 
-.file-output-item {
+/* Style for each item card in the grid */
+.file-outputs-grid .file-output-item {
   border: 1px solid var(--border-color);
   border-radius: 8px;
-  padding: 8px;
-  background-color: var(--bg-secondary);
+  background-color: var(--main-bg-color);
+  overflow: hidden;
 }
 
-.file-output-item .image-output-container {
-  margin: 0;
+/* In the grid, remove the extra padding from image/file content containers */
+.file-outputs-grid .image-output-container,
+.file-outputs-grid .file-output-content {
+  padding: 0.5rem;
 }
 
-.file-output-item .file-output-content {
-  padding: 8px;
+.file-outputs-grid .file-output-actions {
+  padding-right: 0.5rem;
+  padding-bottom: 0.5rem;
+  padding-top: 0.25rem;
 }
-
 
 @media (max-width: 640px) {
   .analysis-header {
@@ -342,4 +358,3 @@
     justify-content: center;
   }
 }
-

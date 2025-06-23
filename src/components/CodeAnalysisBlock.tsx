@@ -77,6 +77,7 @@ const CodeAnalysisBlock = ({ toolCodeMessage, toolOutputMessage, onView }: CodeA
         {fileOutputs.map((fileOutput, index) => {
           const dataUrl = `data:${fileOutput.mimeType};base64,${fileOutput.content}`;
           const isImage = fileOutput.mimeType.startsWith('image/');
+          const isGrid = fileOutputs.length > 1;
           
           return (
             <div key={index} className="file-output-item">
@@ -92,7 +93,7 @@ const CodeAnalysisBlock = ({ toolCodeMessage, toolOutputMessage, onView }: CodeA
                         className="download-button"
                       >
                         <FiDownload size={14} />
-                        <span>Download</span>
+                        {!isGrid && <span>Download</span>}
                       </button>
                     </Tooltip>
                   </div>
@@ -107,7 +108,7 @@ const CodeAnalysisBlock = ({ toolCodeMessage, toolOutputMessage, onView }: CodeA
                       className="download-button"
                     >
                       <FiDownload size={14} />
-                      <span>Download</span>
+                      {!isGrid && <span>Download</span>}
                     </button>
                   </Tooltip>
                 </div>
