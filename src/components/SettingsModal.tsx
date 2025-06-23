@@ -259,16 +259,16 @@ const SettingsModal = ({ isOpen, onClose }: SettingsModalProps) => {
           </Tooltip>
         </div>
       </div>
-      
-      {(selectedProvider === 'openai' || selectedProvider === 'gemini') && (
+
+      {(selectedProvider === 'openai') && (
         <div className="form-group">
-          <label htmlFor="baseUrl">Base URL ({selectedProvider === 'gemini' ? 'required' : 'optional'})</label>
+          <label htmlFor="baseUrl">Base URL (optional)</label>
           <input 
               id="baseUrl" 
               type="text" 
               value={baseUrl} 
               onChange={(e) => setBaseUrl(e.target.value)} 
-              placeholder={selectedProvider === 'gemini' ? "e.g., https://generativelanguage.googleapis.com/v1beta" : "e.g., https://api.groq.com/openai/v1"}
+              placeholder="e.g., https://api.groq.com/openai/v1"
           />
         </div>
       )}
