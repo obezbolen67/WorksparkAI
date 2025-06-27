@@ -78,11 +78,9 @@
   text-align: center;
   position: relative;
   z-index: 2;
-  /* --- NEW: Add transition for the fade effect --- */
   transition: opacity 0.3s ease-in-out, transform 0.3s ease-in-out;
 }
 
-/* --- NEW: Style for the fading state --- */
 .auth-form-wrapper.fading {
   opacity: 0;
   transform: translateY(10px);
@@ -97,7 +95,6 @@
 
 .auth-subtitle {
   font-size: 1.1rem;
-  /* --- STYLE CHANGE: Make subtitle bold --- */
   font-weight: 600;
   color: #495057;
   margin: 0 0 2rem 0;
@@ -111,7 +108,6 @@
 .auth-form-group label {
   display: block;
   margin-bottom: 0.5rem;
-  /* --- STYLE CHANGE: Make labels bold --- */
   font-weight: 600;
   font-size: 0.875rem;
   color: #343a40;
@@ -131,7 +127,6 @@
 
 .auth-form-group input:focus {
   outline: none;
-  /* --- STYLE CHANGE: Replace green focus with black/gray --- */
   border-color: #495057;
   box-shadow: 0 0 0 3px hsla(0, 0%, 0%, 0.1);
 }
@@ -147,6 +142,7 @@
   font-size: 1rem;
   transition: background-color 0.2s, transform 0.2s;
   margin-top: 1.5rem;
+  width: 100%; /* Make button full-width */
 }
 
 .auth-button:hover {
@@ -173,7 +169,6 @@
 .auth-toggle button {
   background: none;
   border: none;
-  /* --- STYLE CHANGE: Replace green with black --- */
   color: #111827;
   font-weight: 600;
   cursor: pointer;
@@ -184,36 +179,62 @@
 
 .auth-toggle button:hover {
   text-decoration: none;
-  /* --- STYLE CHANGE: Hover to a medium gray --- */
   color: #6c757d;
 }
 
 /* --- MOBILE OPTIMIZATION --- */
 @media (max-width: 600px) {
-  .auth-container {
-    padding: 1rem;
-    align-items: flex-start; 
-    padding-top: 5vh;
-    box-sizing: border-box;
+  /* Hide distracting background on mobile for a cleaner look and better performance */
+  .auth-background {
+    display: none;
   }
-  
-  .circle {
-    transform: scale(0.6);
-    opacity: 0.6;
+
+  .auth-container {
+    padding: 0;
+    align-items: flex-start; 
+    background-color: #ffffff; /* Solid background for the page */
   }
 
   .auth-form-wrapper {
-    width: 100%;
-    padding: 2rem 1.5rem;
-    background-color: #ffffff; 
+    /* Make the form container take up the full screen */
+    width: 100vw;
+    height: 100svh;
+    max-width: 100%;
+    
+    /* Reset desktop "modal" styles */
+    border-radius: 0;
+    border: none;
+    box-shadow: none;
+    background-color: transparent; /* Inherit from container */
     backdrop-filter: none;
+
+    /* Use flexbox to structure the content vertically */
+    display: flex;
+    flex-direction: column;
+    
+    /* Add padding for content */
+    padding: 2rem 5rem;
+    box-sizing: border-box;
+    text-align: center;
   }
 
   .auth-title {
-    font-size: 1.8rem;
+    margin-top: 5vh; /* Push title down from the top edge */
+    font-size: 2.2rem;
   }
 
   .auth-subtitle {
-    font-size: 1rem;
+    margin-bottom: 4rem; /* More space between subtitle and form */
+  }
+
+  .auth-form-wrapper form {
+    width: 100%;
+  }
+
+  /* Push the toggle link to the bottom of the flex container */
+  .auth-toggle {
+    margin-top: auto; /* This is the key to pushing it down */
+    margin-bottom: 2rem; /* Space from the bottom edge */
+    padding-bottom: 0;
   }
 }

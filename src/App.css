@@ -63,6 +63,9 @@ body {
   inset: 0;
   background-color: var(--main-bg-color);
   z-index: 9999; /* Ensure it's on top */
+  display: flex;
+  justify-content: center;
+  align-items: center;
 }
 
 
