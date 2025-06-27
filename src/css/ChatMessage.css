@@ -523,3 +523,19 @@
   margin-top: 0.75rem;
   margin-bottom: 0.25rem;
 }
+
+/* --- START OF FIX --- */
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.spinner-icon {
+  animation: spin 1s linear infinite;
+  display: block; /* Ensures icon is treated as a block for layout */
+}
+
+.attachment-file-link.downloading {
+  cursor: wait;
+  opacity: 0.7;
+  pointer-events: none; /* Prevent clicking again while downloading */
+}

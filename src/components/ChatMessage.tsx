@@ -3,7 +3,7 @@ import type { Message, Attachment } from '../types';
 import api, { API_BASE_URL } from '../utils/api';
 import '../css/ChatMessage.css';
 import React from 'react';
-import { FiCopy, FiRefreshCw, FiEdit, FiCheck } from 'react-icons/fi';
+import { FiCopy, FiRefreshCw, FiEdit, FiCheck, FiLoader } from 'react-icons/fi';
 import ImageViewer from './ImageViewer';
 import Tooltip from './Tooltip';
 import ReactMarkdown from 'react-markdown';
@@ -19,6 +19,7 @@ import rehypeKatex from 'rehype-katex';
 import SearchBlock from './SearchBlock';
 import AnalysisBlock from './AnalysisBlock';
 import '../css/AnalysisBlock.css';
+import { useNotification } from '../contexts/NotificationContext';
 
 
 interface CodeComponentProps {
@@ -280,10 +281,53 @@ interface ChatMessageProps {
 }
 
 const ChatMessage = ({ message, messages, chatId, index, isEditing, onStartEdit, onSaveEdit, onCancelEdit, ...rest }: ChatMessageProps) => {
+  const { showNotification } = useNotification();
   const [editedContent, setEditedContent] = useState(message.content || '');
   const [viewerSrc, setViewerSrc] = useState<string | null>(null);
   const [isViewerOpen, setIsViewerOpen] = useState(false);
   const editTextAreaRef = useRef<HTMLTextAreaElement>(null);
+  // --- START OF FIX ---
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
+
+  const handleDownloadAttachment = async (e: React.MouseEvent<HTMLAnchorElement>, attachment: Attachment) => {
+    e.preventDefault();
+    if (downloadingId) return; // Prevent multiple concurrent downloads
+
+    if (!chatId || !attachment._id) {
+      showNotification('Cannot download file: Missing identifiers.', 'error');
+      return;
+    }
+
+    setDownloadingId(attachment._id); // Set downloading state for this attachment
+
+    try {
+      const response = await api(`/files/view/${chatId}/${attachment._id}`);
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ msg: 'Download failed' }));
+        throw new Error(errorData.msg || `Server responded with ${response.status}`);
+      }
+      
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', attachment.fileName);
+      
+      document.body.appendChild(link);
+      link.click();
+      
+      // Cleanup
+      link.parentNode?.removeChild(link);
+      window.URL.revokeObjectURL(url);
+
+    } catch (error) {
+      console.error('Download error:', error);
+      showNotification(error instanceof Error ? error.message : 'Could not download file.', 'error');
+    } finally {
+      setDownloadingId(null); // Reset downloading state
+    }
+  };
+  // --- END OF FIX ---
 
   useEffect(() => {
     if (isEditing) {
@@ -343,19 +387,25 @@ const ChatMessage = ({ message, messages, chatId, index, isEditing, onStartEdit,
           return <AuthenticatedImage key={key} chatId={chatId} attachment={att} onView={handleOpenViewer} />;
         }
         
+        // --- START OF FIX ---
+        const isDownloading = downloadingId === att._id;
         return (
           <a 
             key={key} 
-            href={`${API_BASE_URL}/api/files/view/${chatId}/${att._id}`} 
-            target="_blank" 
-            rel="noopener noreferrer" 
-            download={att.fileName} 
-            className="attachment-file-link"
+            href={`${API_BASE_URL}/api/files/view/${chatId}/${att._id}`} // Keep href for context menu (e.g., "Copy Link Address")
+            onClick={(e) => handleDownloadAttachment(e, att)}
+            className={`attachment-file-link ${isDownloading ? 'downloading' : ''}`}
+            aria-label={isDownloading ? `Downloading ${att.fileName}` : `Download ${att.fileName}`}
           >
-            <span className="attachment-file-icon">{getFileIcon(att.mimeType)}</span>
-            <span className="attachment-file-name">{att.fileName}</span>
+            <span className="attachment-file-icon">
+              {isDownloading ? <FiLoader className="spinner-icon" /> : getFileIcon(att.mimeType)}
+            </span>
+            <span className="attachment-file-name">
+              {isDownloading ? 'Downloading...' : att.fileName}
+            </span>
           </a>
         );
+        // --- END OF FIX ---
       })}
     </div>
   );
