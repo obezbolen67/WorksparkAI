@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useSettings } from '../contexts/SettingsContext';
 import { useNotification } from '../contexts/NotificationContext';
 import '../css/SettingsModal.css';
-import { FiRefreshCw, FiCpu, FiSliders, FiEye, FiEyeOff, FiMoreVertical } from "react-icons/fi";
+import { FiRefreshCw, FiCpu, FiSliders, FiEye, FiEyeOff, FiMoreVertical, FiX } from "react-icons/fi";
 import OpenAIIcon from '../icons/openai.svg?react';
 import AnthropicIcon from '../icons/anthropic.svg?react';
 import GeminiIcon from '../icons/gemini.svg?react';
@@ -31,10 +31,8 @@ const providers: Provider[] = [
 
 const MIN_CONTEXT = 4096;
 const MAX_CONTEXT = 1000000;
-// --- START OF CHANGE ---
 const MIN_OUTPUT_TOKENS = 256;
 const MAX_OUTPUT_TOKENS = 64000;
-// --- END OF CHANGE ---
 
 const SettingsModal = ({ isOpen, onClose }: SettingsModalProps) => {
   const { user, models, setModels, updateSettings, theme, setTheme } = useSettings();
@@ -50,9 +48,7 @@ const SettingsModal = ({ isOpen, onClose }: SettingsModalProps) => {
   const [quickAccessModels, setQuickAccessModels] = useState<string[]>(user?.quickAccessModels || []);
   const [modelConfigs, setModelConfigs] = useState<ModelConfig[]>(user?.modelConfigs || []);
   const [contextLength, setContextLength] = useState(user?.contextLength || MIN_CONTEXT);
-  // --- START OF CHANGE ---
   const [maxOutputTokens, setMaxOutputTokens] = useState(user?.maxOutputTokens || 4096);
-  // --- END OF CHANGE ---
   
   const [isFetching, setIsFetching] = useState(false);
   const [fetchError, setFetchError] = useState('');
@@ -64,10 +60,10 @@ const SettingsModal = ({ isOpen, onClose }: SettingsModalProps) => {
 
   const [isEditingContext, setIsEditingContext] = useState(false);
   const [editableContextValue, setEditableContextValue] = useState(String(contextLength));
-  // --- START OF CHANGE ---
   const [isEditingMaxOutput, setIsEditingMaxOutput] = useState(false);
   const [editableMaxOutputValue, setEditableMaxOutputValue] = useState(String(maxOutputTokens));
-  // --- END OF CHANGE ---
+
+  const [modelSearchQuery, setModelSearchQuery] = useState('');
 
   useEffect(() => {
     if (!isEditingContext) {
@@ -75,13 +71,11 @@ const SettingsModal = ({ isOpen, onClose }: SettingsModalProps) => {
     }
   }, [contextLength, isEditingContext]);
 
-  // --- START OF CHANGE ---
   useEffect(() => {
     if (!isEditingMaxOutput) {
       setEditableMaxOutputValue(String(maxOutputTokens));
     }
   }, [maxOutputTokens, isEditingMaxOutput]);
-  // --- END OF CHANGE ---
 
   useEffect(() => {
     if (user) {
@@ -91,9 +85,7 @@ const SettingsModal = ({ isOpen, onClose }: SettingsModalProps) => {
       setQuickAccessModels(user.quickAccessModels || []);
       setModelConfigs(user.modelConfigs || []);
       setContextLength(user.contextLength || MIN_CONTEXT);
-      // --- START OF CHANGE ---
       setMaxOutputTokens(user.maxOutputTokens || 4096);
-      // --- END OF CHANGE ---
     }
   }, [user]);
 
@@ -102,13 +94,11 @@ const SettingsModal = ({ isOpen, onClose }: SettingsModalProps) => {
       setIsApiKeyVisible(false);
       setOpenConfigMenuId(null);
       setIsEditingContext(false);
-      // --- START OF CHANGE ---
       setIsEditingMaxOutput(false);
-      // --- END OF CHANGE ---
+      setModelSearchQuery(''); // Reset search on close
     }
   }, [isOpen]);
   
-  // ... (rest of useEffects for click handling remain the same) ...
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (configMenuRef.current && !configMenuRef.current.contains(event.target as Node)) {
@@ -123,7 +113,6 @@ const SettingsModal = ({ isOpen, onClose }: SettingsModalProps) => {
     };
   }, [openConfigMenuId]);
   
-  // ... (fetchProviderModels and related useEffects remain the same) ...
   const fetchProviderModels = useCallback(async (provider: ProviderId) => {
     const keyForProvider = apiKeys.find(k => k.provider === provider)?.key;
     if (!keyForProvider) {
@@ -201,7 +190,6 @@ const SettingsModal = ({ isOpen, onClose }: SettingsModalProps) => {
     }
     try {
       const configsToSave = modelConfigs.filter(config => quickAccessModels.includes(config.id));
-      // --- START OF CHANGE ---
       await updateSettings({ 
         apiKeys, 
         baseUrl, 
@@ -209,9 +197,8 @@ const SettingsModal = ({ isOpen, onClose }: SettingsModalProps) => {
         quickAccessModels, 
         modelConfigs: configsToSave, 
         contextLength,
-        maxOutputTokens // Save the new field
+        maxOutputTokens
       });
-      // --- END OF CHANGE ---
       showNotification('Settings Saved!');
       handleClose();
     } catch (err) {
@@ -233,7 +220,6 @@ const SettingsModal = ({ isOpen, onClose }: SettingsModalProps) => {
     );
   };
   
-  // ... (handleModalityChange and handleMenuToggle remain the same) ...
   const handleModalityChange = (modelId: string, modalityToToggle: Modality, isEnabled: boolean) => {
     setModelConfigs(prevConfigs => {
       const newConfigs = [...prevConfigs];
@@ -287,8 +273,6 @@ const SettingsModal = ({ isOpen, onClose }: SettingsModalProps) => {
     }
   };
 
-  // --- START OF CHANGE ---
-  // New handlers for the Max Output Tokens input
   const handleProcessAndSetMaxOutput = () => {
     let numValue = parseInt(editableMaxOutputValue, 10);
     if (isNaN(numValue)) {
@@ -311,7 +295,6 @@ const SettingsModal = ({ isOpen, onClose }: SettingsModalProps) => {
       setIsEditingMaxOutput(false);
     }
   };
-  // --- END OF CHANGE ---
 
   if (!isOpen) return null;
 
@@ -319,6 +302,10 @@ const SettingsModal = ({ isOpen, onClose }: SettingsModalProps) => {
     const currentApiKey = apiKeys.find(k => k.provider === selectedProvider)?.key || '';
     
     const defaultModelOptions = models.filter(model => quickAccessModels.includes(model.id));
+
+    const filteredModels = models.filter(model => 
+        model.id.toLowerCase().includes(modelSearchQuery.toLowerCase())
+    );
 
     const getApiKeyPlaceholder = () => {
         switch (selectedProvider) {
@@ -334,7 +321,6 @@ const SettingsModal = ({ isOpen, onClose }: SettingsModalProps) => {
       <h3>GPT Settings</h3>
       <p>Configure your connection to a compatible LLM provider.</p>
       
-      {/* ... Provider, API Key, Base URL form groups remain the same ... */}
        <div className="form-group">
         <label>Provider</label>
         <ProviderSelector 
@@ -375,8 +361,7 @@ const SettingsModal = ({ isOpen, onClose }: SettingsModalProps) => {
           />
         </div>
       )}
-
-      {/* --- START OF CHANGE: Renamed first slider and added the new one --- */}
+      
       <div className="form-group">
         <div className="label-with-value">
           <label htmlFor="contextLength">Total Context Length</label>
@@ -456,50 +441,71 @@ const SettingsModal = ({ isOpen, onClose }: SettingsModalProps) => {
             />
         </div>
       </div>
-      {/* --- END OF CHANGE --- */}
 
-      {/* ... Quick Access and Default Model sections remain the same ... */}
       {models.length > 0 && (
         <>
         <div className="form-group">
           <label>Quick Access Models</label>
           <p className="description">Select which models appear in the top-of-screen selector. Only models selected here can be set as the default.</p>
-          <div className="quick-access-list">
-            {models.map(model => {
-              const config = modelConfigs.find(c => c.id === model.id) || { modalities: ['text'] };
-              const hasImageModality = config.modalities.some(modality => modality === 'image');
+          
+          <div className="model-search-wrapper">
+            <input
+              type="text"
+              className="model-search-input"
+              placeholder="Search available models..."
+              value={modelSearchQuery}
+              onChange={(e) => setModelSearchQuery(e.target.value)}
+            />
+            <button 
+                className={`model-search-clear-btn ${modelSearchQuery ? 'visible' : ''}`}
+                onClick={() => setModelSearchQuery('')}
+              >
+                <FiX size={18} />
+            </button>
+          </div>
 
-              return (
-              <div key={model.id} className="quick-access-row">
-                <label className="quick-access-item">
-                  <input type="checkbox" checked={quickAccessModels.includes(model.id)} onChange={() => handleQuickAccessChange(model.id)} />
-                  <span className="checkbox-visual"></span>
-                  <span className="model-name-text">{model.id}</span>
-                </label>
-                <div className="model-config-wrapper">
-                  <button className="model-config-button" onClick={(e) => handleMenuToggle(model.id, e)} disabled={!quickAccessModels.includes(model.id)}>
-                    <FiMoreVertical size={16}/>
-                  </button>
-                  {openConfigMenuId === model.id && (
-                    <Portal>
-                      <div className="model-config-menu" ref={configMenuRef} style={{ position: 'absolute', top: `${menuPosition.top}px`, left: `${menuPosition.left}px` }}>
-                         <label className="config-menu-item">
-                            <input type="checkbox" checked disabled />
-                            <span className="checkbox-visual"></span>
-                            <span>Text</span>
-                         </label>
-                         <label className="config-menu-item">
-                            <input type="checkbox" checked={hasImageModality} onChange={(e) => handleModalityChange(model.id, 'image', e.target.checked)} />
-                            <span className="checkbox-visual"></span>
-                            <span>Image</span>
-                         </label>
-                      </div>
-                    </Portal>
-                  )}
+          <div className="quick-access-list">
+            {filteredModels.length > 0 ? (
+              filteredModels.map(model => {
+                const config = modelConfigs.find(c => c.id === model.id) || { modalities: ['text'] };
+                const hasImageModality = config.modalities.some(modality => modality === 'image');
+
+                return (
+                <div key={model.id} className="quick-access-row">
+                  <label className="quick-access-item">
+                    <input type="checkbox" checked={quickAccessModels.includes(model.id)} onChange={() => handleQuickAccessChange(model.id)} />
+                    <span className="checkbox-visual"></span>
+                    <span className="model-name-text">{model.id}</span>
+                  </label>
+                  <div className="model-config-wrapper">
+                    <button className="model-config-button" onClick={(e) => handleMenuToggle(model.id, e)} disabled={!quickAccessModels.includes(model.id)}>
+                      <FiMoreVertical size={16}/>
+                    </button>
+                    {openConfigMenuId === model.id && (
+                      <Portal>
+                        <div className="model-config-menu" ref={configMenuRef} style={{ position: 'absolute', top: `${menuPosition.top}px`, left: `${menuPosition.left}px` }}>
+                          <label className="config-menu-item">
+                              <input type="checkbox" checked disabled />
+                              <span className="checkbox-visual"></span>
+                              <span>Text</span>
+                          </label>
+                          <label className="config-menu-item">
+                              <input type="checkbox" checked={hasImageModality} onChange={(e) => handleModalityChange(model.id, 'image', e.target.checked)} />
+                              <span className="checkbox-visual"></span>
+                              <span>Image</span>
+                          </label>
+                        </div>
+                      </Portal>
+                    )}
+                  </div>
                 </div>
+                );
+              })
+            ) : (
+              <div className="no-models-found">
+                No models found matching your search.
               </div>
-              );
-            })}
+            )}
           </div>
         </div>
 
@@ -556,7 +562,6 @@ const SettingsModal = ({ isOpen, onClose }: SettingsModalProps) => {
     );
   };
 
-  // ... (renderAppearanceTab and the main return statement remain the same) ...
   const renderAppearanceTab = () => (
     <>
       <h3>Appearance</h3>

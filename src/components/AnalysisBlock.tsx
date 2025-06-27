@@ -10,10 +10,7 @@ interface AnalysisBlockProps {
 }
 
 const AnalysisBlock = memo(({ toolMessage, outputMessage }: AnalysisBlockProps) => {
-  // Determine if the block should be expanded by default.
-  // It should be expanded during analysis or if there's an error.
-  const isInitiallyExpanded = toolMessage.state === 'analyzing' || toolMessage.state === 'error';
-  const [isExpanded, setIsExpanded] = useState(isInitiallyExpanded);
+  const [isExpanded, setIsExpanded] = useState(false);
 
   const state = toolMessage.state || (outputMessage ? 'completed' : 'writing');
   const hasError = state === 'error';
