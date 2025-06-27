@@ -1,5 +1,10 @@
 /* src/css/AuthPage.css */
 
+/* --- NEW: Keyframe for the button loader --- */
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
 /* --- Animated Background --- */
 @keyframes move {
   0% { transform: translate(0, 0); }
@@ -131,23 +136,45 @@
   box-shadow: 0 0 0 3px hsla(0, 0%, 0%, 0.1);
 }
 
+/* --- UPDATED: Auth Button styles --- */
 .auth-button {
   background-color: #111827;
   color: #ffffff;
-  padding: 0.7rem 1.75rem;
-  border: none;
+  /* Make padding more compact */
+  padding: 0.6rem 1.5rem; 
   border-radius: 9999px;
   cursor: pointer;
   font-weight: 600;
-  font-size: 1rem;
+  font-size: 0.95rem; /* Slightly smaller font */
   transition: background-color 0.2s, transform 0.2s;
   margin-top: 1.5rem;
-  width: 100%; /* Make button full-width */
+  
+  /* Flex properties to center the loader */
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.5rem; /* Prevent size change when loader is active */
+  min-width: 6rem; /* Prevent size change when loader is active */
 }
 
-.auth-button:hover {
+.auth-button:not(:disabled):hover {
   background-color: #374151;
   transform: translateY(-2px);
+}
+
+.auth-button:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+/* --- NEW: Loader for the button --- */
+.auth-loader {
+  width: 1rem; /* 16px */
+  height: 1rem;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: #ffffff;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
 }
 
 .auth-error {
@@ -182,9 +209,13 @@
   color: #6c757d;
 }
 
+.auth-toggle button:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
 /* --- MOBILE OPTIMIZATION --- */
 @media (max-width: 600px) {
-  /* Hide distracting background on mobile for a cleaner look and better performance */
   .auth-background {
     display: none;
   }
@@ -192,49 +223,41 @@
   .auth-container {
     padding: 0;
     align-items: flex-start; 
-    background-color: #ffffff; /* Solid background for the page */
+    background-color: #ffffff;
   }
 
   .auth-form-wrapper {
-    /* Make the form container take up the full screen */
     width: 100vw;
     height: 100svh;
     max-width: 100%;
-    
-    /* Reset desktop "modal" styles */
     border-radius: 0;
     border: none;
     box-shadow: none;
-    background-color: transparent; /* Inherit from container */
+    background-color: transparent;
     backdrop-filter: none;
-
-    /* Use flexbox to structure the content vertically */
     display: flex;
     flex-direction: column;
-    
-    /* Add padding for content */
-    padding: 2rem 5rem;
+    padding: 2rem 1.5rem;
     box-sizing: border-box;
     text-align: center;
   }
 
   .auth-title {
-    margin-top: 5vh; /* Push title down from the top edge */
+    margin-top: 5vh;
     font-size: 2.2rem;
   }
 
   .auth-subtitle {
-    margin-bottom: 4rem; /* More space between subtitle and form */
+    margin-bottom: 4rem;
   }
 
   .auth-form-wrapper form {
     width: 100%;
   }
-
-  /* Push the toggle link to the bottom of the flex container */
+  
   .auth-toggle {
-    margin-top: auto; /* This is the key to pushing it down */
-    margin-bottom: 2rem; /* Space from the bottom edge */
+    margin-top: auto;
+    margin-bottom: 2rem;
     padding-bottom: 0;
   }
 }

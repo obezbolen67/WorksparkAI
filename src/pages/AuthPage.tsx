@@ -8,6 +8,7 @@ const AuthPage = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [isLoading, setIsLoading] = useState(false); // --- NEW: Loading state
   const { login, register, isAuthenticated } = useSettings();
   const [isFading, setIsFading] = useState(false);
 
@@ -20,10 +21,13 @@ const AuthPage = () => {
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setError('');
+    
     if (!email || !password) {
       setError('Email and password are required.');
       return;
     }
+
+    setIsLoading(true); // --- NEW: Set loading to true
     
     try {
       if (isLogin) {
@@ -31,23 +35,24 @@ const AuthPage = () => {
       } else {
         await register(email, password);
       }
+      // On success, redirect will occur, no need to set isLoading to false
     } catch (err: any) {
       setError(err.message || 'An error occurred.');
+      setIsLoading(false); // --- NEW: Set loading to false on error
     }
   };
 
   const handleToggleForm = () => {
-    setError(''); // Clear errors on toggle
+    setError('');
     setIsFading(true);
     setTimeout(() => {
       setIsLogin(prev => !prev);
       setIsFading(false);
-    }, 300); // This duration should match the CSS transition
+    }, 300);
   };
 
   return (
     <div className="auth-container">
-      {/* --- Animated Background Elements --- */}
       <div className="auth-background">
         <div className="circle circle-1"></div>
         <div className="circle circle-2"></div>
@@ -68,6 +73,7 @@ const AuthPage = () => {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
+              disabled={isLoading} // --- NEW: Disable input when loading
             />
           </div>
           <div className="auth-form-group">
@@ -78,16 +84,23 @@ const AuthPage = () => {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
+              disabled={isLoading} // --- NEW: Disable input when loading
             />
           </div>
-          <button type="submit" className="auth-button">
-            {isLogin ? 'Login' : 'Register'}
+          <button type="submit" className="auth-button" disabled={isLoading}>
+            {isLoading ? (
+              <div className="auth-loader"></div>
+            ) : isLogin ? (
+              'Login'
+            ) : (
+              'Register'
+            )}
           </button>
         </form>
 
         <p className="auth-toggle">
           {isLogin ? "Don't have an account?" : 'Already have an account?'}
-          <button onClick={handleToggleForm}>
+          <button onClick={handleToggleForm} disabled={isLoading}>
             {isLogin ? 'Register' : 'Login'}
           </button>
         </p>
