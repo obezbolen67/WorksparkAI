@@ -146,20 +146,20 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
                             const errorMessage = event.error?.message || (typeof event.error === 'string' ? event.error : "An unknown error occurred on the server.");
                             throw new Error(errorMessage);
                           }
-
+                          console.log(event)
                           switch (event.type) {
                               case 'THINKING_START':
+                                setIsThinking(true);
+                                setThinkingContent('');
+                                currentAssistantThinking = '';
+                                
                                 setMessages(prev => {
                                     const newMessages = [...prev];
-                                    setIsThinking(true);
-                                    setThinkingContent('');
-                                    currentAssistantThinking = '';
-                                    const lastMessageIndex = newMessages.length - 1;
-                                    const lastMessage = newMessages[lastMessageIndex];
-
+                                    const lastMessage = newMessages[newMessages.length - 1];
+                                    
                                     if (lastMessage?.isWaiting) {
-                                        assistantMessageIndex = lastMessageIndex;
-                                        newMessages[lastMessageIndex] = { role: 'assistant', content: '', thinking: '' };
+                                        assistantMessageIndex = newMessages.length - 1;
+                                        newMessages[assistantMessageIndex] = { role: 'assistant', content: '', thinking: '' };
                                     } else {
                                         const needsNewMessage = assistantMessageIndex === -1 || (lastMessage && (lastMessage.role !== 'assistant' || (lastMessage.content && lastMessage.content.trim() !== '')));
                                         if (needsNewMessage) {
@@ -173,16 +173,47 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
                                     return newMessages;
                                 });
                                 break;
+                              
                               case 'THINKING_DELTA':
                                 currentAssistantThinking += event.content;
+                                setThinkingContent(prev => (prev || '') + event.content);
                                 setMessages(prev => {
                                     const newMessages = [...prev];
+                                    
+                                    // Ensure we have a valid message to update
+                                    if (assistantMessageIndex === -1) {
+                                        // If no assistant message index set yet, find or create one
+                                        const lastMessage = newMessages[newMessages.length - 1];
+                                        if (lastMessage?.role === 'assistant') {
+                                            assistantMessageIndex = newMessages.length - 1;
+                                        } else {
+                                            // Create a new assistant message if needed
+                                            assistantMessageIndex = newMessages.length;
+                                            newMessages.push({ 
+                                                role: 'assistant', 
+                                                content: '', 
+                                                thinking: ''
+                                            });
+                                        }
+                                    } else if (assistantMessageIndex >= newMessages.length) {
+                                        // Index is out of bounds, create the message
+                                        assistantMessageIndex = newMessages.length;
+                                        newMessages.push({ 
+                                            role: 'assistant', 
+                                            content: '', 
+                                            thinking: ''
+                                        });
+                                    }
+                                    
+                                    // Now safely update the thinking content
                                     if (assistantMessageIndex >= 0 && assistantMessageIndex < newMessages.length) {
+                                        const currentMsg = newMessages[assistantMessageIndex];
                                         newMessages[assistantMessageIndex] = { 
-                                            ...newMessages[assistantMessageIndex], 
-                                            thinking: currentAssistantThinking 
+                                            ...currentMsg, 
+                                            thinking: currentAssistantThinking // Use accumulated value
                                         };
                                     }
+                                    
                                     return newMessages;
                                 });
                                 break;
@@ -214,7 +245,7 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
                                     }
                                     const currentMsg = newMessages[assistantMessageIndex];
                                      if (currentMsg && currentMsg.role === 'assistant') {
-                                         let newContent = (currentMsg.content || '') + event.content;
+                                         const newContent = (currentMsg.content || '') + event.content;
                                          newMessages[assistantMessageIndex] = { 
                                              ...currentMsg, 
                                              content: newContent, 
@@ -225,6 +256,7 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
                                 });
                                 break;
                               
+                              // ... (rest of the switch statement and function is unchanged)
                               case 'USER_MESSAGE_ACK':
                                   setMessages(prev => {
                                       const newMessages = [...prev];
@@ -313,7 +345,7 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
                           }
                       } catch (error) {
                           console.error("[CLIENT] SSE Parse Error:", { jsonString, error });
-                          let errorMessage = JSON.parse(jsonString)?.error?.message
+                          const errorMessage = JSON.parse(jsonString)?.error?.message
                           throw new Error(`Received error from the server.\n${errorMessage}`);
                       }
                   }
@@ -446,7 +478,7 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
     if (lastUserIndex === -1) return;
 
     const historyForRegeneration = messages.slice(0, lastUserIndex + 1);
-    const regenerationMetadata = { isRegeneration: true, ...metadata, isThinking };
+    const regenerationMetadata = { isRegeneration: true, ...metadata, isThinkingEnabled };
     const messagesWithPlaceholder = [...historyForRegeneration, { role: 'assistant', content: '', isWaiting: true } as Message];
     setMessages(messagesWithPlaceholder);
     await streamAndSaveResponse(activeChatId, historyForRegeneration, regenerationMetadata);
