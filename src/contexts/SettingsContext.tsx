@@ -26,6 +26,7 @@ type User = {
   email: string;
   apiKeys: ApiKeyEntry[];
   baseUrl: string;
+  selectedProvider: string;
   selectedModel: string;
   theme: Theme;
   quickAccessModels?: string[];
@@ -122,7 +123,7 @@ export const SettingsProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     const fetchModelsOnLoad = async () => {
       if (user && user.apiKeys && user.apiKeys.length > 0) {
-        const provider = user.selectedModel?.includes('claude') ? 'anthropic' : (user.selectedModel?.includes('gemini') ? 'gemini' : 'openai');
+        const provider = user?.selectedProvider;
         
         if (user.apiKeys.some(k => k.provider === provider && k.key)) {
             try {

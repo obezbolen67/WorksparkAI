@@ -1,4 +1,4 @@
-import { useState, memo, useEffect } from 'react'; // Import useEffect
+import { useState, memo } from 'react'; // Import useEffect
 import { FiCpu, FiChevronDown } from 'react-icons/fi';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -11,21 +11,8 @@ interface InlineThinkingProps {
 
 const InlineThinking = ({ content, isStreaming = false }: InlineThinkingProps) => {
   // This initializes the state on the first render.
-  const [isExpanded, setIsExpanded] = useState(isStreaming);
+  const [isExpanded, setIsExpanded] = useState(false);
 
-  // --- START OF THE FIX ---
-  // This effect hook runs whenever the `isStreaming` prop changes.
-  // It ensures the component's internal `isExpanded` state stays
-  // in sync with the parent's streaming status.
-  useEffect(() => {
-    if (isStreaming) {
-      setIsExpanded(true);
-    }
-  }, [isStreaming]);
-  // --- END OF THE FIX ---
-
-  // When the stream ends, isStreaming becomes false, and the user
-  // is free to toggle the box open or closed.
   return (
     <div className={`inline-thinking-container ${isExpanded ? 'expanded' : ''}`}>
       <button className="thinking-header" onClick={() => setIsExpanded(prev => !prev)}>

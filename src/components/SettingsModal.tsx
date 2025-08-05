@@ -21,9 +21,9 @@ type ApiKeyEntry = { provider: string; key: string; };
 
 interface SettingsModalProps { isOpen: boolean; onClose: () => void; }
 type ActiveTab = 'GPT' | 'Appearance';
-type ProviderId = 'openai' | 'anthropic' | 'gemini';
 
 const providers: Provider[] = [
+  { id: 'default', name: "GPT-4o Mini (Free)",Icon: OpenAIIcon},
   { id: 'openai', name: 'OpenAI', Icon: OpenAIIcon },
   { id: 'anthropic', name: 'Anthropic', Icon: AnthropicIcon },
   { id: 'gemini', name: 'Gemini', Icon: GeminiIcon },
@@ -39,9 +39,7 @@ const SettingsModal = ({ isOpen, onClose }: SettingsModalProps) => {
   const { showNotification } = useNotification();
   
   const [activeTab, setActiveTab] = useState<ActiveTab>('GPT');
-  const [selectedProvider, setSelectedProvider] = useState<ProviderId>(() => 
-    user?.selectedModel?.includes('claude') ? 'anthropic' : (user?.selectedModel?.includes('gemini') ? 'gemini' : 'openai')
-  );
+  const [selectedProvider, setSelectedProvider] = useState(user?.selectedProvider || 'default');
   const [apiKeys, setApiKeys] = useState<ApiKeyEntry[]>(user?.apiKeys || []);
   const [baseUrl, setBaseUrl] = useState(user?.baseUrl || '');
   const [selectedModel, setSelectedModel] = useState(user?.selectedModel || '');
@@ -79,6 +77,7 @@ const SettingsModal = ({ isOpen, onClose }: SettingsModalProps) => {
 
   useEffect(() => {
     if (user) {
+      setSelectedProvider(user.selectedProvider || 'default');
       setApiKeys(user.apiKeys || []);
       setBaseUrl(user.baseUrl || '');
       setSelectedModel(user.selectedModel || '');
@@ -113,7 +112,14 @@ const SettingsModal = ({ isOpen, onClose }: SettingsModalProps) => {
     };
   }, [openConfigMenuId]);
   
-  const fetchProviderModels = useCallback(async (provider: ProviderId) => {
+  const fetchProviderModels = useCallback(async (provider: string) => {
+    // START CHANGE: Do not fetch for the default provider
+    if (provider === 'default') {
+        setModels([]);
+        return;
+    }
+    // END CHANGE
+
     const keyForProvider = apiKeys.find(k => k.provider === provider)?.key;
     if (!keyForProvider) {
         setModels([]);
@@ -147,7 +153,7 @@ const SettingsModal = ({ isOpen, onClose }: SettingsModalProps) => {
     setModels([]); 
     
     fetchProviderModels(selectedProvider);
-  }, [selectedProvider, fetchProviderModels]);
+  }, [selectedProvider, fetchProviderModels, setModels]);
 
   const handleApiKeyChange = (newKey: string) => {
     setApiKeys(prev => {
@@ -179,30 +185,38 @@ const SettingsModal = ({ isOpen, onClose }: SettingsModalProps) => {
   };
 
   const handleSave = async () => {
-    const finalProvider = selectedModel.includes('claude') ? 'anthropic' : (selectedModel.includes('gemini') ? 'gemini' : 'openai');
-    if (selectedModel && finalProvider !== selectedProvider) {
-        showNotification('Provider and selected model do not match. Please re-select your default model.', 'error');
-        return;
-    }
-    if (quickAccessModels.length > 0 && !selectedModel) {
+    // START CHANGE: Adjust validation for default provider
+    if (selectedProvider !== 'default' && quickAccessModels.length > 0 && !selectedModel) {
         showNotification('Please select a default model from your Quick Access list.', 'error');
         return;
     }
+    // END CHANGE
     try {
       const configsToSave = modelConfigs.filter(config => quickAccessModels.includes(config.id));
-      await updateSettings({ 
-        apiKeys, 
-        baseUrl, 
-        selectedModel, 
-        quickAccessModels, 
-        modelConfigs: configsToSave, 
-        contextLength,
-        maxOutputTokens
-      });
+      
+      // START CHANGE: Only save relevant settings based on provider
+      const settingsToSave = {
+        selectedProvider,
+        apiKeys,
+        baseUrl: selectedProvider === 'openai' ? baseUrl : '',
+        selectedModel: selectedProvider === 'default' 
+          ? 'gpt-4o-mini' 
+          : selectedModel,
+        ...(selectedProvider !== 'default' && {
+          quickAccessModels,
+          modelConfigs: configsToSave,
+          contextLength,
+          maxOutputTokens,
+        }),
+      };
+      
+      await updateSettings(settingsToSave);
+      // END CHANGE
+
       showNotification('Settings Saved!');
       handleClose();
     } catch (err) {
-      showNotification('Failed to save settings.', 'error');
+      showNotification(`Failed to save settings.\n${err}`, "error");
     }
   };
   
@@ -299,6 +313,10 @@ const SettingsModal = ({ isOpen, onClose }: SettingsModalProps) => {
   if (!isOpen) return null;
 
   const renderGptTab = () => {
+    // START CHANGE: Add a flag to simplify conditional rendering
+    const isDefaultProviderSelected = selectedProvider === 'default';
+    // END CHANGE
+
     const currentApiKey = apiKeys.find(k => k.provider === selectedProvider)?.key || '';
     
     const defaultModelOptions = models.filter(model => quickAccessModels.includes(model.id));
@@ -326,220 +344,208 @@ const SettingsModal = ({ isOpen, onClose }: SettingsModalProps) => {
         <ProviderSelector 
             providers={providers}
             selectedProvider={selectedProvider}
-            onSelect={(id) => setSelectedProvider(id as ProviderId)}
+            onSelect={(id) => setSelectedProvider(id)}
         />
       </div>
 
-      <div className="form-group">
-        <label htmlFor="apiKey">API Key</label>
-        <div className="input-wrapper">
-          <input 
-            id="apiKey" 
-            type={isApiKeyVisible ? 'text' : 'apikey'}
-            className={!isApiKeyVisible ? 'input-hidden' : ''}
-            value={currentApiKey} 
-            onChange={(e) => handleApiKeyChange(e.target.value)} 
-            placeholder={ getApiKeyPlaceholder() }
-          />
-          <Tooltip text={isApiKeyVisible ? "Hide API Key" : "Show API Key"}>
-            <button type="button" className="visibility-toggle-btn" onClick={() => setIsApiKeyVisible(prev => !prev)}>
-              {isApiKeyVisible ? <FiEyeOff size={18} /> : <FiEye size={18} />}
-            </button>
-          </Tooltip>
+      {/* START CHANGE: Conditionally render all provider-specific settings */}
+      {isDefaultProviderSelected ? (
+        <div className="form-group default-provider-info">
+          <p className="description">
+            You are using the free, built-in GPT-4o Mini. No API key or further configuration is needed.
+          </p>
         </div>
-      </div>
-
-      {(selectedProvider === 'openai') && (
-        <div className="form-group">
-          <label htmlFor="baseUrl">Base URL (optional)</label>
-          <input 
-              id="baseUrl" 
-              type="text" 
-              value={baseUrl} 
-              onChange={(e) => setBaseUrl(e.target.value)} 
-              placeholder="e.g., https://api.groq.com/openai/v1"
-          />
-        </div>
-      )}
-      
-      <div className="form-group">
-        <div className="label-with-value">
-          <label htmlFor="contextLength">Total Context Length</label>
-          {isEditingContext ? (
-            <input
-              type="number"
-              value={editableContextValue}
-              onChange={(e) => setEditableContextValue(e.target.value)}
-              onBlur={handleContextInputBlur}
-              onKeyDown={handleContextInputKeyDown}
-              className="context-value-input"
-              autoFocus
-              onFocus={(e) => e.target.select()}
-            />
-          ) : (
-            <span
-              onClick={() => setIsEditingContext(true)}
-              className="context-value-span"
-            >
-              {contextLength}
-            </span>
-          )}
-        </div>
-        <p className="description">
-          The total token window for the model (input + output). Set this to your selected model's maximum context.
-        </p>
-        <div className="context-slider-group">
-            <input 
-                type="range" 
-                id="contextLength"
-                min={MIN_CONTEXT}
-                max={MAX_CONTEXT}
-                step="1024"
-                value={contextLength}
-                onChange={(e) => setContextLength(parseInt(e.target.value, 10))}
-                className="context-slider"
-            />
-        </div>
-      </div>
-
-      <div className="form-group">
-        <div className="label-with-value">
-          <label htmlFor="maxOutputTokens">Max Output Tokens</label>
-          {isEditingMaxOutput ? (
-            <input
-              type="number"
-              value={editableMaxOutputValue}
-              onChange={(e) => setEditableMaxOutputValue(e.target.value)}
-              onBlur={handleMaxOutputInputBlur}
-              onKeyDown={handleMaxOutputInputKeyDown}
-              className="context-value-input"
-              autoFocus
-              onFocus={(e) => e.target.select()}
-            />
-          ) : (
-            <span
-              onClick={() => setIsEditingMaxOutput(true)}
-              className="context-value-span"
-            >
-              {maxOutputTokens}
-            </span>
-          )}
-        </div>
-        <p className="description">
-          Controls the maximum tokens the model can generate in one response. This is reserved from the total context length.
-        </p>
-        <div className="context-slider-group">
-            <input 
-                type="range" 
-                id="maxOutputTokens"
-                min={MIN_OUTPUT_TOKENS}
-                max={MAX_OUTPUT_TOKENS}
-                step="256"
-                value={maxOutputTokens}
-                onChange={(e) => setMaxOutputTokens(parseInt(e.target.value, 10))}
-                className="context-slider"
-            />
-        </div>
-      </div>
-
-      {models.length > 0 && (
+      ) : (
         <>
-        <div className="form-group">
-          <label>Quick Access Models</label>
-          <p className="description">Select which models appear in the top-of-screen selector. Only models selected here can be set as the default.</p>
-          
-          <div className="model-search-wrapper">
-            <input
-              type="text"
-              className="model-search-input"
-              placeholder="Search available models..."
-              value={modelSearchQuery}
-              onChange={(e) => setModelSearchQuery(e.target.value)}
-            />
-            <button 
-                className={`model-search-clear-btn ${modelSearchQuery ? 'visible' : ''}`}
-                onClick={() => setModelSearchQuery('')}
-              >
-                <FiX size={18} />
-            </button>
-          </div>
-
-          <div className="quick-access-list">
-            {filteredModels.length > 0 ? (
-              filteredModels.map(model => {
-                const config = modelConfigs.find(c => c.id === model.id) || { modalities: ['text'] };
-                const hasImageModality = config.modalities.some(modality => modality === 'image');
-
-                return (
-                <div key={model.id} className="quick-access-row">
-                  <label className="quick-access-item">
-                    <input type="checkbox" checked={quickAccessModels.includes(model.id)} onChange={() => handleQuickAccessChange(model.id)} />
-                    <span className="checkbox-visual"></span>
-                    <span className="model-name-text">{model.id}</span>
-                  </label>
-                  <div className="model-config-wrapper">
-                    <button className="model-config-button" onClick={(e) => handleMenuToggle(model.id, e)} disabled={!quickAccessModels.includes(model.id)}>
-                      <FiMoreVertical size={16}/>
-                    </button>
-                    {openConfigMenuId === model.id && (
-                      <Portal>
-                        <div className="model-config-menu" ref={configMenuRef} style={{ position: 'absolute', top: `${menuPosition.top}px`, left: `${menuPosition.left}px` }}>
-                          <label className="config-menu-item">
-                              <input type="checkbox" checked disabled />
-                              <span className="checkbox-visual"></span>
-                              <span>Text</span>
-                          </label>
-                          <label className="config-menu-item">
-                              <input type="checkbox" checked={hasImageModality} onChange={(e) => handleModalityChange(model.id, 'image', e.target.checked)} />
-                              <span className="checkbox-visual"></span>
-                              <span>Image</span>
-                          </label>
-                        </div>
-                      </Portal>
-                    )}
-                  </div>
-                </div>
-                );
-              })
-            ) : (
-              <div className="no-models-found">
-                No models found matching your search.
-              </div>
-            )}
-          </div>
-        </div>
-
-        <div className="form-group">
-            <label htmlFor="model">Default Model</label>
-            <div className="model-select-wrapper">
-            <CustomModelSelector
-                models={defaultModelOptions}
-                selectedModel={selectedModel}
-                onSelect={setSelectedModel}
-                disabled={defaultModelOptions.length === 0}
-                placeholderText="Select from Quick Access models"
-            />
-            <Tooltip text={!currentApiKey ? "API Key is required" : "Save credentials & Refresh models" }>
-                <button 
-                className="refresh-button" 
-                onClick={handleManualFetch} 
-                disabled={isFetching || !currentApiKey}
-                >
-                {isFetching ? '...' : <FiRefreshCw size={16} />}
+          <div className="form-group">
+            <label htmlFor="apiKey">API Key</label>
+            <div className="input-wrapper">
+              <input 
+                id="apiKey" 
+                type={isApiKeyVisible ? 'text' : 'password'} // Changed to 'password' for better hiding
+                className={!isApiKeyVisible ? 'input-hidden' : ''}
+                value={currentApiKey} 
+                onChange={(e) => handleApiKeyChange(e.target.value)} 
+                placeholder={ getApiKeyPlaceholder() }
+                autoComplete="off"
+              />
+              <Tooltip text={isApiKeyVisible ? "Hide API Key" : "Show API Key"}>
+                <button type="button" className="visibility-toggle-btn" onClick={() => setIsApiKeyVisible(prev => !prev)}>
+                  {isApiKeyVisible ? <FiEyeOff size={18} /> : <FiEye size={18} />}
                 </button>
-            </Tooltip>
+              </Tooltip>
             </div>
-        </div>
-        </>
-      )}
+          </div>
 
-      {models.length === 0 && (
-         <div className="form-group">
-            <label htmlFor="model">Models</label>
-            <div className="model-select-wrapper">
-                <div className="placeholder-selector">
-                    {isFetching ? 'Loading models...' : 'Click Refresh to load available models'}
-                </div>
+          {(selectedProvider === 'openai') && (
+            <div className="form-group">
+              <label htmlFor="baseUrl">Base URL (optional)</label>
+              <input 
+                  id="baseUrl" 
+                  type="text" 
+                  value={baseUrl} 
+                  onChange={(e) => setBaseUrl(e.target.value)} 
+                  placeholder="e.g., https://api.groq.com/openai/v1"
+              />
+            </div>
+          )}
+          
+          <div className="form-group">
+            <div className="label-with-value">
+              <label htmlFor="contextLength">Total Context Length</label>
+              {isEditingContext ? (
+                <input
+                  type="number"
+                  value={editableContextValue}
+                  onChange={(e) => setEditableContextValue(e.target.value)}
+                  onBlur={handleContextInputBlur}
+                  onKeyDown={handleContextInputKeyDown}
+                  className="context-value-input"
+                  autoFocus
+                  onFocus={(e) => e.target.select()}
+                />
+              ) : (
+                <span
+                  onClick={() => setIsEditingContext(true)}
+                  className="context-value-span"
+                >
+                  {contextLength}
+                </span>
+              )}
+            </div>
+            <p className="description">
+              The total token window for the model (input + output). Set this to your selected model's maximum context.
+            </p>
+            <div className="context-slider-group">
+                <input 
+                    type="range" 
+                    id="contextLength"
+                    min={MIN_CONTEXT}
+                    max={MAX_CONTEXT}
+                    step="1024"
+                    value={contextLength}
+                    onChange={(e) => setContextLength(parseInt(e.target.value, 10))}
+                    className="context-slider"
+                />
+            </div>
+          </div>
+
+          <div className="form-group">
+            <div className="label-with-value">
+              <label htmlFor="maxOutputTokens">Max Output Tokens</label>
+              {isEditingMaxOutput ? (
+                <input
+                  type="number"
+                  value={editableMaxOutputValue}
+                  onChange={(e) => setEditableMaxOutputValue(e.target.value)}
+                  onBlur={handleMaxOutputInputBlur}
+                  onKeyDown={handleMaxOutputInputKeyDown}
+                  className="context-value-input"
+                  autoFocus
+                  onFocus={(e) => e.target.select()}
+                />
+              ) : (
+                <span
+                  onClick={() => setIsEditingMaxOutput(true)}
+                  className="context-value-span"
+                >
+                  {maxOutputTokens}
+                </span>
+              )}
+            </div>
+            <p className="description">
+              Controls the maximum tokens the model can generate in one response. This is reserved from the total context length.
+            </p>
+            <div className="context-slider-group">
+                <input 
+                    type="range" 
+                    id="maxOutputTokens"
+                    min={MIN_OUTPUT_TOKENS}
+                    max={MAX_OUTPUT_TOKENS}
+                    step="256"
+                    value={maxOutputTokens}
+                    onChange={(e) => setMaxOutputTokens(parseInt(e.target.value, 10))}
+                    className="context-slider"
+                />
+            </div>
+          </div>
+
+          {models.length > 0 && (
+            <>
+            <div className="form-group">
+              <label>Quick Access Models</label>
+              <p className="description">Select which models appear in the top-of-screen selector. Only models selected here can be set as the default.</p>
+              
+              <div className="model-search-wrapper">
+                <input
+                  type="text"
+                  className="model-search-input"
+                  placeholder="Search available models..."
+                  value={modelSearchQuery}
+                  onChange={(e) => setModelSearchQuery(e.target.value)}
+                />
+                <button 
+                    className={`model-search-clear-btn ${modelSearchQuery ? 'visible' : ''}`}
+                    onClick={() => setModelSearchQuery('')}
+                  >
+                    <FiX size={18} />
+                </button>
+              </div>
+              <div className="quick-access-list">
+                {filteredModels.length > 0 ? (
+                  filteredModels.map(model => {
+                    const config = modelConfigs.find(c => c.id === model.id) || { modalities: ['text'] };
+                    const hasImageModality = config.modalities.some(modality => modality === 'image');
+
+                    return (
+                    <div key={model.id} className="quick-access-row">
+                      <label className="quick-access-item">
+                        <input type="checkbox" checked={quickAccessModels.includes(model.id)} onChange={() => handleQuickAccessChange(model.id)} />
+                        <span className="checkbox-visual"></span>
+                        <span className="model-name-text">{model.id}</span>
+                      </label>
+                      <div className="model-config-wrapper">
+                        <button className="model-config-button" onClick={(e) => handleMenuToggle(model.id, e)} disabled={!quickAccessModels.includes(model.id)}>
+                          <FiMoreVertical size={16}/>
+                        </button>
+                        {openConfigMenuId === model.id && (
+                          <Portal>
+                            <div className="model-config-menu" ref={configMenuRef} style={{ position: 'absolute', top: `${menuPosition.top}px`, left: `${menuPosition.left}px` }}>
+                              <label className="config-menu-item">
+                                  <input type="checkbox" checked disabled />
+                                  <span className="checkbox-visual"></span>
+                                  <span>Text</span>
+                              </label>
+                              <label className="config-menu-item">
+                                  <input type="checkbox" checked={hasImageModality} onChange={(e) => handleModalityChange(model.id, 'image', e.target.checked)} />
+                                  <span className="checkbox-visual"></span>
+                                  <span>Image</span>
+                              </label>
+                            </div>
+                          </Portal>
+                        )}
+                      </div>
+                    </div>
+                    );
+                  })
+                ) : (
+                  <div className="no-models-found">
+                    No models found matching your search.
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="form-group">
+                <label htmlFor="model">Default Model</label>
+                <div className="model-select-wrapper">
+                <CustomModelSelector
+                    models={defaultModelOptions}
+                    selectedModel={selectedModel}
+                    onSelect={setSelectedModel}
+                    disabled={defaultModelOptions.length === 0}
+                    placeholderText="Select from Quick Access models"
+                />
                 <Tooltip text={!currentApiKey ? "API Key is required" : "Save credentials & Refresh models" }>
                     <button 
                     className="refresh-button" 
@@ -549,10 +555,34 @@ const SettingsModal = ({ isOpen, onClose }: SettingsModalProps) => {
                     {isFetching ? '...' : <FiRefreshCw size={16} />}
                     </button>
                 </Tooltip>
+                </div>
             </div>
-            {fetchError && <p className="error-text">{fetchError}</p>}
-        </div>
+            </>
+          )}
+
+          {models.length === 0 && (
+             <div className="form-group">
+                <label htmlFor="model">Models</label>
+                <div className="model-select-wrapper">
+                    <div className="placeholder-selector">
+                        {isFetching ? 'Loading models...' : 'Click Refresh to load available models'}
+                    </div>
+                    <Tooltip text={!currentApiKey ? "API Key is required" : "Save credentials & Refresh models" }>
+                        <button 
+                        className="refresh-button" 
+                        onClick={handleManualFetch} 
+                        disabled={isFetching || !currentApiKey}
+                        >
+                        {isFetching ? '...' : <FiRefreshCw size={16} />}
+                        </button>
+                    </Tooltip>
+                </div>
+                {fetchError && <p className="error-text">{fetchError}</p>}
+            </div>
+          )}
+        </>
       )}
+      {/* END CHANGE */}
       
       <div className="modal-actions">
         <button className="modal-button modal-button-cancel" onClick={handleClose}>Cancel</button>

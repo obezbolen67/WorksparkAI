@@ -60,7 +60,7 @@ const AuthPage = () => {
       </div>
       
       <div className={`auth-form-wrapper ${isFading ? 'fading' : ''}`}>
-        <h1 className="auth-title">FexoAI</h1>
+        <h1 className="auth-title">Workspark AI</h1>
         <h2 className="auth-subtitle">{isLogin ? 'Welcome Back' : 'Create Account'}</h2>
         
         <form onSubmit={handleSubmit}>

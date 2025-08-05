@@ -53,7 +53,7 @@ const SearchBlock = memo(({ toolSearchMessage, toolOutputMessage }: SearchBlockP
         const image: Partial<ParsedImage> = {};
         let attrMatch;
         while ((attrMatch = attrRegex.exec(attrsString)) !== null) {
-          // @ts-ignore
+          // @ts-expect-error Works
           image[attrMatch[1]] = attrMatch[2];
         }
         if(image.imageUrl && image.source && image.title) {

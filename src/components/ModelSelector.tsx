@@ -44,7 +44,7 @@ const ModelSelector = () => {
     <div className="model-selector" ref={selectorRef}>
       {/* --- UPDATED: Button now includes a "Beta" tag --- */}
       <button className="model-selector-button" onClick={() => setIsOpen(!isOpen)}>
-        <span>FexoAI</span>
+        <span>Workspark AI</span>
         <span className="beta-tag">Beta</span>
         <FiChevronDown size={16} className={isOpen ? 'open' : ''} />
       </button>

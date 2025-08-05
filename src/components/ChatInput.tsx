@@ -295,7 +295,7 @@ const ChatInput = ({ onSendMessage, onStopGeneration, isSending, isThinkingVisib
         <textarea
           ref={textareaRef}
           className="chat-input"
-          placeholder="Message Fexo"
+          placeholder="Message Workspark"
           value={text}
           onChange={(e) => setText(e.target.value)}
           onKeyDown={handleKeyDown}
