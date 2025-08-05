@@ -111,6 +111,10 @@ const LandingPage = () => {
 
 
   useEffect(() => {
+    // --- START OF THE FIX ---
+    // Capture the current sections in a local variable.
+    const currentSections = sectionsRef.current;
+
     const observer = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
@@ -123,15 +127,18 @@ const LandingPage = () => {
       { threshold: 0.1 }
     );
 
-    sectionsRef.current.forEach((section) => {
+    // Use the local variable to set up the observers.
+    currentSections.forEach((section) => {
       if (section) observer.observe(section);
     });
 
+    // Use the same local variable in the cleanup function.
     return () => {
-      sectionsRef.current.forEach((section) => {
+      currentSections.forEach((section) => {
         if (section) observer.unobserve(section);
       });
     };
+    // --- END OF THE FIX ---
   }, []);
 
   return (
@@ -139,7 +146,7 @@ const LandingPage = () => {
       <LandingNav />
       
       <main>
-        <section className="hero-section" ref={(el) => (sectionsRef.current[0] = el)}>
+        <section className="hero-section" ref={(el) => { sectionsRef.current[0] = el; }}>
           <div className="hero-background-aurora"></div>
           <div className="hero-content">
             <h1 className="hero-title">The AI Copilot That Actually Builds With You</h1>
@@ -155,12 +162,12 @@ const LandingPage = () => {
           </div>
         </section>
 
-        <section className="features-section" id="features" ref={(el) => (sectionsRef.current[1] = el)}>
+        <section className="features-section" id="features" ref={(el) => { sectionsRef.current[1] = el; }}>
           <h2 className="section-title">A Toolkit for Modern Development</h2>
           <p className="section-subtitle">Everything you need, integrated and intelligent.</p>
           <div className="features-grid">
             {features.map((feature, index) => (
-              <div key={index} className="feature-card" ref={(el) => (sectionsRef.current[2 + index] = el)}>
+              <div key={index} className="feature-card" ref={(el) => { sectionsRef.current[2 + index] = el; }}>
                 <div className="feature-icon">{feature.icon}</div>
                 <h3 className="feature-title">{feature.title}</h3>
                 <p className="feature-description">{feature.description}</p>
@@ -169,12 +176,12 @@ const LandingPage = () => {
           </div>
         </section>
         
-        <section className="how-it-works-section" ref={(el) => (sectionsRef.current[6] = el)}>
+        <section className="how-it-works-section" ref={(el) => { sectionsRef.current[6] = el; }}>
             <h2 className="section-title">Simple Workflow, Powerful Results</h2>
             <p className="section-subtitle">Four steps from idea to execution.</p>
             <div className="timeline">
                 {steps.map((step, index) => (
-                    <div key={index} className="timeline-item" ref={(el) => (sectionsRef.current[7 + index] = el)}>
+                    <div key={index} className="timeline-item" ref={(el) => { sectionsRef.current[7 + index] = el; }}>
                         <div className="timeline-icon">{step.icon}</div>
                         <div className="timeline-content">
                             <h3 className="timeline-title">{step.title}</h3>
@@ -185,12 +192,12 @@ const LandingPage = () => {
             </div>
         </section>
 
-        <section className="use-cases-section" ref={(el) => (sectionsRef.current[11] = el)}>
+        <section className="use-cases-section" ref={(el) => { sectionsRef.current[11] = el; }}>
           <h2 className="section-title">Designed For Doers</h2>
           <p className="section-subtitle">Whether you're a developer, analyst, or researcher, Workspark accelerates your workflow.</p>
           <div className="use-cases-grid">
             {useCases.map((useCase, index) => (
-              <div key={index} className="use-case-card" style={{ '--glow-color': useCase.color } as React.CSSProperties} ref={(el) => (sectionsRef.current[12 + index] = el)}>
+              <div key={index} className="use-case-card" style={{ '--glow-color': useCase.color } as React.CSSProperties} ref={(el) => { sectionsRef.current[12 + index] = el; }}>
                 <div className="use-case-glow"></div>
                 <h3 className="use-case-title">{useCase.title}</h3>
                 <p className="use-case-description">{useCase.description}</p>
@@ -199,7 +206,7 @@ const LandingPage = () => {
           </div>
         </section>
 
-        <section className="cta-section" ref={(el) => (sectionsRef.current[15] = el)}>
+        <section className="cta-section" ref={(el) => { sectionsRef.current[15] = el; }}>
             <h2 className="section-title">Ready to build faster?</h2>
             <p className="section-subtitle">
                 Sign up now and experience a more powerful way to interact with AI.
