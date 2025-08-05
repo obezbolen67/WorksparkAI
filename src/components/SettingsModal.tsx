@@ -372,6 +372,9 @@ const SettingsModal = ({ isOpen, onClose }: SettingsModalProps) => {
           <p className="description">
             You are using the free, built-in GPT-4o Mini. No API key or further configuration is needed.
           </p>
+          <p>
+            Thank you PollinationsAI 💜
+          </p>
         </div>
       ) : (
         <>
