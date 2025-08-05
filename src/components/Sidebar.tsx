@@ -2,7 +2,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import '../css/Sidebar.css';
-// --- UPDATED: Added FiTrash2 for the "Clear all" button ---
 import { FiEdit, FiSettings, FiLogOut, FiEdit2, FiTrash, FiX, FiTrash2 } from 'react-icons/fi';
 import { HiOutlineDotsHorizontal } from 'react-icons/hi';
 import { TbLayoutSidebarLeftCollapse } from 'react-icons/tb';
@@ -10,18 +9,15 @@ import { useSettings } from '../contexts/SettingsContext';
 import { useChat } from '../contexts/ChatContext';
 import ConfirmationModal from './ConfirmationModal';
 import RenameModal from './RenameModal';
-import Tooltip from './Tooltip'; // <-- ADDED
+import Tooltip from './Tooltip';
 
-// Add new component imports and their CSS
 import '../css/ConfirmationModal.css';
 import '../css/RenameModal.css';
 
 interface SidebarProps {
   onOpenSettings: () => void;
-  // --- NEW PROPS FOR MOBILE ---
   isMobileOpen: boolean;
   onClose: () => void;
-  // --- NEW PROPS FOR COLLAPSE ---
   isCollapsed: boolean;
   onToggleCollapse: () => void;
 }
@@ -34,11 +30,9 @@ const Sidebar = ({ onOpenSettings, isMobileOpen, onClose, isCollapsed, onToggleC
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const userMenuRef = useRef<HTMLDivElement>(null);
 
-  // --- NEW: State for chat item context menu ---
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 
-  // State for modals
   const [isDeleteModalOpen, setDeleteModalOpen] = useState(false);
   const [isClearAllModalOpen, setClearAllModalOpen] = useState(false);
   const [isRenameModalOpen, setRenameModalOpen] = useState(false);
@@ -46,16 +40,13 @@ const Sidebar = ({ onOpenSettings, isMobileOpen, onClose, isCollapsed, onToggleC
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      // Close user menu
       if (userMenuRef.current && !userMenuRef.current.contains(event.target as Node)) {
         setIsUserMenuOpen(false);
       }
-      // --- NEW: Close chat item menu ---
       if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
         setOpenMenuId(null);
       }
     };
-    // Add listener only when a menu is open
     if (isUserMenuOpen || openMenuId) {
       document.addEventListener('mousedown', handleClickOutside);
     }
@@ -67,18 +58,17 @@ const Sidebar = ({ onOpenSettings, isMobileOpen, onClose, isCollapsed, onToggleC
   const handleSettingsClick = () => {
     onOpenSettings();
     setIsUserMenuOpen(false);
-    onClose(); // Close sidebar on mobile
+    onClose();
   };
   
   const handleLogoutClick = () => {
     logout();
     setIsUserMenuOpen(false);
-    onClose(); // Close sidebar on mobile
+    onClose();
   };
   
-  // --- NEW: Close sidebar when navigating on mobile ---
   const handleNewChat = () => {
-    navigate('/');
+    navigate('/app');
     onClose();
   }
   
@@ -86,28 +76,40 @@ const Sidebar = ({ onOpenSettings, isMobileOpen, onClose, isCollapsed, onToggleC
     onClose();
   }
 
+  // --- START OF THE FIX ---
+  const handleLogoLinkClick = (e: React.MouseEvent) => {
+    // If the sidebar is collapsed, prevent the link from navigating.
+    // The hover effect will reveal the expand button, which is the intended action.
+    if (isCollapsed) {
+      e.preventDefault();
+      return;
+    }
+    // If not collapsed, perform the standard new chat/navigate action.
+    handleNewChat();
+  };
+  // --- END OF THE FIX ---
+
   const openRenameModal = (e: React.MouseEvent, chatId: string, currentTitle: string) => {
     e.preventDefault();
     e.stopPropagation();
     setActiveChat({ id: chatId, title: currentTitle });
     setRenameModalOpen(true);
-    setOpenMenuId(null); // Close context menu
+    setOpenMenuId(null);
   };
 
   const openDeleteModal = (e: React.MouseEvent, chatId: string) => {
     e.preventDefault();
     e.stopPropagation();
-    setActiveChat({ id: chatId, title: '' }); // title not needed for delete
+    setActiveChat({ id: chatId, title: '' });
     setDeleteModalOpen(true);
-    setOpenMenuId(null); // Close context menu
+    setOpenMenuId(null);
   };
 
   const handleConfirmDelete = async () => {
     if (activeChat) {
       await deleteChat(activeChat.id);
-      // If we deleted the current chat on mobile, navigate to home and close sidebar
       if (activeChatId === activeChat.id) {
-        navigate('/');
+        navigate('/app');
       }
     }
     setDeleteModalOpen(false);
@@ -126,32 +128,36 @@ const Sidebar = ({ onOpenSettings, isMobileOpen, onClose, isCollapsed, onToggleC
   const handleConfirmClearAll = async () => {
     await clearAllChats();
     setClearAllModalOpen(false);
-    onClose(); // Close sidebar on mobile
-    navigate('/');
+    onClose();
+    navigate('/app');
   };
 
   return (
     <>
-      {/* --- NEW: Overlay for mobile --- */}
       {isMobileOpen && <div className="sidebar-overlay" onClick={onClose}></div>}
       
-      {/* Conditionally add 'mobile-open' and 'is-collapsed' classes */}
       <aside className={`sidebar ${isMobileOpen ? 'mobile-open' : ''} ${isCollapsed ? 'is-collapsed' : ''}`}>
         <div className="sidebar-top">
-          {/* --- NEW: Close button for mobile --- */}
-          <button className="sidebar-button mobile-close-button" onClick={onClose} aria-label="Close menu">
-            <FiX size={24} />
-          </button>
-          {/* --- UPDATED: Collapse button is now functional --- */}
+          {/* --- START OF THE FIX --- */}
+          {/* The NavLink now uses the conditional click handler */}
+          <NavLink to="/app" className="sidebar-logo-link" onClick={handleLogoLinkClick}>
+            <img src="/worksparkai.svg" alt="Workspark AI Logo" className="sidebar-logo" />
+            <span className="sidebar-logo-text">Workspark AI</span>
+          </NavLink>
+          {/* --- END OF THE FIX --- */}
+          
           <button className="sidebar-button collapse-button" onClick={onToggleCollapse}>
             <TbLayoutSidebarLeftCollapse size={20} />
+          </button>
+          
+          <button className="sidebar-button mobile-close-button" onClick={onClose} aria-label="Close menu">
+            <FiX size={24} />
           </button>
         </div>
 
         <nav className="sidebar-nav">
           <ul>
             <li>
-              {/* Use the new handler */}
               <button className="sidebar-button new-chat-button" onClick={handleNewChat}>
                 <FiEdit size={20} />
                 <span>New Chat</span>
@@ -174,11 +180,9 @@ const Sidebar = ({ onOpenSettings, isMobileOpen, onClose, isCollapsed, onToggleC
             <ul className="convo-list">
               {chatList.map((chat) => (
                 <li key={chat._id}>
-                  {/* Use the new handler */}
-                  <NavLink to={`/c/${chat._id}`} onClick={handleNavLinkClick}>
+                  <NavLink to={`c/${chat._id}`} onClick={handleNavLinkClick}>
                     {chat.title || 'Untitled Chat'}
                   </NavLink>
-                  {/* --- UPDATED: Dots menu trigger with Tooltip (className removed) --- */}
                   <Tooltip text="More options">
                     <button
                       className={`chat-item-menu-trigger ${openMenuId === chat._id ? 'active' : ''}`}
@@ -191,7 +195,6 @@ const Sidebar = ({ onOpenSettings, isMobileOpen, onClose, isCollapsed, onToggleC
                       <HiOutlineDotsHorizontal size={16} />
                     </button>
                   </Tooltip>
-                  {/* --- UPDATED: Context Menu --- */}
                   {openMenuId === chat._id && (
                     <div className="chat-item-actions-menu" ref={menuRef}>
                       <button className="menu-action-button" onClick={(e) => openRenameModal(e, chat._id, chat.title)}>
@@ -242,7 +245,6 @@ const Sidebar = ({ onOpenSettings, isMobileOpen, onClose, isCollapsed, onToggleC
         </div>
       </aside>
 
-      {/* Render Modals */}
       <ConfirmationModal
         isOpen={isDeleteModalOpen}
         onClose={() => setDeleteModalOpen(false)}

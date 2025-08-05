@@ -14,8 +14,9 @@ import MainAppLayout from './pages/MainAppLayout';
 import AuthPage from './pages/AuthPage';
 import { useSettings } from './contexts/SettingsContext';
 
-// --- Lazily load the ChatPage component ---
+// --- Lazily load page components ---
 const ChatPage = lazy(() => import('./pages/ChatPage'));
+const LandingPage = lazy(() => import('./pages/LandingPage'));
 
 // --- Full screen loader for suspense fallback ---
 const FullScreenLoader = () => (
@@ -35,30 +36,36 @@ function App() {
   return (
     <Suspense fallback={<FullScreenLoader />}>
       <Routes>
+        {/* --- Public Routes --- */}
+        <Route 
+          path="/"
+          element={isAuthenticated ? <Navigate to="/app" /> : <LandingPage />} 
+        />
         <Route 
           path="/login" 
-          element={isAuthenticated ? <Navigate to="/" /> : <AuthPage />} 
+          element={isAuthenticated ? <Navigate to="/app" /> : <AuthPage />} 
         />
         <Route 
           path="/register" 
-          element={isAuthenticated ? <Navigate to="/" /> : <AuthPage />} 
+          element={isAuthenticated ? <Navigate to="/app" /> : <AuthPage />} 
         />
         
-        {/* --- Nested Routing --- */}
+        {/* --- Private Application Routes --- */}
         <Route 
-          path="/"
+          path="/app"
           element={
             <PrivateRoute>
               <MainAppLayout />
             </PrivateRoute>
           }
         >
-          {/* Child routes that will render inside MainAppLayout's <Outlet> */}
+          {/* Child routes render inside MainAppLayout's <Outlet> */}
           <Route index element={<ChatPage />} />
           <Route path="c/:chatId" element={<ChatPage />} />
         </Route>
         
-        <Route path="*" element={<Navigate to="/" />} />
+        {/* --- Fallback Route --- */}
+        <Route path="*" element={<Navigate to={isAuthenticated ? "/app" : "/"} />} />
       </Routes>
     </Suspense>
   );

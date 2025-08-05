@@ -37,7 +37,7 @@ const MainAppLayout = () => {
       <MobileHeader 
         onToggleSidebar={() => setMobileSidebarOpen(true)}
         onNewChat={() => {
-          navigate('/');
+          navigate('/app'); // <-- UPDATED: Navigate to the new app root
           setMobileSidebarOpen(false);
         }}
       />

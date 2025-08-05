@@ -58,6 +58,7 @@ const ChatInput = ({ onSendMessage, onStopGeneration, isSending, isThinkingVisib
     if (containsImage) {
       const modelConfigs = user?.modelConfigs || [];
       const modelConfig = modelConfigs.find(c => c.id === selectedModel);
+      console.log(modelConfig);
       const supportsImage = modelConfig?.modalities.includes('image');
 
       if (!supportsImage) {

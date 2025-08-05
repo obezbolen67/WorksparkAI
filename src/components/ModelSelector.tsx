@@ -28,7 +28,6 @@ const ModelSelector = () => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // --- UPDATED: Only show placeholder during initial context load ---
   if (loading) {
     return <div className="model-selector-placeholder" />;
   }
@@ -42,12 +41,13 @@ const ModelSelector = () => {
 
   return (
     <div className="model-selector" ref={selectorRef}>
-      {/* --- UPDATED: Button now includes a "Beta" tag --- */}
+      {/* --- START OF THE FIX --- */}
       <button className="model-selector-button" onClick={() => setIsOpen(!isOpen)}>
         <span>Workspark AI</span>
         <span className="beta-tag">Beta</span>
         <FiChevronDown size={16} className={isOpen ? 'open' : ''} />
       </button>
+      {/* --- END OF THE FIX --- */}
 
       {isOpen && (
         <div className="model-selector-dropdown">

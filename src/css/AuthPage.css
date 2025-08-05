@@ -1,11 +1,9 @@
 /* src/css/AuthPage.css */
 
-/* --- NEW: Keyframe for the button loader --- */
 @keyframes spin {
   to { transform: rotate(360deg); }
 }
 
-/* --- Animated Background --- */
 @keyframes move {
   0% { transform: translate(0, 0); }
   25% { transform: translate(10vw, -15vh); }
@@ -70,7 +68,6 @@
   animation-delay: -10s;
 }
 
-/* --- Form Styles --- */
 .auth-form-wrapper {
   background-color: rgba(255, 255, 255, 0.75);
   backdrop-filter: blur(10px);
@@ -90,6 +87,13 @@
   opacity: 0;
   transform: translateY(10px);
 }
+
+/* --- START OF THE FIX --- */
+.auth-logo {
+  height: 48px;
+  margin-bottom: 0.5rem;
+}
+/* --- END OF THE FIX --- */
 
 .auth-title {
   font-size: 2rem;
@@ -136,25 +140,21 @@
   box-shadow: 0 0 0 3px hsla(0, 0%, 0%, 0.1);
 }
 
-/* --- UPDATED: Auth Button styles --- */
 .auth-button {
   background-color: #111827;
   color: #ffffff;
-  /* Make padding more compact */
   padding: 0.6rem 1.5rem; 
   border-radius: 9999px;
   cursor: pointer;
   font-weight: 600;
-  font-size: 0.95rem; /* Slightly smaller font */
+  font-size: 0.95rem;
   transition: background-color 0.2s, transform 0.2s;
   margin-top: 1.5rem;
-  
-  /* Flex properties to center the loader */
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-height: 2.5rem; /* Prevent size change when loader is active */
-  min-width: 6rem; /* Prevent size change when loader is active */
+  min-height: 2.5rem;
+  min-width: 6rem;
 }
 
 .auth-button:not(:disabled):hover {
@@ -167,9 +167,8 @@
   cursor: not-allowed;
 }
 
-/* --- NEW: Loader for the button --- */
 .auth-loader {
-  width: 1rem; /* 16px */
+  width: 1rem;
   height: 1rem;
   border: 2px solid rgba(255, 255, 255, 0.3);
   border-top-color: #ffffff;
@@ -214,7 +213,6 @@
   cursor: not-allowed;
 }
 
-/* --- MOBILE OPTIMIZATION --- */
 @media (max-width: 600px) {
   .auth-background {
     display: none;
@@ -242,6 +240,12 @@
     text-align: center;
   }
 
+  /* --- START OF THE FIX --- */
+  .auth-logo {
+      margin-top: 5vh;
+      height: 52px;
+  }
+  /* --- END OF THE FIX --- */
   .auth-title {
     margin-top: 5vh;
     font-size: 2.2rem;

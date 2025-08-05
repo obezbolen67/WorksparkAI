@@ -8,7 +8,7 @@ const AuthPage = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
-  const [isLoading, setIsLoading] = useState(false); // --- NEW: Loading state
+  const [isLoading, setIsLoading] = useState(false);
   const { login, register, isAuthenticated } = useSettings();
   const [isFading, setIsFading] = useState(false);
 
@@ -27,7 +27,7 @@ const AuthPage = () => {
       return;
     }
 
-    setIsLoading(true); // --- NEW: Set loading to true
+    setIsLoading(true);
     
     try {
       if (isLogin) {
@@ -35,10 +35,9 @@ const AuthPage = () => {
       } else {
         await register(email, password);
       }
-      // On success, redirect will occur, no need to set isLoading to false
     } catch (err: any) {
       setError(err.message || 'An error occurred.');
-      setIsLoading(false); // --- NEW: Set loading to false on error
+      setIsLoading(false);
     }
   };
 
@@ -60,7 +59,9 @@ const AuthPage = () => {
       </div>
       
       <div className={`auth-form-wrapper ${isFading ? 'fading' : ''}`}>
-        <h1 className="auth-title">Workspark AI</h1>
+        {/* --- START OF THE FIX --- */}
+        <img src="/worksparkai.svg" alt="Workspark AI Logo" className="auth-logo" />
+        {/* --- END OF THE FIX --- */}
         <h2 className="auth-subtitle">{isLogin ? 'Welcome Back' : 'Create Account'}</h2>
         
         <form onSubmit={handleSubmit}>
@@ -73,7 +74,7 @@ const AuthPage = () => {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
-              disabled={isLoading} // --- NEW: Disable input when loading
+              disabled={isLoading}
             />
           </div>
           <div className="auth-form-group">
@@ -84,7 +85,7 @@ const AuthPage = () => {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
-              disabled={isLoading} // --- NEW: Disable input when loading
+              disabled={isLoading}
             />
           </div>
           <button type="submit" className="auth-button" disabled={isLoading}>

@@ -1,0 +1,110 @@
+/* FexoApp/src/css/LandingNav.css */
+.landing-nav {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  z-index: 1000;
+  background-color: transparent;
+  padding: 1rem 2rem;
+  box-sizing: border-box;
+  transition: background-color 0.3s ease, backdrop-filter 0.3s ease;
+}
+
+.landing-nav.scrolled {
+  background-color: hsla(0, 0%, 100%, 0.7);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--border-color);
+}
+
+[data-theme="dark"] .landing-nav.scrolled {
+  background-color: hsla(240, 4%, 13%, 0.7);
+}
+
+.landing-nav-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+/* --- START OF THE FIX --- */
+.landing-nav-logo {
+  display: flex;
+  align-items: center;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--primary-text-color);
+  text-decoration: none;
+}
+
+.landing-nav-logo img {
+  height: 32px;
+  transition: filter 0.3s ease-in-out;
+}
+
+.landing-nav-logo:hover img {
+  filter: drop-shadow(0 0 8px hsla(145, 70%, 55%, 0.6));
+}
+/* --- END OF THE FIX --- */
+
+.landing-nav-actions {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.landing-nav-button {
+  padding: 0.6rem 1.25rem;
+  border-radius: 9999px;
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 0.9rem;
+  transition: transform 0.2s ease, background-color 0.2s ease, color 0.2s ease;
+  display: inline-block;
+}
+
+.landing-nav-button:hover {
+  transform: translateY(-2px);
+}
+
+.landing-nav-button.login {
+  background-color: transparent;
+  color: var(--primary-text-color);
+}
+
+.landing-nav-button.login:hover {
+  background-color: var(--button-hover-bg);
+}
+
+.landing-nav-button.register {
+  background-color: #111827; /* Black background */
+  color: #ffffff;
+}
+
+.landing-nav-button.register:hover {
+  background-color: #374151;
+}
+
+[data-theme="dark"] .landing-nav-button.register {
+  background-color: #ffffff;
+  color: #111827;
+}
+
+[data-theme="dark"] .landing-nav-button.register:hover {
+  background-color: #e5e7eb;
+}
+
+@media (max-width: 768px) {
+  .landing-nav {
+    padding: 1rem;
+  }
+  .landing-nav-logo img {
+    height: 28px;
+  }
+  .landing-nav-button {
+    padding: 0.5rem 1rem;
+    font-size: 0.8rem;
+  }
+}

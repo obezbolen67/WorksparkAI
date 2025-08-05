@@ -193,23 +193,41 @@ const SettingsModal = ({ isOpen, onClose }: SettingsModalProps) => {
     // END CHANGE
     try {
       const configsToSave = modelConfigs.filter(config => quickAccessModels.includes(config.id));
+
+      if (selectedProvider === "default") {
+        configsToSave.push({id: "gpt-4o-mini", modalities: ["text", "image"]})
+        setModelConfigs(prevConfigs => {
+            const modelConfigIndex = prevConfigs.findIndex(c => c.id === "gpt-4o-mini");
+
+            if (modelConfigIndex > -1) {
+              prevConfigs[modelConfigIndex] = {id: "gpt-4o-mini", modalities: ["text", "image"]}
+            } else {
+              prevConfigs.push({id: "gpt-4o-mini", modalities: ["text", "image"]})
+            }
+
+            console.log(prevConfigs)
+            return prevConfigs;
+        })
+      }
       
       // START CHANGE: Only save relevant settings based on provider
       const settingsToSave = {
         selectedProvider,
         apiKeys,
         baseUrl: selectedProvider === 'openai' ? baseUrl : '',
+        modelConfigs: configsToSave,
+        contextLength,
+        maxOutputTokens,
         selectedModel: selectedProvider === 'default' 
           ? 'gpt-4o-mini' 
           : selectedModel,
         ...(selectedProvider !== 'default' && {
           quickAccessModels,
-          modelConfigs: configsToSave,
-          contextLength,
-          maxOutputTokens,
         }),
       };
       
+      console.log(settingsToSave)
+
       await updateSettings(settingsToSave);
       // END CHANGE
 
