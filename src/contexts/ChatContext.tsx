@@ -390,7 +390,7 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
         }
         const newChat = await createChatResponse.json();
         setActiveChatId(newChat._id);
-        navigate(`/c/${newChat._id}`, { replace: true });
+        navigate(`/app/c/${newChat._id}`, { replace: true });
         
         const messagesWithPlaceholder = [...newChat.messages, { role: 'assistant', content: '', isWaiting: true } as Message];
         setMessages(messagesWithPlaceholder); 
