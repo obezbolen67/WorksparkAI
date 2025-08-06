@@ -7,7 +7,7 @@ service: default
 
 env_variables:
   NODE_ENV: "production"
-  VITE_API_URL: "https://api-fexo-1091591355962.us-central1.run.app"
+  VITE_API_URL: "https://worksparkaiserver-983563815856.europe-west1.run.app"
 
 
 handlers:
