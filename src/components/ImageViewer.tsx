@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { FiX, FiDownload } from 'react-icons/fi';
 import '../css/ImageViewer.css';
 import Tooltip from './Tooltip';
+import { useNotification } from '../contexts/NotificationContext';
 
 interface ImageViewerProps {
   src: string | null;
@@ -13,6 +14,7 @@ interface ImageViewerProps {
 
 const ImageViewer = ({ src, alt, isOpen, onClose }: ImageViewerProps) => {
   const [isClosing, setIsClosing] = useState(false);
+  const { showNotification } = useNotification();
 
   const handleClose = () => {
     setIsClosing(true);
@@ -40,32 +42,40 @@ const ImageViewer = ({ src, alt, isOpen, onClose }: ImageViewerProps) => {
       document.body.style.overflow = '';
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [isOpen, onClose]);
+  }, [isOpen]);
 
-  // This guard clause is what makes the fix below safe.
   if (!isOpen) return null;
 
-  const handleDownload = () => {
-    // The `!src` check is technically redundant because of the guard clause,
-    // but it's good practice for event handlers.
+  // --- START OF THE FIX ---
+  const handleDownload = async () => {
     if (!src) return;
-    const link = document.createElement('a');
-    link.href = src;
-    link.download = alt || 'downloaded-image';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    try {
+      const response = await fetch(src);
+      if (!response.ok) {
+        throw new Error(`Failed to fetch image: ${response.statusText}`);
+      }
+      const blob = await response.blob();
+      const objectUrl = window.URL.createObjectURL(blob);
+      
+      const link = document.createElement('a');
+      link.href = objectUrl;
+      link.download = alt || 'downloaded-image';
+      document.body.appendChild(link);
+      link.click();
+
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(objectUrl);
+    } catch (error) {
+      console.error('Image download failed:', error);
+      showNotification('Could not download the image.', 'error');
+    }
   };
+  // --- END OF THE FIX ---
 
   return (
     <div className={`image-viewer-overlay ${isClosing ? 'closing' : ''}`} onClick={handleClose}>
       <div className={`image-viewer-content ${isClosing ? 'closing' : ''}`} onClick={(e) => e.stopPropagation()}>
-        {/* --- START OF THE FIX --- */}
-        {/* We use `src || ''` to satisfy TypeScript. If `src` is null, it provides an
-            empty string. However, the `if (!isOpen)` guard already prevents this
-            component from rendering when the `src` is likely to be null. */}
         <img src={src || ''} alt={alt} />
-        {/* --- END OF THE FIX --- */}
       </div>
       <div className="image-viewer-actions">
         <Tooltip text="Download Image">

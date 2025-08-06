@@ -12,7 +12,8 @@ export type Attachment = {
 export type FileOutput = {
   fileName: string;
   mimeType: string;
-  content: string; // Base64 encoded content
+  url: string; // A direct, signed URL to the file in cloud storage
+  gcsObjectName?: string; // Stored in DB, available on loaded chats
 };
 
 export type Message = {
@@ -22,7 +23,6 @@ export type Message = {
   tool_id?: string;
   state?: 'writing' | 'ready_to_execute' | 'executing' | 'completed' | 'error' | 'searching' | 'searched' | 'analyzing' | null;
   thinking?: string;
-  fileOutput?: FileOutput;
-  fileOutputs?: FileOutput[]; 
+  fileOutputs?: FileOutput[];
   isWaiting?: boolean;
 };

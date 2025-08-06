@@ -4,9 +4,10 @@ import { FiChevronDown, FiCheckCircle, FiXCircle, FiLoader, FiDownload, FiFileTe
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { vscDarkPlus, oneLight } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import { useSettings } from '../contexts/SettingsContext';
-import type { Message } from '../types';
+import type { Message, FileOutput } from '../types';
 import Tooltip from './Tooltip';
 import '../css/CodeAnalysisBlock.css';
+import { useNotification } from '../contexts/NotificationContext';
 
 interface CodeAnalysisBlockProps {
   chatId: string | null;
@@ -19,7 +20,7 @@ const CodeAnalysisBlock = ({ toolCodeMessage, toolOutputMessage, onView }: CodeA
   const state = toolCodeMessage.state || 'writing';
   
   const [isExpanded, setIsExpanded] = useState(false);
-
+  const { showNotification } = useNotification();
   const { theme } = useSettings();
   const syntaxTheme = theme === 'light' ? oneLight : vscDarkPlus;
 
@@ -43,18 +44,39 @@ const CodeAnalysisBlock = ({ toolCodeMessage, toolOutputMessage, onView }: CodeA
   const output = toolOutputMessage?.content || '';
   const isOutputError = hasError || (state === 'completed' && output.toLowerCase().includes('error:'));
   
-  const fileOutputs = toolOutputMessage?.fileOutputs || 
-    (toolOutputMessage?.fileOutput ? [toolOutputMessage.fileOutput] : []);
+  const fileOutputs = toolOutputMessage?.fileOutputs || [];
 
-  const handleDownload = (fileOutput: any) => {
-    const dataUrl = `data:${fileOutput.mimeType};base64,${fileOutput.content}`;
-    const link = document.createElement('a');
-    link.href = dataUrl;
-    link.download = fileOutput.fileName;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+  // --- START OF THE FIX ---
+  const handleDownload = async (fileOutput: FileOutput) => {
+    try {
+      // Fetch the file content from the signed URL
+      const response = await fetch(fileOutput.url);
+      if (!response.ok) {
+        throw new Error(`Network response was not ok: ${response.statusText}`);
+      }
+      // Convert the response to a Blob
+      const blob = await response.blob();
+      
+      // Create a temporary local URL for the Blob
+      const objectUrl = window.URL.createObjectURL(blob);
+      
+      // Use the temporary URL to trigger the download
+      const link = document.createElement('a');
+      link.href = objectUrl;
+      link.download = fileOutput.fileName;
+      document.body.appendChild(link);
+      link.click();
+      
+      // Clean up by removing the link and revoking the temporary URL
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(objectUrl);
+
+    } catch (error) {
+      console.error('Download failed:', error);
+      showNotification('Could not download the file.', 'error');
+    }
   };
+  // --- END OF THE FIX ---
 
   const OutputSection = (toolOutputMessage || ['completed', 'error'].includes(state)) ? (
     <div className="analysis-section">
@@ -75,7 +97,7 @@ const CodeAnalysisBlock = ({ toolCodeMessage, toolOutputMessage, onView }: CodeA
       </div>
       <div className={fileOutputs.length > 1 ? "file-outputs-grid" : ""}>
         {fileOutputs.map((fileOutput, index) => {
-          const dataUrl = `data:${fileOutput.mimeType};base64,${fileOutput.content}`;
+          const imageUrl = fileOutput.url;
           const isImage = fileOutput.mimeType.startsWith('image/');
           const isGrid = fileOutputs.length > 1;
           
@@ -83,8 +105,8 @@ const CodeAnalysisBlock = ({ toolCodeMessage, toolOutputMessage, onView }: CodeA
             <div key={index} className="file-output-item">
               {isImage ? (
                 <div className="image-output-container">
-                  <button onClick={() => onView(dataUrl)} className="file-output-image-wrapper">
-                    <img src={dataUrl} alt={fileOutput.fileName} className="file-output-image" />
+                  <button onClick={() => onView(imageUrl)} className="file-output-image-wrapper">
+                    <img src={imageUrl} alt={fileOutput.fileName} className="file-output-image" />
                   </button>
                   <div className="file-output-actions">
                     <Tooltip text={fileOutput.fileName}>
