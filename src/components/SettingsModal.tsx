@@ -23,7 +23,7 @@ interface SettingsModalProps { isOpen: boolean; onClose: () => void; }
 type ActiveTab = 'GPT' | 'Appearance';
 
 const providers: Provider[] = [
-  { id: 'default', name: "GPT-4o Mini (Free)",Icon: OpenAIIcon},
+  { id: 'default', name: "GPT-5 Nano (Free)",Icon: OpenAIIcon},
   { id: 'openai', name: 'OpenAI', Icon: OpenAIIcon },
   { id: 'anthropic', name: 'Anthropic', Icon: AnthropicIcon },
   { id: 'gemini', name: 'Gemini', Icon: GeminiIcon },
@@ -195,14 +195,14 @@ const SettingsModal = ({ isOpen, onClose }: SettingsModalProps) => {
       const configsToSave = modelConfigs.filter(config => quickAccessModels.includes(config.id));
 
       if (selectedProvider === "default") {
-        configsToSave.push({id: "gpt-4o-mini", modalities: ["text", "image"]})
+        configsToSave.push({id: "gpt-5-nano", modalities: ["text", "image"]})
         setModelConfigs(prevConfigs => {
-            const modelConfigIndex = prevConfigs.findIndex(c => c.id === "gpt-4o-mini");
+            const modelConfigIndex = prevConfigs.findIndex(c => c.id === "gpt-5-nano");
 
             if (modelConfigIndex > -1) {
-              prevConfigs[modelConfigIndex] = {id: "gpt-4o-mini", modalities: ["text", "image"]}
+              prevConfigs[modelConfigIndex] = {id: "gpt-5-nano", modalities: ["text", "image"]}
             } else {
-              prevConfigs.push({id: "gpt-4o-mini", modalities: ["text", "image"]})
+              prevConfigs.push({id: "gpt-5-nano", modalities: ["text", "image"]})
             }
 
             console.log(prevConfigs)
@@ -219,7 +219,7 @@ const SettingsModal = ({ isOpen, onClose }: SettingsModalProps) => {
         contextLength,
         maxOutputTokens,
         selectedModel: selectedProvider === 'default' 
-          ? 'gpt-4o-mini' 
+          ? 'gpt-5-nano' 
           : selectedModel,
         ...(selectedProvider !== 'default' && {
           quickAccessModels,
@@ -370,7 +370,7 @@ const SettingsModal = ({ isOpen, onClose }: SettingsModalProps) => {
       {isDefaultProviderSelected ? (
         <div className="form-group default-provider-info">
           <p className="description">
-            You are using the free, built-in GPT-4o Mini. No API key or further configuration is needed.
+            You are using the free, built-in GPT-5 Nano. No API key or further configuration is needed.
           </p>
           <p>
             Thank you PollinationsAI 💜
