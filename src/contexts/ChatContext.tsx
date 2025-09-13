@@ -24,6 +24,7 @@ interface ChatContextType {
   isSending: boolean;
   sendMessage: (text: string, attachments: Attachment[], metadata?: Record<string, any>) => Promise<void>;
   stopGeneration: () => void;
+  modelThinking: boolean;
   isStreaming: boolean;
   isThinking: boolean;
   isThinkingEnabled: boolean;
@@ -54,6 +55,8 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
   const [isCreatingChat, setIsCreatingChat] = useState(false);
   const [isStreaming, setIsStreaming] = useState(false);
   const [isSending, setIsSending] = useState(false);
+  const [modelThinking, setModelThinking] = useState(false);
+
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [isThinking, setIsThinking] = useState(false);
   const [thinkingContent, setThinkingContent] = useState<string | null>(null);
@@ -242,15 +245,15 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
                                         newMessages.push({ role: 'assistant', content: '', thinking: currentAssistantThinking || undefined });
                                     }
                                     const currentMsg = newMessages[assistantMessageIndex];
-                                     if (currentMsg && currentMsg.role === 'assistant') {
-                                         const newContent = (currentMsg.content || '') + event.content;
-                                         newMessages[assistantMessageIndex] = { 
-                                             ...currentMsg, 
-                                             content: newContent, 
-                                             thinking: currentAssistantThinking || currentMsg.thinking 
-                                         };
-                                     }
-                                     return newMessages;
+                                    if (currentMsg && currentMsg.role === 'assistant') {
+                                        const newContent = (currentMsg.content || '') + event.content;
+                                        newMessages[assistantMessageIndex] = { 
+                                            ...currentMsg, 
+                                            content: newContent, 
+                                            thinking: currentAssistantThinking || currentMsg.thinking 
+                                        };
+                                    }
+                                    return newMessages;
                                 });
                                 break;
                               

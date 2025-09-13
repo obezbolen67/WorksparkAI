@@ -16,16 +16,16 @@ interface ChatInputProps {
   isSending: boolean;
   isThinkingVisible: boolean;
   onToggleThinking: () => void;
+  modelThinking: boolean;
 }
 
-const ChatInput = ({ onSendMessage, onStopGeneration, isSending, isThinkingVisible, onToggleThinking }: ChatInputProps) => {
+const ChatInput = ({ onSendMessage, onStopGeneration, isSending, isThinkingVisible, onToggleThinking, modelThinking }: ChatInputProps) => {
   const { user, selectedModel } = useSettings();
   const { showNotification } = useNotification();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [text, setText] = useState('');
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [isDragging, setIsDragging] = useState(false);
-  
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -259,16 +259,19 @@ const ChatInput = ({ onSendMessage, onStopGeneration, isSending, isThinkingVisib
         <input type="file" ref={imageInputRef} onChange={handleFileSelect} multiple accept="image/*" style={{ display: 'none' }} />
         <input type="file" ref={fileInputRef} onChange={handleFileSelect} multiple style={{ display: 'none' }} />
         
-        <div className="chat-tools-section">
-          <Tooltip text={isThinkingVisible ? "Disable model reasoning" : "Enable model reasoning"}>
-            <button
-              className={`chat-tool-button ${isThinkingVisible ? 'active' : ''}`}
-              onClick={onToggleThinking}
-            >
-              <FiCpu size={18} />
-            </button>
-          </Tooltip>
-        </div>
+        { modelThinking && (
+          <div className="chat-tools-section">
+            <Tooltip text={isThinkingVisible ? "Disable model reasoning" : "Enable model reasoning"}>
+              <button
+                className={`chat-tool-button ${isThinkingVisible ? 'active' : ''}`}
+                onClick={onToggleThinking}
+              >
+                <FiCpu size={18} />
+              </button>
+            </Tooltip>
+          </div>
+          )
+        }
 
         <div className="chat-input-divider" />
         

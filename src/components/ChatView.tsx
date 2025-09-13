@@ -24,6 +24,7 @@ interface ChatViewProps {
   onRegenerate: (metadata?: Record<string, any>) => void;
   isThinkingEnabled: boolean;
   toggleThinkingEnabled : () => void;
+  modelThinking: boolean;
 }
 
 const ChatView = (props: ChatViewProps) => {
@@ -31,7 +32,7 @@ const ChatView = (props: ChatViewProps) => {
     messages, activeChatId, isStreaming, isThinking, isLoading, isSending, onSendMessage, 
     onStopGeneration, // <-- NEW
     editingIndex, onStartEdit, onCancelEdit, 
-    onSaveEdit, onRegenerate, isThinkingEnabled, toggleThinkingEnabled
+    onSaveEdit, onRegenerate, isThinkingEnabled, toggleThinkingEnabled, modelThinking
   } = props;
 
   const chatContentRef = useRef<HTMLDivElement>(null);
@@ -132,6 +133,7 @@ const ChatView = (props: ChatViewProps) => {
             isSending={isSending || isStreaming}
             isThinkingVisible={isThinkingEnabled}
             onToggleThinking={toggleThinkingEnabled}
+            modelThinking={modelThinking}
           />
         </div>
       </main>
