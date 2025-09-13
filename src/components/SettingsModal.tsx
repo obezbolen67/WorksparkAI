@@ -372,9 +372,6 @@ const SettingsModal = ({ isOpen, onClose }: SettingsModalProps) => {
           <p className="description">
             You are using the free default model.
           </p>
-          <p>
-            Powered by NVIDIA.
-          </p>
         </div>
       ) : (
         <>
