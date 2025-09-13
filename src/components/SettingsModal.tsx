@@ -370,7 +370,7 @@ const SettingsModal = ({ isOpen, onClose }: SettingsModalProps) => {
       {isDefaultProviderSelected ? (
         <div className="form-group default-provider-info">
           <p className="description">
-            You are using the free default model.
+            You are using free GPT 4.1 model.
           </p>
         </div>
       ) : (
