@@ -24,7 +24,6 @@ interface ChatContextType {
   isSending: boolean;
   sendMessage: (text: string, attachments: Attachment[], metadata?: Record<string, any>) => Promise<void>;
   stopGeneration: () => void;
-  modelThinking: boolean;
   isStreaming: boolean;
   isThinking: boolean;
   isThinkingEnabled: boolean;
@@ -55,7 +54,7 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
   const [isCreatingChat, setIsCreatingChat] = useState(false);
   const [isStreaming, setIsStreaming] = useState(false);
   const [isSending, setIsSending] = useState(false);
-  const [modelThinking, setModelThinking] = useState(false);
+  // const [modelThinking, setModelThinking] = useState(false);
 
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [isThinking, setIsThinking] = useState(false);
@@ -528,7 +527,7 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
 
   const value = {
     messages, chatList, activeChatId, loadChat, clearChat, isLoadingChat,
-    isLoadingChatList, 
+    isLoadingChatList,
     isCreatingChat, isSending, sendMessage, isStreaming, editingIndex, startEditing,
     cancelEditing, saveAndSubmitEdit, regenerateResponse, renameChat,
     isThinking, thinkingContent, isThinkingEnabled, toggleThinking,

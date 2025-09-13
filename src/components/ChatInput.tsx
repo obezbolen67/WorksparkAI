@@ -1,6 +1,6 @@
 // src/components/ChatInput.tsx
 import { useState, useRef, useEffect } from 'react';
-import { FiPlus, FiSend, FiX, FiImage, FiPaperclip, FiCpu, FiSquare } from 'react-icons/fi';
+import { FiPlus, FiSend, FiX, FiImage, FiPaperclip, FiSquare } from 'react-icons/fi';
 import { HiOutlineMicrophone } from "react-icons/hi2";
 import { uploadFile } from '../utils/api';
 import type { Attachment } from '../types';
@@ -15,11 +15,9 @@ interface ChatInputProps {
   onStopGeneration: () => void;
   isSending: boolean;
   isThinkingVisible: boolean;
-  onToggleThinking: () => void;
-  modelThinking: boolean;
 }
 
-const ChatInput = ({ onSendMessage, onStopGeneration, isSending, isThinkingVisible, onToggleThinking, modelThinking }: ChatInputProps) => {
+const ChatInput = ({ onSendMessage, onStopGeneration, isSending, isThinkingVisible }: ChatInputProps) => {
   const { user, selectedModel } = useSettings();
   const { showNotification } = useNotification();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -258,20 +256,6 @@ const ChatInput = ({ onSendMessage, onStopGeneration, isSending, isThinkingVisib
       <div className="chat-input-wrapper">
         <input type="file" ref={imageInputRef} onChange={handleFileSelect} multiple accept="image/*" style={{ display: 'none' }} />
         <input type="file" ref={fileInputRef} onChange={handleFileSelect} multiple style={{ display: 'none' }} />
-        
-        { modelThinking && (
-          <div className="chat-tools-section">
-            <Tooltip text={isThinkingVisible ? "Disable model reasoning" : "Enable model reasoning"}>
-              <button
-                className={`chat-tool-button ${isThinkingVisible ? 'active' : ''}`}
-                onClick={onToggleThinking}
-              >
-                <FiCpu size={18} />
-              </button>
-            </Tooltip>
-          </div>
-          )
-        }
 
         <div className="chat-input-divider" />
         

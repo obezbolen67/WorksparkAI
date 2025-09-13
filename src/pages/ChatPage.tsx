@@ -18,7 +18,6 @@ const ChatPage = () => {
     isThinking,
     sendMessage,
     stopGeneration, // <-- NEW
-    modelThinking,
 
     isStreaming, 
     editingIndex, 
@@ -58,7 +57,6 @@ const ChatPage = () => {
       onStartEdit={startEditing}
       onCancelEdit={cancelEditing}
       onSaveEdit={saveAndSubmitEdit}
-      modelThinking={modelThinking}
     />
   );
 };
