@@ -32,7 +32,7 @@ const PricingPage = () => {
       price: '$20',
       priceId: 'price_1S98QdJHhdy0TngLXWUWBrzD',
       features: [
-        'Premium default model (e.g., GPT-4o)',
+        'Premium default model (GPT-5)',
         'Code Interpreter & File Analysis',
         'Web Search capabilities',
         'Bring your own API keys',
