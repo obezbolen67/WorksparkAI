@@ -11,6 +11,8 @@
     "start": "serve -s dist"
   },
   "dependencies": {
+    "@stripe/react-stripe-js": "^4.0.2",
+    "@stripe/stripe-js": "^7.9.0",
     "axios": "^1.10.0",
     "katex": "^0.16.22",
     "react": "^19.1.0",

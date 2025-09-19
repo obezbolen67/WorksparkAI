@@ -8,6 +8,7 @@ import './css/AuthPage.css';
 import './css/Tooltip.css';
 import './css/CodeAnalysisBlock.css';
 import 'katex/dist/katex.min.css';
+import './css/PricingPage.css'; // Import new CSS
 
 import PrivateRoute from './routing/PrivateRoute';
 import MainAppLayout from './pages/MainAppLayout';
@@ -17,6 +18,7 @@ import { useSettings } from './contexts/SettingsContext';
 // --- Lazily load page components ---
 const ChatPage = lazy(() => import('./pages/ChatPage'));
 const LandingPage = lazy(() => import('./pages/LandingPage'));
+const PricingPage = lazy(() => import('./pages/PricingPage')); // <-- Add this
 
 // --- Full screen loader for suspense fallback ---
 const FullScreenLoader = () => (
@@ -62,6 +64,7 @@ function App() {
           {/* Child routes render inside MainAppLayout's <Outlet> */}
           <Route index element={<ChatPage />} />
           <Route path="c/:chatId" element={<ChatPage />} />
+          <Route path="pricing" element={<PricingPage />} /> {/* <-- Add this route */}
         </Route>
         
         {/* --- Fallback Route --- */}

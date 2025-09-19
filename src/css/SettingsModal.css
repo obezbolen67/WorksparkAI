@@ -531,6 +531,121 @@
   border-color: #ffffff;
 }
 
+/* --- START: UPDATED SUBSCRIPTION TAB STYLES --- */
+.subscription-info-card {
+  background-color: var(--main-bg-color);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  padding: 1.5rem;
+  margin-top: 1rem;
+  border-left-width: 4px;
+  transition: border-color 0.3s ease;
+}
+
+.subscription-info-card.free { border-left-color: var(--secondary-text-color); }
+.subscription-info-card.active { border-left-color: #19c37d; /* Green */ }
+.subscription-info-card.canceled { border-left-color: #9ca3af; /* Gray */ }
+.subscription-info-card.warning { border-left-color: #f59e0b; /* Amber */ }
+
+.plan-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.5rem;
+}
+
+.plan-header h4 {
+  margin: 0;
+  font-size: 1.2rem;
+  font-weight: 600;
+}
+
+.status-badge {
+  font-size: 0.8rem;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 9999px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.status-badge.free { background-color: hsla(220, 10%, 50%, 0.15); color: var(--secondary-text-color); }
+.status-badge.active { background-color: hsla(145, 63%, 42%, 0.15); color: #19c37d; }
+.status-badge.canceled { background-color: hsla(220, 10%, 50%, 0.15); color: #9ca3af; }
+.status-badge.warning { background-color: hsla(38, 92%, 50%, 0.15); color: #f59e0b; }
+
+.plan-description {
+  color: var(--secondary-text-color);
+  font-size: 0.9rem;
+  margin-bottom: 1.5rem;
+  margin-top: 0.5rem; /* Ensure consistent spacing */
+}
+
+.plan-features-list {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 1.5rem 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.plan-features-list li {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  font-size: 0.9rem;
+  line-height: 1.4;
+}
+
+.plan-features-list li svg {
+  color: #19c37d;
+  margin-top: 2px;
+  flex-shrink: 0;
+}
+
+.plan-actions {
+  margin-top: 1rem;
+  border-top: 1px solid var(--border-color);
+  padding-top: 1.5rem;
+}
+
+.sub-button {
+  width: 100%;
+  padding: 0.75rem;
+  border-radius: 8px;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.sub-button:not(:disabled):hover {
+  transform: translateY(-2px);
+  filter: brightness(1.1);
+}
+
+.sub-button.manage {
+  background-color: var(--button-hover-bg);
+  color: var(--primary-text-color);
+  border: 1px solid var(--border-color);
+}
+.sub-button.manage:hover {
+  background-color: var(--border-color);
+}
+
+.sub-button.upgrade {
+  background-color: #834ab5; /* Purple */
+  color: white;
+}
+.sub-button.warning {
+  background-color: #f59e0b; /* Amber */
+  color: var(--sidebar-bg-color);
+}
+[data-theme="light"] .sub-button.warning {
+  color: var(--primary-text-color);
+}
+/* --- END: UPDATED SUBSCRIPTION TAB STYLES --- */
 
 /* --- LIGHT THEME STYLES --- */
 [data-theme="light"] .modal-content { box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1); }

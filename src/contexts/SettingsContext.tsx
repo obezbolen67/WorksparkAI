@@ -33,6 +33,11 @@ type User = {
   modelConfigs?: ModelConfig[];
   contextLength?: number;
   maxOutputTokens?: number; // Add the new field
+  stripeCustomerId?: string | null;
+  subscriptionId?: string | null;
+  subscriptionStatus?: 'active' | 'canceled' | 'incomplete' | 'past_due' | 'unpaid' | null;
+  planId?: string | null;
+
 };
 // --- END OF CHANGE ---
 

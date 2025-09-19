@@ -1,8 +1,9 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useSettings } from '../contexts/SettingsContext';
 import { useNotification } from '../contexts/NotificationContext';
 import '../css/SettingsModal.css';
-import { FiRefreshCw, FiCpu, FiSliders, FiEye, FiEyeOff, FiMoreVertical, FiX } from "react-icons/fi";
+import { FiRefreshCw, FiCpu, FiSliders, FiEye, FiEyeOff, FiMoreVertical, FiX, FiCreditCard, FiCheckCircle } from "react-icons/fi";
 import OpenAIIcon from '../icons/openai.svg?react';
 import AnthropicIcon from '../icons/anthropic.svg?react';
 import GeminiIcon from '../icons/gemini.svg?react';
@@ -20,7 +21,7 @@ type ModelConfig = { id: string; modalities: Modality[]; };
 type ApiKeyEntry = { provider: string; key: string; };
 
 interface SettingsModalProps { isOpen: boolean; onClose: () => void; }
-type ActiveTab = 'GPT' | 'Appearance';
+type ActiveTab = 'GPT' | 'Subscription' | 'Appearance';
 
 const providers: Provider[] = [
   { id: 'default', name: "Default (Free)",Icon: OpenAIIcon},
@@ -34,9 +35,27 @@ const MAX_CONTEXT = 1000000;
 const MIN_OUTPUT_TOKENS = 256;
 const MAX_OUTPUT_TOKENS = 64000;
 
+// --- START: Added for Subscription Tab ---
+const proFeatures = [
+    'Premium default model (GPT-5)',
+    'Code Interpreter & File Analysis',
+    'Web Search capabilities',
+    'Bring your own API keys',
+    'Priority support',
+];
+const freeFeatures = [
+    'Standard default model',
+    'Code Interpreter & File Analysis',
+    'Web Search capabilities',
+    'Bring your own API keys',
+    'Community support'
+];
+// --- END: Added for Subscription Tab ---
+
 const SettingsModal = ({ isOpen, onClose }: SettingsModalProps) => {
   const { user, models, setModels, updateSettings, theme, setTheme } = useSettings();
   const { showNotification } = useNotification();
+  const navigate = useNavigate();
   
   const [activeTab, setActiveTab] = useState<ActiveTab>('GPT');
   const [selectedProvider, setSelectedProvider] = useState(user?.selectedProvider || 'default');
@@ -62,6 +81,7 @@ const SettingsModal = ({ isOpen, onClose }: SettingsModalProps) => {
   const [editableMaxOutputValue, setEditableMaxOutputValue] = useState(String(maxOutputTokens));
 
   const [modelSearchQuery, setModelSearchQuery] = useState('');
+
 
   useEffect(() => {
     if (!isEditingContext) {
@@ -331,18 +351,12 @@ const SettingsModal = ({ isOpen, onClose }: SettingsModalProps) => {
   if (!isOpen) return null;
 
   const renderGptTab = () => {
-    // START CHANGE: Add a flag to simplify conditional rendering
     const isDefaultProviderSelected = selectedProvider === 'default';
-    // END CHANGE
-
     const currentApiKey = apiKeys.find(k => k.provider === selectedProvider)?.key || '';
-    
     const defaultModelOptions = models.filter(model => quickAccessModels.includes(model.id));
-
     const filteredModels = models.filter(model => 
         model.id.toLowerCase().includes(modelSearchQuery.toLowerCase())
     );
-
     const getApiKeyPlaceholder = () => {
         switch (selectedProvider) {
             case 'openai': return 'Required: sk-...';
@@ -366,7 +380,6 @@ const SettingsModal = ({ isOpen, onClose }: SettingsModalProps) => {
         />
       </div>
 
-      {/* START CHANGE: Conditionally render all provider-specific settings */}
       {isDefaultProviderSelected ? (
         <div className="form-group default-provider-info">
           <p className="description">
@@ -380,7 +393,7 @@ const SettingsModal = ({ isOpen, onClose }: SettingsModalProps) => {
             <div className="input-wrapper">
               <input 
                 id="apiKey" 
-                type={isApiKeyVisible ? 'text' : 'password'} // Changed to 'password' for better hiding
+                type={isApiKeyVisible ? 'text' : 'password'}
                 className={!isApiKeyVisible ? 'input-hidden' : ''}
                 value={currentApiKey} 
                 onChange={(e) => handleApiKeyChange(e.target.value)} 
@@ -600,7 +613,6 @@ const SettingsModal = ({ isOpen, onClose }: SettingsModalProps) => {
           )}
         </>
       )}
-      {/* END CHANGE */}
       
       <div className="modal-actions">
         <button className="modal-button modal-button-cancel" onClick={handleClose}>Cancel</button>
@@ -609,6 +621,104 @@ const SettingsModal = ({ isOpen, onClose }: SettingsModalProps) => {
     </>
     );
   };
+  
+  const handleManageSubscription = async () => {
+    try {
+      const response = await api('/stripe/create-portal-session', { method: 'POST' });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.msg || 'Could not open management portal.');
+      window.location.href = data.url;
+    } catch (error) {
+      showNotification(error instanceof Error ? error.message : 'An error occurred.', 'error');
+    }
+  };
+
+  // --- START: New Subscription Handler ---
+  const handleUpgrade = () => {
+    navigate('/app/pricing');
+    handleClose(); // Close the modal after navigating
+  };
+  // --- END: New Subscription Handler ---
+
+  // --- START: Updated Subscription Tab ---
+  const renderSubscriptionTab = () => {
+    const status = user?.subscriptionStatus;
+    const isPro = status === 'active';
+    const isCanceled = status === 'canceled';
+    const isPaymentIssue = ['past_due', 'unpaid', 'incomplete'].includes(status || '');
+
+    let planName = 'Free Plan';
+    let planFeatures = freeFeatures;
+    let statusText = 'Active';
+    let statusClass = 'free';
+    let description = 'You are currently on the Free plan, with access to basic features.';
+    let ctaButton: React.ReactNode = (
+      <button className="modal-button sub-button upgrade" onClick={handleUpgrade}>
+        Upgrade to Pro
+      </button>
+    );
+
+    if (isPro) {
+      planName = 'Pro Plan';
+      planFeatures = proFeatures;
+      statusText = 'Active';
+      statusClass = 'active';
+      description = 'Your subscription is active. All Pro features are available to you.';
+      ctaButton = (
+        <button className="modal-button sub-button manage" onClick={handleManageSubscription} disabled={!user?.stripeCustomerId}>
+          Manage Subscription
+        </button>
+      );
+    } else if (isCanceled) {
+      planName = 'Pro Plan';
+      planFeatures = proFeatures;
+      statusText = 'Canceled';
+      statusClass = 'canceled';
+      description = 'Your plan is canceled and will not renew. You can use Pro features until the end of the current billing period.';
+      ctaButton = (
+        <button className="modal-button sub-button upgrade" onClick={handleUpgrade}>
+          Resubscribe to Pro
+        </button>
+      );
+    } else if (isPaymentIssue) {
+      planName = 'Pro Plan';
+      planFeatures = proFeatures;
+      statusText = 'Payment Due';
+      statusClass = 'warning';
+      description = 'Your payment failed. Please update your payment method to restore access to Pro features.';
+      ctaButton = (
+        <button className="modal-button sub-button warning" onClick={handleManageSubscription} disabled={!user?.stripeCustomerId}>
+          Update Payment Info
+        </button>
+      );
+    }
+
+    return (
+      <>
+        <h3>Subscription</h3>
+        <p>Manage your billing and subscription plan.</p>
+        <div className={`subscription-info-card ${statusClass}`}>
+          <div className="plan-header">
+            <h4>{planName}</h4>
+            <span className={`status-badge ${statusClass}`}>{statusText}</span>
+          </div>
+          <p className="plan-description">{description}</p>
+          <ul className="plan-features-list">
+            {planFeatures.map((feature, index) => (
+              <li key={index}>
+                <FiCheckCircle size={16} />
+                <span>{feature}</span>
+              </li>
+            ))}
+          </ul>
+          <div className="plan-actions">
+            {ctaButton}
+          </div>
+        </div>
+      </>
+    );
+  };
+  // --- END: Updated Subscription Tab ---
 
   const renderAppearanceTab = () => (
     <>
@@ -639,6 +749,10 @@ const SettingsModal = ({ isOpen, onClose }: SettingsModalProps) => {
             <FiCpu size={18} />
             <span>GPT</span>
           </button>
+          <button className={`settings-tab-button ${activeTab === 'Subscription' ? 'active' : ''}`} onClick={() => setActiveTab('Subscription')}>
+            <FiCreditCard size={18} />
+            <span>Subscription</span>
+          </button>
           <button className={`settings-tab-button ${activeTab === 'Appearance' ? 'active' : ''}`} onClick={() => setActiveTab('Appearance')}>
             <FiSliders size={18} />
             <span>Appearance</span>
@@ -646,6 +760,7 @@ const SettingsModal = ({ isOpen, onClose }: SettingsModalProps) => {
         </aside>
         <main className="settings-content">
           {activeTab === 'GPT' && renderGptTab()}
+          {activeTab === 'Subscription' && renderSubscriptionTab()}
           {activeTab === 'Appearance' && renderAppearanceTab()}
         </main>
       </div>

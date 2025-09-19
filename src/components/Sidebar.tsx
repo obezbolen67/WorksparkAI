@@ -2,7 +2,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import '../css/Sidebar.css';
-import { FiEdit, FiSettings, FiLogOut, FiEdit2, FiTrash, FiX, FiTrash2 } from 'react-icons/fi';
+import { FiEdit, FiSettings, FiLogOut, FiEdit2, FiTrash, FiX, FiTrash2, FiStar } from 'react-icons/fi';
 import { HiOutlineDotsHorizontal } from 'react-icons/hi';
 import { TbLayoutSidebarLeftCollapse } from 'react-icons/tb';
 import { useSettings } from '../contexts/SettingsContext';
@@ -37,6 +37,19 @@ const Sidebar = ({ onOpenSettings, isMobileOpen, onClose, isCollapsed, onToggleC
   const [isClearAllModalOpen, setClearAllModalOpen] = useState(false);
   const [isRenameModalOpen, setRenameModalOpen] = useState(false);
   const [activeChat, setActiveChat] = useState<{ id: string; title: string } | null>(null);
+
+  // --- START OF THE FIX ---
+  const [isBannerVisible, setIsBannerVisible] = useState(
+    localStorage.getItem('fexo-upgrade-banner-hidden') !== 'true'
+  );
+
+  const handleDismissBanner = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    localStorage.setItem('fexo-upgrade-banner-hidden', 'true');
+    setIsBannerVisible(false);
+  };
+  // --- END OF THE FIX ---
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -76,18 +89,13 @@ const Sidebar = ({ onOpenSettings, isMobileOpen, onClose, isCollapsed, onToggleC
     onClose();
   }
 
-  // --- START OF THE FIX ---
   const handleLogoLinkClick = (e: React.MouseEvent) => {
-    // If the sidebar is collapsed, prevent the link from navigating.
-    // The hover effect will reveal the expand button, which is the intended action.
     if (isCollapsed) {
       e.preventDefault();
       return;
     }
-    // If not collapsed, perform the standard new chat/navigate action.
     handleNewChat();
   };
-  // --- END OF THE FIX ---
 
   const openRenameModal = (e: React.MouseEvent, chatId: string, currentTitle: string) => {
     e.preventDefault();
@@ -138,13 +146,10 @@ const Sidebar = ({ onOpenSettings, isMobileOpen, onClose, isCollapsed, onToggleC
       
       <aside className={`sidebar ${isMobileOpen ? 'mobile-open' : ''} ${isCollapsed ? 'is-collapsed' : ''}`}>
         <div className="sidebar-top">
-          {/* --- START OF THE FIX --- */}
-          {/* The NavLink now uses the conditional click handler */}
           <NavLink to="/app" className="sidebar-logo-link" onClick={handleLogoLinkClick}>
             <img src="/worksparkai.svg" alt="Workspark AI Logo" className="sidebar-logo" />
             <span className="sidebar-logo-text">Workspark AI</span>
           </NavLink>
-          {/* --- END OF THE FIX --- */}
           
           <button className="sidebar-button collapse-button" onClick={onToggleCollapse}>
             <TbLayoutSidebarLeftCollapse size={20} />
@@ -214,6 +219,23 @@ const Sidebar = ({ onOpenSettings, isMobileOpen, onClose, isCollapsed, onToggleC
         </div>
 
         <div className="sidebar-footer">
+          {user?.subscriptionStatus !== 'active' && !isCollapsed && isBannerVisible && (
+            <div className="upgrade-banner-wrapper">
+              <div className="upgrade-banner" onClick={() => navigate('/app/pricing')}>
+                <FiStar />
+                <span>Upgrade to Pro</span>
+              </div>
+              {/* --- START OF THE FIX: Tooltip removed --- */}
+              <button 
+                className="dismiss-banner-btn" 
+                onClick={handleDismissBanner} 
+                aria-label="Dismiss upgrade banner"
+              >
+                <FiX size={14} />
+              </button>
+              {/* --- END OF THE FIX --- */}
+            </div>
+          )}
           <div className="user-profile-wrapper" ref={userMenuRef}>
             <div className={`user-profile-menu ${isUserMenuOpen ? 'open' : ''}`}>
                <button className="menu-button" onClick={handleSettingsClick}>
