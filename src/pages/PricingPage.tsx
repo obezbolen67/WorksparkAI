@@ -7,7 +7,7 @@ import '../css/PricingPage.css';
 import { FiCheckCircle } from 'react-icons/fi';
 import api from '../utils/api';
 
-const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY);
+const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || import.meta.env.STRIPE_PUBLISHABLE_KEY);
 
 const PricingPage = () => {
   const { user } = useSettings();
