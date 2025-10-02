@@ -1,3 +1,4 @@
+// src/contexts/ChatContext.tsx
 import { createContext, useContext, useState, useCallback, useEffect, ReactNode, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import type { Message, Attachment } from '../types';
@@ -108,6 +109,9 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
       messageHistory: Message[], 
       metadata?: Record<string, any>
   ) => {
+      console.log('[CLIENT] Starting streamAndSaveResponse. Metadata:', metadata);
+      console.log('[CLIENT] History being sent to server:', JSON.stringify(messageHistory, null, 2));
+
       setIsSending(true)
       setIsStreaming(true);
       setIsThinking(false);
@@ -363,7 +367,7 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
           }
       } finally {
         if (streamEndedForClientTool) {
-          setIsStreaming(false); // Still sending, but not streaming from server
+          setIsStreaming(false); 
           streamAbortControllerRef.current = null;
         } else {
           stopGeneration();
@@ -374,7 +378,12 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
   const sendMessage = async (text: string, attachments: Attachment[] = [], metadata?: Record<string, any>) => {
     if (isStreaming || isSending) return;
     const userMessage: Message = { role: 'user', content: text, attachments };
-    const originalMessages = messages;
+    
+    // --- START OF FIX ---
+    // Use messagesRef to get the most current state for the API call
+    const currentMessages = messagesRef.current;
+    const originalMessages = currentMessages; // Store for potential rollback
+    // --- END OF FIX ---
 
     try {
       if (!activeChatId) {
@@ -398,7 +407,9 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
         await loadChatList();
 
       } else {
-        const updatedMessages = [...messages, userMessage];
+        // --- START OF FIX ---
+        const updatedMessages = [...currentMessages, userMessage];
+        // --- END OF FIX ---
         const messagesWithPlaceholder = [...updatedMessages, { role: 'assistant', content: '', isWaiting: true } as Message];
         setMessages(messagesWithPlaceholder);
         await streamAndSaveResponse(activeChatId, updatedMessages, metadata);
@@ -416,45 +427,56 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
   };
   
   const sendGeolocationResult = useCallback(async (chatId: string, tool_id: string, result: { coordinates: { latitude: number; longitude: number; } } | { error: string }) => {
-    // --- START OF FIX ---
+    console.log(`[CLIENT] sendGeolocationResult triggered for tool_id: ${tool_id}.`);
     if (isStreaming) {
-        console.warn('[Geolocation] Aborting sendGeolocationResult because a stream is already in progress.');
+        console.warn('[CLIENT] Aborting sendGeolocationResult: stream is active.');
         return;
     }
-
+    
     let result_content: string;
     if ('coordinates' in result) {
-        // Format the result into a human-readable string for the AI model.
         result_content = `User's location is latitude ${result.coordinates.latitude.toFixed(6)}, longitude ${result.coordinates.longitude.toFixed(6)}.`;
     } else {
         result_content = `Could not get user's location. Error: ${result.error}`;
+    }
+    console.log('[CLIENT] Formatted tool result content:', result_content);
+
+    // --- START OF FIX ---
+    // Get the most up-to-date messages from the ref, which is always current.
+    const currentMessages = messagesRef.current;
+    const cleanMessages = currentMessages.filter(m => !m.isWaiting);
+    // --- END OF FIX ---
+
+    const originalToolMsg = cleanMessages.find(m => m.tool_id === tool_id && m.role === 'tool_geolocation');
+    if (!originalToolMsg) {
+        console.error("Critical: Could not find original geolocation tool message to construct the result.");
+        showNotification("An error occurred. Please try again.", "error");
+        return;
     }
 
     const resultMessage: Message = {
       role: 'tool_geolocation_result',
       tool_id: tool_id,
+      tool_name: originalToolMsg.tool_name,
       content: result_content,
     };
-    
-    // Get the latest messages from the ref to avoid stale state in the closure.
-    const currentMessages = messagesRef.current;
-    const cleanUIMessages = currentMessages.filter(m => !m.isWaiting);
 
-    const messagesForUI = cleanUIMessages.map(m => 
+    const messagesForUI = cleanMessages.map(m => 
       m.tool_id === tool_id 
         ? { ...m, state: ('error' in result) ? 'error' : 'completed' } as Message
         : m
     );
-    
+  
     const historyForBackend = [...messagesForUI, resultMessage];
     
-    // Update the UI immediately with the completed tool block and a new waiting indicator.
+    console.log('[CLIENT] Final history for backend continuation:', JSON.stringify(historyForBackend, null, 2));
+
     setMessages([...messagesForUI, { role: 'assistant', content: '', isWaiting: true }]);
 
-    // Call the streaming function with the correct, cleaned history. This is now safe.
     await streamAndSaveResponse(chatId, historyForBackend, { isContinuation: true });
-    // --- END OF FIX ---
-  }, [isStreaming, streamAndSaveResponse]);
+
+  }, [isStreaming, streamAndSaveResponse, showNotification]);
+
 
   const loadChat = useCallback(async (id: string) => {
     setIsLoadingChat(true);
@@ -484,7 +506,9 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
     if (!activeChatId) return;
     stopGeneration()
 
-    const historyUpToEdit = messages.slice(0, index);
+    // --- START OF FIX ---
+    const historyUpToEdit = messagesRef.current.slice(0, index);
+    // --- END OF FIX ---
     const updatedUserMessage: Message = { ...messages[index], content: newContent };
     const newHistoryForStream = [...historyUpToEdit, updatedUserMessage];
     const messagesForUi = [...newHistoryForStream, { role: 'assistant', content: '', isWaiting: true } as Message];
@@ -495,10 +519,14 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
 
   const regenerateResponse = async (metadata?: Record<string, any>) => {
     if (!activeChatId || isStreaming || isSending) return;
-    const lastUserIndex = messages.findLastIndex(m => m.role === 'user');
+    
+    // --- START OF FIX ---
+    const currentMessages = messagesRef.current;
+    const lastUserIndex = currentMessages.findLastIndex(m => m.role === 'user');
     if (lastUserIndex === -1) return;
+    const historyForRegeneration = currentMessages.slice(0, lastUserIndex + 1);
+    // --- END OF FIX ---
 
-    const historyForRegeneration = messages.slice(0, lastUserIndex + 1);
     const regenerationMetadata = { isRegeneration: true, ...metadata, isThinkingEnabled };
     const messagesWithPlaceholder = [...historyForRegeneration, { role: 'assistant', content: '', isWaiting: true } as Message];
     setMessages(messagesWithPlaceholder);

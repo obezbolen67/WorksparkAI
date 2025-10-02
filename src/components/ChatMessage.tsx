@@ -99,7 +99,7 @@ const CustomCode = ({ node, inline, className, children, style, ...props }: Code
 const Paragraph: Components['p'] = ({ node, ...props }) => {
     const child = node?.children[0];
     const childClassName = (child?.type === 'element' && child.properties?.className?.toString()) || '';
-    if (node?.children.length === 1 && child?.type === 'element' && (child?.tagName === 'pre' || childClassName.includes('tool-block-container') || childClassName.includes('inline-thinking-container') || childClassName.includes('markdown-image-wrapper'))) {
+    if (node?.children.length === 1 && child?.type === 'element' && (child?.tagName === 'pre' || childClassName.includes('tool-block-container') || childClassName.includes('inline-thinking-container') || childClassName.includes('markdown-image-wrapper') || childClassName.includes('geolocation-request-container'))) {
         return <>{props.children}</>;
     }
     return <p {...props} />;
@@ -228,8 +228,8 @@ const AssistantTurn = memo(({ messages, chatId, startIndex, isStreaming, onRegen
             } else if (currentMessage.role === 'tool_search' && currentMessage.tool_id && !processedToolIds.has(currentMessage.tool_id)) {
                 flushTextBuffer(`text-before-tool-search-${i}`);
                 const toolOutputMessage = messages.find(m => m.role === 'tool_search_result' && m.tool_id === currentMessage.tool_id);
-                const isGeolocation = toolOutputMessage?.content?.includes('[LOCATION]');
-                if (isGeolocation) {
+                const isGeolocationMap = toolOutputMessage?.content?.includes('[LOCATION]');
+                if (isGeolocationMap) {
                     parts.push(<GeolocationBlock key={`geo-${currentMessage.tool_id}`} toolMessage={currentMessage} outputMessage={toolOutputMessage} />);
                 } else {
                     parts.push(<SearchBlock key={`search-${currentMessage.tool_id}`} toolSearchMessage={currentMessage} toolOutputMessage={toolOutputMessage} />);
@@ -242,7 +242,12 @@ const AssistantTurn = memo(({ messages, chatId, startIndex, isStreaming, onRegen
                 processedToolIds.add(currentMessage.tool_id);
             } else if (currentMessage.role === 'tool_geolocation' && currentMessage.tool_id && !processedToolIds.has(currentMessage.tool_id)) {
                 flushTextBuffer(`text-before-tool-geo-request-${i}`);
-                parts.push(<GeolocationRequestBlock key={`geo-req-${currentMessage.tool_id}`} toolMessage={currentMessage} />);
+                // --- START OF FIX: Only render the request block if there isn't a result for it yet ---
+                const hasResult = messages.some(m => m.role === 'tool_geolocation_result' && m.tool_id === currentMessage.tool_id);
+                if (!hasResult) {
+                    parts.push(<GeolocationRequestBlock key={`geo-req-${currentMessage.tool_id}`} toolMessage={currentMessage} />);
+                }
+                // --- END OF FIX ---
                 processedToolIds.add(currentMessage.tool_id);
             }
             
@@ -326,7 +331,6 @@ const ChatMessage = ({ message, messages, chatId, index, isEditing, onStartEdit,
       document.body.appendChild(link);
       link.click();
       
-      // Cleanup
       link.parentNode?.removeChild(link);
       window.URL.revokeObjectURL(url);
 
@@ -344,14 +348,12 @@ const ChatMessage = ({ message, messages, chatId, index, isEditing, onStartEdit,
     }
   }, [isEditing, message.content]);
 
-  // Effect to focus and auto-resize the textarea when editing starts
   useEffect(() => {
     if (isEditing && editTextAreaRef.current) {
       const textarea = editTextAreaRef.current;
       textarea.focus();
       textarea.setSelectionRange(textarea.value.length, textarea.value.length);
       
-      // Auto-resize after a short delay to ensure correct scrollHeight
       setTimeout(() => {
         textarea.style.height = 'auto';
         textarea.style.height = `${textarea.scrollHeight}px`;
@@ -363,14 +365,12 @@ const ChatMessage = ({ message, messages, chatId, index, isEditing, onStartEdit,
 
   const handleEditContentChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setEditedContent(e.target.value);
-    // Auto-resize on input
     const textarea = e.target;
     textarea.style.height = 'auto';
     textarea.style.height = `${textarea.scrollHeight}px`;
   };
 
   const handleEditKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    // Only handle Escape key. Enter and Shift+Enter will create new lines by default.
     if (e.key === 'Escape') {
       onCancelEdit();
     }
@@ -400,7 +400,7 @@ const ChatMessage = ({ message, messages, chatId, index, isEditing, onStartEdit,
         return (
           <a 
             key={key} 
-            href={`${API_BASE_URL}/api/files/view/${chatId}/${att._id}`} // Keep href for context menu (e.g., "Copy Link Address")
+            href={`${API_BASE_URL}/api/files/view/${chatId}/${att._id}`}
             onClick={(e) => handleDownloadAttachment(e, att)}
             className={`attachment-file-link ${isDownloading ? 'downloading' : ''}`}
             aria-label={isDownloading ? `Downloading ${att.fileName}` : `Download ${att.fileName}`}

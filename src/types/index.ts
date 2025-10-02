@@ -26,8 +26,11 @@ export type Message = {
   fileOutputs?: FileOutput[];
   isWaiting?: boolean;
   isClientSideTool?: boolean;
+  // --- START OF FIX ---
+  tool_name?: string;
+  tool_arguments?: any;
+  // --- END OF FIX ---
 };
-
 
 // Represents a geographical point with an address for Google Maps
 type MapLocation = {
