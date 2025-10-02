@@ -1,4 +1,3 @@
-// src/contexts/ChatContext.tsx
 import { createContext, useContext, useState, useCallback, useEffect, ReactNode, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import type { Message, Attachment } from '../types';
@@ -92,12 +91,10 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
     loadChatList();
   }, [loadChatList]);
   
-  // --- START OF FIX: Stabilize cleanup function with useCallback ---
   const stopGeneration = useCallback(() => {
     if (streamAbortControllerRef.current) {
         streamAbortControllerRef.current.abort();
     }
-    // This is the primary cleanup function now
     setIsStreaming(false);
     setIsThinking(false);
     setThinkingContent(null);
@@ -105,9 +102,7 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
     setIsSending(false);
     streamAbortControllerRef.current = null;
   }, []);
-  // --- END OF FIX ---
 
-  // --- START OF FIX: Stabilize stream function with useCallback ---
   const streamAndSaveResponse = useCallback(async (
       chatId: string,
       messageHistory: Message[], 
@@ -368,14 +363,13 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
           }
       } finally {
         if (streamEndedForClientTool) {
-          setIsStreaming(false);
+          setIsStreaming(false); // Still sending, but not streaming from server
           streamAbortControllerRef.current = null;
         } else {
           stopGeneration();
         }
       }
   }, [stopGeneration, showNotification]);
-  // --- END OF FIX ---
 
   const sendMessage = async (text: string, attachments: Attachment[] = [], metadata?: Record<string, any>) => {
     if (isStreaming || isSending) return;
@@ -421,38 +415,46 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
     }
   };
   
-  // --- START OF FIX: Stabilize function and correct guard logic ---
   const sendGeolocationResult = useCallback(async (chatId: string, tool_id: string, result: { coordinates: { latitude: number; longitude: number; } } | { error: string }) => {
-    // Only abort if a stream is actively receiving data. 
-    // `isSending` is expected to be true in this state.
+    // --- START OF FIX ---
     if (isStreaming) {
         console.warn('[Geolocation] Aborting sendGeolocationResult because a stream is already in progress.');
         return;
     }
+
+    let result_content: string;
+    if ('coordinates' in result) {
+        // Format the result into a human-readable string for the AI model.
+        result_content = `User's location is latitude ${result.coordinates.latitude.toFixed(6)}, longitude ${result.coordinates.longitude.toFixed(6)}.`;
+    } else {
+        result_content = `Could not get user's location. Error: ${result.error}`;
+    }
+
+    const resultMessage: Message = {
+      role: 'tool_geolocation_result',
+      tool_id: tool_id,
+      content: result_content,
+    };
     
-    setMessages(currentMessages => {
-        const resultMessage: Message = {
-          role: 'tool_geolocation_result',
-          tool_id: tool_id,
-          content: JSON.stringify(result),
-        };
+    // Get the latest messages from the ref to avoid stale state in the closure.
+    const currentMessages = messagesRef.current;
+    const cleanUIMessages = currentMessages.filter(m => !m.isWaiting);
 
-        const updatedUIMessages = currentMessages.map(m => 
-          m.tool_id === tool_id 
-            ? { ...m, state: ('error' in result) ? 'error' : 'completed', content: resultMessage.content } as Message
-            : m
-        );
+    const messagesForUI = cleanUIMessages.map(m => 
+      m.tool_id === tool_id 
+        ? { ...m, state: ('error' in result) ? 'error' : 'completed' } as Message
+        : m
+    );
+    
+    const historyForBackend = [...messagesForUI, resultMessage];
+    
+    // Update the UI immediately with the completed tool block and a new waiting indicator.
+    setMessages([...messagesForUI, { role: 'assistant', content: '', isWaiting: true }]);
 
-        const historyForBackend = [...updatedUIMessages, resultMessage];
-        
-        Promise.resolve().then(() => {
-          streamAndSaveResponse(chatId, historyForBackend, { isContinuation: true });
-        });
-
-        return [...updatedUIMessages, { role: 'assistant', content: '', isWaiting: true }];
-    });
+    // Call the streaming function with the correct, cleaned history. This is now safe.
+    await streamAndSaveResponse(chatId, historyForBackend, { isContinuation: true });
+    // --- END OF FIX ---
   }, [isStreaming, streamAndSaveResponse]);
-  // --- END OF FIX ---
 
   const loadChat = useCallback(async (id: string) => {
     setIsLoadingChat(true);

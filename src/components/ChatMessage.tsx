@@ -21,7 +21,7 @@ import AnalysisBlock from './AnalysisBlock';
 import '../css/AnalysisBlock.css';
 import { useNotification } from '../contexts/NotificationContext';
 import GeolocationBlock from './GeolocationBlock';
-import GeolocationRequestBlock from './GeolocationRequestBlock'; // <-- IMPORT THE NEW COMPONENT
+import GeolocationRequestBlock from './GeolocationRequestBlock';
 
 
 interface CodeComponentProps {
@@ -240,12 +240,10 @@ const AssistantTurn = memo(({ messages, chatId, startIndex, isStreaming, onRegen
                 const toolOutputMessage = messages.find(m => m.role === 'tool_doc_extract_result' && m.tool_id === currentMessage.tool_id);
                 parts.push(<AnalysisBlock key={`extract-${currentMessage.tool_id}`} toolMessage={currentMessage} outputMessage={toolOutputMessage} />);
                 processedToolIds.add(currentMessage.tool_id);
-            // --- START OF FIX: Handle the new geolocation tool request ---
             } else if (currentMessage.role === 'tool_geolocation' && currentMessage.tool_id && !processedToolIds.has(currentMessage.tool_id)) {
                 flushTextBuffer(`text-before-tool-geo-request-${i}`);
                 parts.push(<GeolocationRequestBlock key={`geo-req-${currentMessage.tool_id}`} toolMessage={currentMessage} />);
                 processedToolIds.add(currentMessage.tool_id);
-            // --- END OF FIX ---
             }
             
             lastIndex = i;

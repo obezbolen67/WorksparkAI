@@ -58,6 +58,9 @@ const GeolocationRequestBlock = memo(({ toolMessage }: GeolocationRequestBlockPr
     sendGeolocationResult(activeChatId!, toolMessage.tool_id!, { error: errorMessage });
   };
 
+  // If the tool call has been completed or errored out, don't show buttons.
+  const isFinalState = toolMessage.state === 'completed' || toolMessage.state === 'error';
+
   return (
     <div className="tool-block-container request-container state-pending">
       <div className="tool-block-header">
@@ -71,18 +74,18 @@ const GeolocationRequestBlock = memo(({ toolMessage }: GeolocationRequestBlockPr
           <p>Workspark AI needs your location to provide directions.</p>
           {error && <p className="request-error">{error}</p>}
 
-          {isPending ? (
+          {isPending && !isFinalState && (
             <div className="request-pending">
               <FiLoader className="spinner-icon" />
               <span>Waiting for location...</span>
             </div>
-          ) : (
-            !error && (
+          )}
+
+          {!isPending && !isFinalState && (
               <div className="request-actions">
                 <button className="request-button deny-button" onClick={handleDeny}>Deny</button>
                 <button className="request-button allow-button" onClick={handleAllow}>Allow</button>
               </div>
-            )
           )}
         </div>
       </div>

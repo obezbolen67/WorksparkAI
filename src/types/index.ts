@@ -17,9 +17,7 @@ export type FileOutput = {
 };
 
 export type Message = {
-  // --- START OF FIX: Added new tool roles ---
   role: 'user' | 'assistant' | 'tool_code_result' | 'tool_code' | 'tool_search_result' | 'tool_search' | 'tool_doc_extract' | 'tool_doc_extract_result' | 'tool_geolocation' | 'tool_geolocation_result';
-  // --- END OF FIX ---
   content: string | null;
   attachments?: Attachment[];
   tool_id?: string;
@@ -27,9 +25,7 @@ export type Message = {
   thinking?: string;
   fileOutputs?: FileOutput[];
   isWaiting?: boolean;
-  // --- START OF FIX: Added property for client-side tools ---
   isClientSideTool?: boolean;
-  // --- END OF FIX ---
 };
 
 

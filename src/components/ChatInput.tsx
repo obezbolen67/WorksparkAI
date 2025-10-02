@@ -17,37 +17,6 @@ interface ChatInputProps {
   isThinkingVisible: boolean;
 }
 
-const getUserLocation = (): Promise<{ latitude: number, longitude: number }> => {
-  return new Promise((resolve, reject) => {
-    if (!navigator.geolocation) {
-      return reject(new Error("Geolocation is not supported by your browser."));
-    }
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        resolve({
-          latitude: position.coords.latitude,
-          longitude: position.coords.longitude,
-        });
-      },
-      (error) => {
-        let errorMessage = "Could not get your location.";
-        switch(error.code) {
-            case error.PERMISSION_DENIED:
-                errorMessage = "You denied the request for Geolocation. Please enable it in your browser settings to use this feature.";
-                break;
-            case error.POSITION_UNAVAILABLE:
-                errorMessage = "Location information is unavailable.";
-                break;
-            case error.TIMEOUT:
-                errorMessage = "The request to get user location timed out.";
-                break;
-        }
-        reject(new Error(errorMessage));
-      }
-    );
-  });
-};
-
 const ChatInput = ({ onSendMessage, onStopGeneration, isSending, isThinkingVisible }: ChatInputProps) => {
   const { user, selectedModel } = useSettings();
   const { showNotification } = useNotification();
