@@ -11,11 +11,42 @@ import { useNotification } from '../contexts/NotificationContext';
 import { getFileIcon } from '../utils/fileIcons';
 
 interface ChatInputProps {
-  onSendMessage: (text: string, attachments: Attachment[], metadata: { isThinkingEnabled: boolean }) => void;
+  onSendMessage: (text: string, attachments: Attachment[], metadata?: Record<string, any>) => void;
   onStopGeneration: () => void;
   isSending: boolean;
   isThinkingVisible: boolean;
 }
+
+const getUserLocation = (): Promise<{ latitude: number, longitude: number }> => {
+  return new Promise((resolve, reject) => {
+    if (!navigator.geolocation) {
+      return reject(new Error("Geolocation is not supported by your browser."));
+    }
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        resolve({
+          latitude: position.coords.latitude,
+          longitude: position.coords.longitude,
+        });
+      },
+      (error) => {
+        let errorMessage = "Could not get your location.";
+        switch(error.code) {
+            case error.PERMISSION_DENIED:
+                errorMessage = "You denied the request for Geolocation. Please enable it in your browser settings to use this feature.";
+                break;
+            case error.POSITION_UNAVAILABLE:
+                errorMessage = "Location information is unavailable.";
+                break;
+            case error.TIMEOUT:
+                errorMessage = "The request to get user location timed out.";
+                break;
+        }
+        reject(new Error(errorMessage));
+      }
+    );
+  });
+};
 
 const ChatInput = ({ onSendMessage, onStopGeneration, isSending, isThinkingVisible }: ChatInputProps) => {
   const { user, selectedModel } = useSettings();
@@ -156,11 +187,15 @@ const ChatInput = ({ onSendMessage, onStopGeneration, isSending, isThinkingVisib
 
   const handleSend = async () => {
     if (!hasContent || isGenerating) return;
+
+    // Remove hardcoded location detection - let the LLM ask for it when needed
+    const messageMetadata: Record<string, any> = { isThinkingEnabled: isThinkingVisible };
+
     try {
       const uploadPromises = selectedFiles.map(file => uploadFile(file));
       const uploadResults = await Promise.all(uploadPromises);
       const newAttachments: Attachment[] = uploadResults.map(result => result.file);
-      onSendMessage(text, newAttachments, { isThinkingEnabled: isThinkingVisible });
+      onSendMessage(text, newAttachments, messageMetadata);  // ← Fixed to use messageMetadata
       setText('');
       setSelectedFiles([]);
     } catch (error) {

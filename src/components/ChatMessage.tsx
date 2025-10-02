@@ -1,4 +1,4 @@
-import { useState, useEffect, memo, useMemo, useRef } from 'react';
+import { useState, useEffect, memo, useMemo, useRef, useCallback } from 'react';
 import type { Message, Attachment } from '../types';
 import api, { API_BASE_URL } from '../utils/api';
 import '../css/ChatMessage.css';
@@ -20,6 +20,8 @@ import SearchBlock from './SearchBlock';
 import AnalysisBlock from './AnalysisBlock';
 import '../css/AnalysisBlock.css';
 import { useNotification } from '../contexts/NotificationContext';
+import GeolocationBlock from './GeolocationBlock';
+import GeolocationRequestBlock from './GeolocationRequestBlock'; // <-- IMPORT THE NEW COMPONENT
 
 
 interface CodeComponentProps {
@@ -226,13 +228,24 @@ const AssistantTurn = memo(({ messages, chatId, startIndex, isStreaming, onRegen
             } else if (currentMessage.role === 'tool_search' && currentMessage.tool_id && !processedToolIds.has(currentMessage.tool_id)) {
                 flushTextBuffer(`text-before-tool-search-${i}`);
                 const toolOutputMessage = messages.find(m => m.role === 'tool_search_result' && m.tool_id === currentMessage.tool_id);
-                parts.push(<SearchBlock key={`search-${currentMessage.tool_id}`} toolSearchMessage={currentMessage} toolOutputMessage={toolOutputMessage} />);
+                const isGeolocation = toolOutputMessage?.content?.includes('[LOCATION]');
+                if (isGeolocation) {
+                    parts.push(<GeolocationBlock key={`geo-${currentMessage.tool_id}`} toolMessage={currentMessage} outputMessage={toolOutputMessage} />);
+                } else {
+                    parts.push(<SearchBlock key={`search-${currentMessage.tool_id}`} toolSearchMessage={currentMessage} toolOutputMessage={toolOutputMessage} />);
+                }
                 processedToolIds.add(currentMessage.tool_id);
             } else if (currentMessage.role === 'tool_doc_extract' && currentMessage.tool_id && !processedToolIds.has(currentMessage.tool_id)) {
                 flushTextBuffer(`text-before-tool-extract-${i}`);
                 const toolOutputMessage = messages.find(m => m.role === 'tool_doc_extract_result' && m.tool_id === currentMessage.tool_id);
                 parts.push(<AnalysisBlock key={`extract-${currentMessage.tool_id}`} toolMessage={currentMessage} outputMessage={toolOutputMessage} />);
                 processedToolIds.add(currentMessage.tool_id);
+            // --- START OF FIX: Handle the new geolocation tool request ---
+            } else if (currentMessage.role === 'tool_geolocation' && currentMessage.tool_id && !processedToolIds.has(currentMessage.tool_id)) {
+                flushTextBuffer(`text-before-tool-geo-request-${i}`);
+                parts.push(<GeolocationRequestBlock key={`geo-req-${currentMessage.tool_id}`} toolMessage={currentMessage} />);
+                processedToolIds.add(currentMessage.tool_id);
+            // --- END OF FIX ---
             }
             
             lastIndex = i;
@@ -286,7 +299,6 @@ const ChatMessage = ({ message, messages, chatId, index, isEditing, onStartEdit,
   const [viewerSrc, setViewerSrc] = useState<string | null>(null);
   const [isViewerOpen, setIsViewerOpen] = useState(false);
   const editTextAreaRef = useRef<HTMLTextAreaElement>(null);
-  // --- START OF FIX ---
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
 
   const handleDownloadAttachment = async (e: React.MouseEvent<HTMLAnchorElement>, attachment: Attachment) => {
@@ -327,7 +339,6 @@ const ChatMessage = ({ message, messages, chatId, index, isEditing, onStartEdit,
       setDownloadingId(null); // Reset downloading state
     }
   };
-  // --- END OF FIX ---
 
   useEffect(() => {
     if (isEditing) {
@@ -350,7 +361,7 @@ const ChatMessage = ({ message, messages, chatId, index, isEditing, onStartEdit,
     }
   }, [isEditing]);
 
-  const handleOpenViewer = (src: string) => { setViewerSrc(src); setIsViewerOpen(true); };
+  const handleOpenViewer = useCallback((src: string) => { setViewerSrc(src); setIsViewerOpen(true); }, []);
 
   const handleEditContentChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setEditedContent(e.target.value);
@@ -387,7 +398,6 @@ const ChatMessage = ({ message, messages, chatId, index, isEditing, onStartEdit,
           return <AuthenticatedImage key={key} chatId={chatId} attachment={att} onView={handleOpenViewer} />;
         }
         
-        // --- START OF FIX ---
         const isDownloading = downloadingId === att._id;
         return (
           <a 
@@ -405,7 +415,6 @@ const ChatMessage = ({ message, messages, chatId, index, isEditing, onStartEdit,
             </span>
           </a>
         );
-        // --- END OF FIX ---
       })}
     </div>
   );

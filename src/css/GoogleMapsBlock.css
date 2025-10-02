@@ -1,0 +1,23 @@
+/* src/css/GoogleMapsBlock.css */
+.maps-container .status {
+    color: #4285F4; /* Google Blue */
+}
+
+.maps-container .status-icon-wrapper {
+    color: #4285F4;
+}
+
+.maps-map-wrapper {
+    height: 350px;
+    width: 100%;
+    border-radius: 8px;
+    overflow: hidden;
+    margin-top: 12px;
+    border: 1px solid var(--border-color);
+}
+
+.maps-info {
+    margin-top: 12px;
+    font-size: 0.9rem;
+    color: var(--secondary-text-color);
+}

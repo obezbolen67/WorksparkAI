@@ -1,6 +1,7 @@
 // src/utils/api.ts
 
 export const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://worksparkaiserver-215678188656.europe-west1.run.app';
+console.log(API_BASE_URL)
 
 /**
  * A wrapper around the native `fetch` function that automatically adds

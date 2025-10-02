@@ -1,0 +1,82 @@
+/* src/css/GeolocationRequestBlock.css */
+
+.request-container.state-pending .status {
+    color: #3b82f6; /* Blue */
+}
+.request-container.state-pending::before {
+    background-color: #3b82f6;
+}
+[data-theme="light"] .request-container.state-pending .status {
+    color: #2563eb;
+}
+
+.request-content {
+    padding: 0.5rem 0;
+    text-align: center;
+}
+
+.request-content p {
+    font-size: 0.9rem;
+    color: var(--secondary-text-color);
+    margin: 0 0 1rem 0;
+}
+
+.request-actions {
+    display: flex;
+    justify-content: center;
+    gap: 0.75rem;
+}
+
+.request-button {
+    border: none;
+    padding: 0.5rem 1.5rem;
+    border-radius: 9999px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease-in-out;
+    font-size: 0.875rem;
+}
+
+.deny-button {
+    background-color: var(--button-hover-bg);
+    color: var(--primary-text-color);
+    border: 1px solid var(--border-color);
+}
+.deny-button:hover {
+    background-color: var(--main-bg-color);
+}
+
+.allow-button {
+    background-color: #16a34a; /* Green */
+    color: white;
+}
+.allow-button:hover {
+    background-color: #15803d;
+}
+
+[data-theme="light"] .allow-button {
+    background-color: #22c55e;
+}
+[data-theme="light"] .allow-button:hover {
+    background-color: #16a34a;
+}
+
+.request-error {
+    color: #ef4444; /* Red */
+    font-size: 0.85rem !important;
+    margin-top: 0.75rem !important;
+}
+
+.request-pending {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    color: var(--secondary-text-color);
+    font-size: 0.9rem;
+    padding: 0.5rem 0;
+}
+
+.request-pending .spinner-icon {
+    animation: spin 1s linear infinite;
+}

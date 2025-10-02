@@ -1,0 +1,30 @@
+/* src/css/GeolocationBlock.css */
+
+.geolocation-container {
+    padding-bottom: 1rem;
+}
+
+.geolocation-container .status-icon-wrapper {
+    background-color: hsla(200, 80%, 60%, 0.15);
+    color: #38bdf8;
+}
+
+[data-theme="light"] .geolocation-container .status-icon-wrapper {
+    background-color: hsla(200, 80%, 60%, 0.2);
+    color: #0284c7;
+}
+
+.geolocation-container.tool-block-container::before {
+    display: none;
+}
+
+.geolocation-map-wrapper {
+    padding: 0 1rem;
+    margin-top: 0.75rem;
+}
+
+.geolocation-map-wrapper iframe {
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+    width: 100%;
+}

@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useSettings } from '../contexts/SettingsContext';
 import { useNotification } from '../contexts/NotificationContext';
 import '../css/SettingsModal.css';
-import { FiRefreshCw, FiCpu, FiSliders, FiEye, FiEyeOff, FiMoreVertical, FiX, FiCreditCard, FiCheckCircle } from "react-icons/fi";
+import { FiRefreshCw, FiCpu, FiSliders, FiEye, FiEyeOff, FiMoreVertical, FiX, FiCreditCard, FiCheckCircle, FiLink, FiStar } from "react-icons/fi";
 import OpenAIIcon from '../icons/openai.svg?react';
 import AnthropicIcon from '../icons/anthropic.svg?react';
 import GeminiIcon from '../icons/gemini.svg?react';
@@ -20,8 +20,14 @@ type Modality = 'text' | 'image' | 'code' | 'reasoning';
 type ModelConfig = { id: string; modalities: Modality[]; };
 type ApiKeyEntry = { provider: string; key: string; };
 
+type Integration = {
+  id: string;
+  name: string;
+  description: string;
+};
+
 interface SettingsModalProps { isOpen: boolean; onClose: () => void; }
-type ActiveTab = 'GPT' | 'Subscription' | 'Appearance';
+type ActiveTab = 'GPT' | 'Subscription' | 'Appearance' | 'Integrations';
 
 const providers: Provider[] = [
   { id: 'default', name: "Default (Free)",Icon: OpenAIIcon},
@@ -63,6 +69,9 @@ const SettingsModal = ({ isOpen, onClose }: SettingsModalProps) => {
   const [baseUrl, setBaseUrl] = useState(user?.baseUrl || '');
   const [selectedModel, setSelectedModel] = useState(user?.selectedModel || '');
   const [quickAccessModels, setQuickAccessModels] = useState<string[]>(user?.quickAccessModels || []);
+  const [availableIntegrations, setAvailableIntegrations] = useState<Integration[]>([]);
+  const [enabledIntegrations, setEnabledIntegrations] = useState<string[]>(user?.enabledIntegrations || []);
+  const [isLoadingIntegrations, setIsLoadingIntegrations] = useState(false);
   const [modelConfigs, setModelConfigs] = useState<ModelConfig[]>(user?.modelConfigs || []);
   const [contextLength, setContextLength] = useState(user?.contextLength || MIN_CONTEXT);
   const [maxOutputTokens, setMaxOutputTokens] = useState(user?.maxOutputTokens || 4096);
@@ -105,8 +114,30 @@ const SettingsModal = ({ isOpen, onClose }: SettingsModalProps) => {
       setModelConfigs(user.modelConfigs || []);
       setContextLength(user.contextLength || MIN_CONTEXT);
       setMaxOutputTokens(user.maxOutputTokens || 4096);
+      setEnabledIntegrations(user.enabledIntegrations || []);
     }
   }, [user]);
+
+  useEffect(() => {
+    if (isOpen) {
+      const fetchIntegrations = async () => {
+        setIsLoadingIntegrations(true);
+        try {
+          const response = await api('/integrations');
+          if (!response.ok) throw new Error('Could not fetch integrations.');
+          const data = await response.json();
+          setAvailableIntegrations(data);
+        } catch (error) {
+          console.error(error);
+          showNotification('Failed to load available integrations.', 'error');
+        } finally {
+          setIsLoadingIntegrations(false);
+        }
+      };
+      fetchIntegrations();
+    }
+  }, [isOpen, showNotification]);
+
 
   useEffect(() => {
     if (!isOpen) {
@@ -244,6 +275,7 @@ const SettingsModal = ({ isOpen, onClose }: SettingsModalProps) => {
         ...(selectedProvider !== 'default' && {
           quickAccessModels,
         }),
+        enabledIntegrations,
       };
       
       console.log(settingsToSave)
@@ -256,6 +288,14 @@ const SettingsModal = ({ isOpen, onClose }: SettingsModalProps) => {
     } catch (err) {
       showNotification(`Failed to save settings.\n${err}`, "error");
     }
+  };
+
+  const handleIntegrationToggle = (integrationId: string) => {
+    setEnabledIntegrations(prev =>
+      prev.includes(integrationId)
+        ? prev.filter(id => id !== integrationId)
+        : [...prev, integrationId]
+    );
   };
   
   const handleQuickAccessChange = (modelId: string) => {
@@ -349,6 +389,58 @@ const SettingsModal = ({ isOpen, onClose }: SettingsModalProps) => {
   };
 
   if (!isOpen) return null;
+
+  const renderIntegrationsTab = () => {
+    const isPro = user?.subscriptionStatus === 'active';
+
+    return (
+      <>
+        <h3>Integrations</h3>
+        <p>Connect Workspark to other services. Available for Pro users.</p>
+        
+        {!isPro && (
+          <div className="upgrade-prompt">
+            <FiStar size={18} />
+            <span>Integrations are a Pro feature.</span>
+            <button onClick={handleUpgrade}>Upgrade to Pro</button>
+          </div>
+        )}
+
+        <div className="integrations-list">
+          {isLoadingIntegrations ? (
+            <p>Loading...</p>
+          ) : availableIntegrations.length > 0 ? (
+            availableIntegrations.map((integration) => (
+              <div key={integration.id} className="integration-card">
+                <div className="integration-info">
+                  <h4>{integration.name}</h4>
+                  <p>{integration.description}</p>
+                </div>
+                <div className="integration-toggle">
+                  <label className="switch">
+                    <input
+                      type="checkbox"
+                      checked={enabledIntegrations.includes(integration.id)}
+                      onChange={() => handleIntegrationToggle(integration.id)}
+                      disabled={!isPro}
+                    />
+                    <span className="slider round"></span>
+                  </label>
+                </div>
+              </div>
+            ))
+          ) : (
+            <p>No integrations are currently available.</p>
+          )}
+        </div>
+
+        <div className="modal-actions">
+          <button className="modal-button modal-button-cancel" onClick={handleClose}>Cancel</button>
+          <button className="modal-button modal-button-save" onClick={handleSave}>Save & Close</button>
+        </div>
+      </>
+    );
+  };
 
   const renderGptTab = () => {
     const isDefaultProviderSelected = selectedProvider === 'default';
@@ -749,6 +841,10 @@ const SettingsModal = ({ isOpen, onClose }: SettingsModalProps) => {
             <FiCpu size={18} />
             <span>GPT</span>
           </button>
+          <button className={`settings-tab-button ${activeTab === 'Integrations' ? 'active' : ''}`} onClick={() => setActiveTab('Integrations')}>
+            <FiLink size={18} />
+            <span>Integrations</span>
+          </button>
           <button className={`settings-tab-button ${activeTab === 'Subscription' ? 'active' : ''}`} onClick={() => setActiveTab('Subscription')}>
             <FiCreditCard size={18} />
             <span>Subscription</span>
@@ -760,6 +856,7 @@ const SettingsModal = ({ isOpen, onClose }: SettingsModalProps) => {
         </aside>
         <main className="settings-content">
           {activeTab === 'GPT' && renderGptTab()}
+          {activeTab === 'Integrations' && renderIntegrationsTab()}
           {activeTab === 'Subscription' && renderSubscriptionTab()}
           {activeTab === 'Appearance' && renderAppearanceTab()}
         </main>

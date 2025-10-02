@@ -31,6 +31,7 @@ type User = {
   theme: Theme;
   quickAccessModels?: string[];
   modelConfigs?: ModelConfig[];
+  enabledIntegrations?: string[];
   contextLength?: number;
   maxOutputTokens?: number; // Add the new field
   stripeCustomerId?: string | null;

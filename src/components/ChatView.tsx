@@ -93,9 +93,9 @@ const ChatView = (props: ChatViewProps) => {
         
         <div className="chat-content" ref={chatContentRef}>
           <div className="chat-messages-list">
-            {messages.map((msg, index) => {
+            {messages.filter(msg => msg != null).map((msg, index) => {
               return (
-                <ChatMessage 
+                <ChatMessage
                   key={activeChatId ? `${activeChatId}-${index}` : index}
                   index={index}
                   message={msg}
