@@ -30,7 +30,7 @@ interface SettingsModalProps { isOpen: boolean; onClose: () => void; }
 type ActiveTab = 'GPT' | 'Subscription' | 'Appearance' | 'Integrations';
 
 const providers: Provider[] = [
-  { id: 'default', name: "Default (Free)",Icon: OpenAIIcon},
+  { id: 'default', name: "Default (Free)",Icon: GeminiIcon},
   { id: 'openai', name: 'OpenAI', Icon: OpenAIIcon },
   { id: 'anthropic', name: 'Anthropic', Icon: AnthropicIcon },
   { id: 'gemini', name: 'Gemini', Icon: GeminiIcon },
@@ -475,7 +475,7 @@ const SettingsModal = ({ isOpen, onClose }: SettingsModalProps) => {
       {isDefaultProviderSelected ? (
         <div className="form-group default-provider-info">
           <p className="description">
-            You are using free GPT 4.1 model.
+            You are using free Gemini 2.0 Flash model with image analysis support.
           </p>
         </div>
       ) : (

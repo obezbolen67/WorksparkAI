@@ -183,21 +183,34 @@ const AssistantTurn = memo(({ messages, chatId, startIndex, isStreaming, onRegen
             }).join('\n');
         };
 
-        const flushTextBuffer = (key: string) => {
+        const flushTextBuffer = (key: string, forceMarkdown: boolean = false) => {
             if (currentTextBuffer.trim()) {
-                const isPartialStream = isStreaming && parts.length === 0;
-                const processedContent = processMarkdownContent(currentTextBuffer, isPartialStream);
-                
-                parts.push(
-                    <ReactMarkdown 
-                        key={key} 
-                        remarkPlugins={[remarkGfm, remarkMath]} 
-                        rehypePlugins={[rehypeKatex]} 
-                        components={{ code: CustomCode, p: Paragraph, img: ImageRenderer }}
-                    >
-                        {processedContent}
-                    </ReactMarkdown>
-                );
+                // During streaming, render as plain text wrapped in pre-wrap
+                // After streaming completes, parse as markdown
+                const shouldParseMarkdown = !isStreaming || forceMarkdown;
+
+                if (shouldParseMarkdown) {
+                    const isPartialStream = isStreaming && parts.length === 0;
+                    const processedContent = processMarkdownContent(currentTextBuffer, isPartialStream);
+
+                    parts.push(
+                        <ReactMarkdown
+                            key={key}
+                            remarkPlugins={[remarkGfm, remarkMath]}
+                            rehypePlugins={[rehypeKatex]}
+                            components={{ code: CustomCode, p: Paragraph, img: ImageRenderer }}
+                        >
+                            {processedContent}
+                        </ReactMarkdown>
+                    );
+                } else {
+                    // Render as plain text during streaming for better performance
+                    parts.push(
+                        <div key={key} style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                            {currentTextBuffer}
+                        </div>
+                    );
+                }
             }
             currentTextBuffer = '';
         };
@@ -250,12 +263,12 @@ const AssistantTurn = memo(({ messages, chatId, startIndex, isStreaming, onRegen
                 // --- END OF FIX ---
                 processedToolIds.add(currentMessage.tool_id);
             }
-            
+
             lastIndex = i;
         }
-        
+
         flushTextBuffer('text-final');
-        
+
         return { turnParts: parts, fullContent: textParts.join('\n\n'), lastMessageInTurnIndex: lastIndex };
     }, [messages, chatId, startIndex, isStreaming, onView]); 
 

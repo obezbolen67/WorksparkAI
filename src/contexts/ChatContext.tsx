@@ -1,5 +1,6 @@
-// src/contexts/ChatContext.tsx
+ // src/contexts/ChatContext.tsx
 import { createContext, useContext, useState, useCallback, useEffect, ReactNode, useRef } from 'react';
+import { flushSync } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import type { Message, Attachment } from '../types';
 import { useSettings } from './SettingsContext';
@@ -196,25 +197,27 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
                               case 'THINKING_DELTA':
                                 currentAssistantThinking += event.content;
                                 setThinkingContent(prev => (prev || '') + event.content);
-                                setMessages(prev => {
-                                    const newMessages = [...prev];
-                                    if (assistantMessageIndex === -1) {
-                                        const lastMessage = newMessages[newMessages.length - 1];
-                                        if (lastMessage?.role === 'assistant') {
-                                            assistantMessageIndex = newMessages.length - 1;
-                                        } else {
+                                flushSync(() => {
+                                    setMessages(prev => {
+                                        const newMessages = [...prev];
+                                        if (assistantMessageIndex === -1) {
+                                            const lastMessage = newMessages[newMessages.length - 1];
+                                            if (lastMessage?.role === 'assistant') {
+                                                assistantMessageIndex = newMessages.length - 1;
+                                            } else {
+                                                assistantMessageIndex = newMessages.length;
+                                                newMessages.push({ role: 'assistant', content: '', thinking: ''});
+                                            }
+                                        } else if (assistantMessageIndex >= newMessages.length) {
                                             assistantMessageIndex = newMessages.length;
                                             newMessages.push({ role: 'assistant', content: '', thinking: ''});
                                         }
-                                    } else if (assistantMessageIndex >= newMessages.length) {
-                                        assistantMessageIndex = newMessages.length;
-                                        newMessages.push({ role: 'assistant', content: '', thinking: ''});
-                                    }
-                                    if (assistantMessageIndex >= 0 && assistantMessageIndex < newMessages.length) {
-                                        const currentMsg = newMessages[assistantMessageIndex];
-                                        newMessages[assistantMessageIndex] = { ...currentMsg, thinking: currentAssistantThinking };
-                                    }
-                                    return newMessages;
+                                        if (assistantMessageIndex >= 0 && assistantMessageIndex < newMessages.length) {
+                                            const currentMsg = newMessages[assistantMessageIndex];
+                                            newMessages[assistantMessageIndex] = { ...currentMsg, thinking: currentAssistantThinking };
+                                        }
+                                        return newMessages;
+                                    });
                                 });
                                 break;
 
@@ -237,18 +240,21 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
                                 });
                                 break;
                               case 'ASSISTANT_DELTA':
-                                setMessages(prev => {
-                                    const newMessages = [...prev];
-                                    if (assistantMessageIndex === -1 || assistantMessageIndex >= newMessages.length) {
-                                        assistantMessageIndex = newMessages.length;
-                                        newMessages.push({ role: 'assistant', content: '', thinking: currentAssistantThinking || undefined });
-                                    }
-                                    const currentMsg = newMessages[assistantMessageIndex];
-                                    if (currentMsg && currentMsg.role === 'assistant') {
-                                        const newContent = (currentMsg.content || '') + event.content;
-                                        newMessages[assistantMessageIndex] = { ...currentMsg, content: newContent, thinking: currentAssistantThinking || currentMsg.thinking };
-                                    }
-                                    return newMessages;
+                                // Use flushSync to force immediate DOM update for better streaming UX
+                                flushSync(() => {
+                                    setMessages(prev => {
+                                        const newMessages = [...prev];
+                                        if (assistantMessageIndex === -1 || assistantMessageIndex >= newMessages.length) {
+                                            assistantMessageIndex = newMessages.length;
+                                            newMessages.push({ role: 'assistant', content: '', thinking: currentAssistantThinking || undefined });
+                                        }
+                                        const currentMsg = newMessages[assistantMessageIndex];
+                                        if (currentMsg && currentMsg.role === 'assistant') {
+                                            const newContent = (currentMsg.content || '') + event.content;
+                                            newMessages[assistantMessageIndex] = { ...currentMsg, content: newContent, thinking: currentAssistantThinking || currentMsg.thinking };
+                                        }
+                                        return newMessages;
+                                    });
                                 });
                                 break;
                               
@@ -287,11 +293,13 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
                               case 'TOOL_CODE_DELTA':
                               case 'TOOL_SEARCH_DELTA':
                               case 'TOOL_DOC_EXTRACT_DELTA':
-                                  setMessages(prev => {
-                                      const newMessages = [...prev];
-                                      const toolIndex = newMessages.findIndex(m => m.tool_id === event.tool_id);
-                                      if (toolIndex !== -1) newMessages[toolIndex] = { ...newMessages[toolIndex], content: (newMessages[toolIndex].content || '') + event.content };
-                                      return newMessages;
+                                  flushSync(() => {
+                                      setMessages(prev => {
+                                          const newMessages = [...prev];
+                                          const toolIndex = newMessages.findIndex(m => m.tool_id === event.tool_id);
+                                          if (toolIndex !== -1) newMessages[toolIndex] = { ...newMessages[toolIndex], content: (newMessages[toolIndex].content || '') + event.content };
+                                          return newMessages;
+                                      });
                                   });
                                   break;
 
