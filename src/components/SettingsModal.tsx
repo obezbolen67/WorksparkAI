@@ -475,7 +475,7 @@ const SettingsModal = ({ isOpen, onClose }: SettingsModalProps) => {
       {isDefaultProviderSelected ? (
         <div className="form-group default-provider-info">
           <p className="description">
-            You are using free Gemini 2.0 Flash model with image analysis support.
+            You are using free Gemini 2.5 Flash model Rate limits spread across all users.
           </p>
         </div>
       ) : (
