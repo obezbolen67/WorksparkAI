@@ -150,13 +150,17 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
                   buffer = buffer.substring(boundary + 2);
                   const lines = messageChunk.split('\n');
 
+
                   for (const line of lines) {
                       if (!line.startsWith('data: ')) continue;
                       const jsonString = line.substring(6).trim();
                       if (jsonString === '{"type":"done"}' || !jsonString) continue;
 
+
                       try {
                           const event = JSON.parse(jsonString);
+
+                          console.log(`[${event.type}]`, event.content)
                           
                           if (event.type === 'error') {
                             const errorMessage = event.error?.message || (typeof event.error === 'string' ? event.error : "An unknown error occurred on the server.");
