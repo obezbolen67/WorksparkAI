@@ -6,7 +6,7 @@ import { useNotification } from '../contexts/NotificationContext';
 import '../css/PricingPage.css';
 import { FiCheckCircle } from 'react-icons/fi';
 import api from '../utils/api';
-const stripePromise = loadStripe(process.env.STRIPE_PUBLISHABLE_KEY || "");
+const stripePromise = loadStripe("pk_test_51S97ATJHhdy0TngLOIvBqbtccieQ0FlzHHkxvyH58mot9dvhDj2LzuQ77L0wFBxGrsg7HLqm1JubQaisylnVXF8200H5kii7k3");
 
 const PricingPage = () => {
   const { user } = useSettings();

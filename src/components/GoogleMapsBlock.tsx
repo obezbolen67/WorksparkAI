@@ -72,7 +72,7 @@ const GoogleMapsBlock = memo(({ integrationData }: GoogleMapsBlockProps) => {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [showStreetView, setShowStreetView] = useState(false);
 
-  const mapsApiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
+  const mapsApiKey = "AIzaSyBNqMjztHTnwKTk0rmGbIgfRDJOG2wjqcM";
 
   const { isLoaded, loadError } = useLoadScript({
     googleMapsApiKey: mapsApiKey || "",
