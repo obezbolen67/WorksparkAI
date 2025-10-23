@@ -170,47 +170,43 @@ const AssistantTurn = memo(({ messages, chatId, startIndex, isStreaming, onRegen
         const processedToolIds = new Set<string>();
         let currentTextBuffer = '';
 
-        const processMarkdownContent = (content: string, isPartialStream: boolean = false) => {
-            if (!isPartialStream) return content;
-            return content.split('\n').map((line, index, lines) => {
-                if (line.trim() === '---' && index < lines.length - 1 && lines[index + 1].trim() !== '---') {
-                    return line + '\u200B';
+        const processMarkdownContent = (content: string, isCurrentlyStreaming: boolean = false) => {
+            if (!isCurrentlyStreaming) return content;
+            
+            // This hack adds a zero-width space to horizontal rules (`---` or `===`) during streaming
+            // if they appear on the last line of the current buffer. This prevents the markdown
+            // parser from incorrectly interpreting it as a Setext header when the next chunk
+            // of streamed text arrives.
+            const lines = content.split('\n');
+            const lastLineIndex = lines.length - 1;
+
+            if (lastLineIndex >= 0) {
+                const lastLineTrimmed = lines[lastLineIndex].trim();
+                if (lastLineTrimmed === '---' || lastLineTrimmed === '===') {
+                    // Append to the original line to preserve any leading whitespace
+                    lines[lastLineIndex] = lines[lastLineIndex] + '\u200B';
                 }
-                if (index > 0 && lines[index - 1].trim() === '---' && line.trim() && !line.trim().startsWith('#')) {
-                    return '\u200B' + line;
-                }
-                return line;
-            }).join('\n');
+            }
+            
+            return lines.join('\n');
         };
 
-        const flushTextBuffer = (key: string, forceMarkdown: boolean = false) => {
+        const flushTextBuffer = (key: string, force Markdown: boolean = false) => {
             if (currentTextBuffer.trim()) {
-                // During streaming, render as plain text wrapped in pre-wrap
-                // After streaming completes, parse as markdown
-                const shouldParseMarkdown = !isStreaming || forceMarkdown;
+                // ALWAYS parse as markdown, even during streaming, for a better UX.
+                // A small hack is used in processMarkdownContent to handle ambiguous syntax.
+                const processedContent = processMarkdownContent(currentTextBuffer, isStreaming);
 
-                if (shouldParseMarkdown) {
-                    const isPartialStream = isStreaming && parts.length === 0;
-                    const processedContent = processMarkdownContent(currentTextBuffer, isPartialStream);
-
-                    parts.push(
-                        <ReactMarkdown
-                            key={key}
-                            remarkPlugins={[remarkGfm, remarkMath]}
-                            rehypePlugins={[rehypeKatex]}
-                            components={{ code: CustomCode, p: Paragraph, img: ImageRenderer }}
-                        >
-                            {processedContent}
-                        </ReactMarkdown>
-                    );
-                } else {
-                    // Render as plain text during streaming for better performance
-                    parts.push(
-                        <div key={key} style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
-                            {currentTextBuffer}
-                        </div>
-                    );
-                }
+                parts.push(
+                    <ReactMarkdown
+                        key={key}
+                        remarkPlugins={[remarkGfm, remarkMath]}
+                        rehypePlugins={[rehypeKatex]}
+                        components={{ code: CustomCode, p: Paragraph, img: ImageRenderer }}
+                    >
+                        {processedContent}
+                    </ReactMarkdown>
+                );
             }
             currentTextBuffer = '';
         };
@@ -255,12 +251,10 @@ const AssistantTurn = memo(({ messages, chatId, startIndex, isStreaming, onRegen
                 processedToolIds.add(currentMessage.tool_id);
             } else if (currentMessage.role === 'tool_geolocation' && currentMessage.tool_id && !processedToolIds.has(currentMessage.tool_id)) {
                 flushTextBuffer(`text-before-tool-geo-request-${i}`);
-                // --- START OF FIX: Only render the request block if there isn't a result for it yet ---
                 const hasResult = messages.some(m => m.role === 'tool_geolocation_result' && m.tool_id === currentMessage.tool_id);
                 if (!hasResult) {
                     parts.push(<GeolocationRequestBlock key={`geo-req-${currentMessage.tool_id}`} toolMessage={currentMessage} />);
                 }
-                // --- END OF FIX ---
                 processedToolIds.add(currentMessage.tool_id);
             }
 
