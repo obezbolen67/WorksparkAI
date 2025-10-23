@@ -10,7 +10,7 @@
     "skipLibCheck": true,
     
     /* ADD THIS "types" ARRAY */
-    "types": ["vite/client", "vite-plugin-svgr/client"], // <-- ADD THIS LINE
+    "types": ["vite/client", "vite-plugin-svgr/client", "node"], // <-- ADD THIS LINE
 
     /* Bundler mode */
     "moduleResolution": "bundler",

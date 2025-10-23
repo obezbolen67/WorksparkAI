@@ -1,9 +1,8 @@
 // src/utils/api.ts
 
-export const API_BASE_URL = import.meta.env._VITE_API_URL;
-
+export const API_BASE_URL = process.env.API_URL;
 console.log('API Base URL:', API_BASE_URL);
-console.log('API key:', import.meta.env._VITE_GOOGLE_MAPS_API_KEY)
+console.log('API key:', process.env.GOOGLE_MAPS_API_KEY)
 
 /**
  * A wrapper around the native `fetch` function that automatically adds
