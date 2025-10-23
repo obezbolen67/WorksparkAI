@@ -173,17 +173,12 @@ const AssistantTurn = memo(({ messages, chatId, startIndex, isStreaming, onRegen
         const processMarkdownContent = (content: string, isCurrentlyStreaming: boolean = false) => {
             if (!isCurrentlyStreaming) return content;
             
-            // This hack adds a zero-width space to horizontal rules (`---` or `===`) during streaming
-            // if they appear on the last line of the current buffer. This prevents the markdown
-            // parser from incorrectly interpreting it as a Setext header when the next chunk
-            // of streamed text arrives.
             const lines = content.split('\n');
             const lastLineIndex = lines.length - 1;
 
             if (lastLineIndex >= 0) {
                 const lastLineTrimmed = lines[lastLineIndex].trim();
                 if (lastLineTrimmed === '---' || lastLineTrimmed === '===') {
-                    // Append to the original line to preserve any leading whitespace
                     lines[lastLineIndex] = lines[lastLineIndex] + '\u200B';
                 }
             }
@@ -191,10 +186,10 @@ const AssistantTurn = memo(({ messages, chatId, startIndex, isStreaming, onRegen
             return lines.join('\n');
         };
 
-        const flushTextBuffer = (key: string, force Markdown: boolean = false) => {
+        // --- START OF THE FIX ---
+        const flushTextBuffer = (key: string, forceMarkdown: boolean = false) => {
+        // --- END OF THE FIX ---
             if (currentTextBuffer.trim()) {
-                // ALWAYS parse as markdown, even during streaming, for a better UX.
-                // A small hack is used in processMarkdownContent to handle ambiguous syntax.
                 const processedContent = processMarkdownContent(currentTextBuffer, isStreaming);
 
                 parts.push(
