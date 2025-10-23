@@ -391,33 +391,50 @@ const ChatMessage = ({ message, messages, chatId, index, isEditing, onStartEdit,
 
   const renderAttachments = (attachments: Attachment[]) => (
     <div className="message-attachments">
-      {attachments.map(att => {
-        if (!chatId || !att._id) return null;
-        const key = att._id || att.gcsObjectName;
-        const isImage = att.mimeType.startsWith('image/');
-        
-        if (isImage) {
-          return <AuthenticatedImage key={key} chatId={chatId} attachment={att} onView={handleOpenViewer} />;
+    {attachments.map((att, idx) => {
+      const key = att._id || att.gcsObjectName || `att-${idx}`;
+      const isImage = att.mimeType.startsWith('image/');
+      const hasId = Boolean(chatId && att._id);
+      
+      if (isImage) {
+        if (!hasId) {
+          // For images without _id, show placeholder
+          return (
+            <div key={key} className="attachment-image-wrapper unavailable">
+              <span>Image unavailable</span>
+            </div>
+          );
         }
-        
-        const isDownloading = downloadingId === att._id;
-        return (
-          <a 
-            key={key} 
-            href={`${API_BASE_URL}/api/files/view/${chatId}/${att._id}`}
-            onClick={(e) => handleDownloadAttachment(e, att)}
-            className={`attachment-file-link ${isDownloading ? 'downloading' : ''}`}
-            aria-label={isDownloading ? `Downloading ${att.fileName}` : `Download ${att.fileName}`}
-          >
-            <span className="attachment-file-icon">
-              {isDownloading ? <FiLoader className="spinner-icon" /> : getFileIcon(att.mimeType)}
-            </span>
-            <span className="attachment-file-name">
-              {isDownloading ? 'Downloading...' : att.fileName}
-            </span>
-          </a>
-        );
-      })}
+        return <AuthenticatedImage key={key} chatId={chatId!} attachment={att} onView={handleOpenViewer} />;
+      }
+      
+      // For non-image files
+      const isDownloading = downloadingId === att._id;
+      const isDisabled = !hasId;
+      
+      return (
+        <a 
+          key={key} 
+          href={hasId ? `${API_BASE_URL}/api/files/view/${chatId}/${att._id}` : '#'}
+          onClick={(e) => {
+            if (!hasId) {
+              e.preventDefault();
+              return;
+            }
+            handleDownloadAttachment(e, att);
+          }}
+          className={`attachment-file-link ${isDownloading ? 'downloading' : ''} ${isDisabled ? 'disabled' : ''}`}
+          aria-label={isDownloading ? `Downloading ${att.fileName}` : (isDisabled ? `${att.fileName} (unavailable)` : `Download ${att.fileName}`)}
+        >
+          <span className="attachment-file-icon">
+            {isDownloading ? <FiLoader className="spinner-icon" /> : getFileIcon(att.mimeType)}
+          </span>
+          <span className="attachment-file-name">
+            {isDownloading ? 'Downloading...' : att.fileName}
+          </span>
+        </a>
+      );
+    })}
     </div>
   );
 
