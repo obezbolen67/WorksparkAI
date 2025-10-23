@@ -418,20 +418,21 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
                   case 'TOOL_DOC_EXTRACT_RESULT':
                   case 'TOOL_INTEGRATION_RESULT': // ADDED
                     setMessages((prev) => {
-                      const newMessages = [...prev];
-                      const toolReqRole = event.type.replace('_RESULT', '').toLowerCase();
-                      const toolIndex = newMessages.findIndex(
-                        (m) => m.role === toolReqRole && m.tool_id === event.tool_id
-                      );
-                      if (toolIndex !== -1) newMessages[toolIndex].state = event.state;
-                      const resultRole = (toolReqRole + '_result') as Message['role'];
-                      newMessages.push({
-                        role: resultRole,
-                        content: event.result.content,
-                        tool_id: event.tool_id,
-                        fileOutputs: event.result.fileOutputs || undefined,
-                      });
-                      return newMessages;
+                        const newMessages = [...prev];
+                        const toolReqRole = event.type.replace('_RESULT', '').toLowerCase();
+                        const toolIndex = newMessages.findIndex(
+                            (m) => m.role === toolReqRole && m.tool_id === event.tool_id
+                        );
+                        if (toolIndex !== -1) newMessages[toolIndex].state = event.state;
+                        const resultRole = (toolReqRole + '_result') as Message['role'];
+                        newMessages.push({
+                            role: resultRole,
+                            content: event.result.content,
+                            tool_id: event.tool_id,
+                            fileOutputs: event.result.fileOutputs || undefined,
+                            integrationData: event.result.integrationData || undefined,
+                        });
+                        return newMessages;
                     });
                     assistantMessageIndex = -1;
                     currentAssistantThinking = '';

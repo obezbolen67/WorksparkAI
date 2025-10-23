@@ -1,5 +1,8 @@
 import { useState, useEffect, memo, useMemo, useRef, useCallback } from 'react';
+// --- START OF THE FIX ---
+// Removed unused 'GoogleMapsData' import.
 import type { Message, Attachment } from '../types';
+// --- END OF THE FIX ---
 import api, { API_BASE_URL } from '../utils/api';
 import '../css/ChatMessage.css';
 import React from 'react';
@@ -22,7 +25,7 @@ import '../css/AnalysisBlock.css';
 import { useNotification } from '../contexts/NotificationContext';
 import GeolocationBlock from './GeolocationBlock';
 import GeolocationRequestBlock from './GeolocationRequestBlock';
-
+import GoogleMapsBlock from './GoogleMapsBlock';
 
 interface CodeComponentProps {
   node?: any;
@@ -186,10 +189,7 @@ const AssistantTurn = memo(({ messages, chatId, startIndex, isStreaming, onRegen
             return lines.join('\n');
         };
 
-        // --- START OF THE FIX ---
-        // Removed the unused 'forceMarkdown' parameter
         const flushTextBuffer = (key: string) => {
-        // --- END OF THE FIX ---
             if (currentTextBuffer.trim()) {
                 const processedContent = processMarkdownContent(currentTextBuffer, isStreaming);
 
@@ -252,6 +252,23 @@ const AssistantTurn = memo(({ messages, chatId, startIndex, isStreaming, onRegen
                     parts.push(<GeolocationRequestBlock key={`geo-req-${currentMessage.tool_id}`} toolMessage={currentMessage} />);
                 }
                 processedToolIds.add(currentMessage.tool_id);
+            } else if (currentMessage.role === 'tool_integration' && currentMessage.tool_id && !processedToolIds.has(currentMessage.tool_id)) {
+              flushTextBuffer(`text-before-tool-integration-${i}`);
+              const toolOutputMessage = messages.find(m => m.role === 'tool_integration_result' && m.tool_id === currentMessage.tool_id);
+              
+              // Check if this is a Google Maps integration with route data
+              if (toolOutputMessage?.integrationData?.type === 'google_maps_route') {
+                parts.push(<GoogleMapsBlock key={`maps-${currentMessage.tool_id}`} integrationData={toolOutputMessage.integrationData} />);
+              }
+              
+              processedToolIds.add(currentMessage.tool_id);
+            } else if (currentMessage.role === 'tool_integration_result' && currentMessage.tool_id && !processedToolIds.has(currentMessage.tool_id)) {
+              flushTextBuffer(`text-before-tool-integration-result-${i}`);
+              // Check if this message has integrationData with Google Maps route data
+              if (currentMessage.integrationData && currentMessage.integrationData.type === 'google_maps_route') {
+                parts.push(<GoogleMapsBlock key={`maps-${currentMessage.tool_id}`} integrationData={currentMessage.integrationData} />);
+              }
+              processedToolIds.add(currentMessage.tool_id);
             }
 
             lastIndex = i;
