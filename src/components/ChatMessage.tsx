@@ -187,7 +187,8 @@ const AssistantTurn = memo(({ messages, chatId, startIndex, isStreaming, onRegen
         };
 
         // --- START OF THE FIX ---
-        const flushTextBuffer = (key: string, forceMarkdown: boolean = false) => {
+        // Removed the unused 'forceMarkdown' parameter
+        const flushTextBuffer = (key: string) => {
         // --- END OF THE FIX ---
             if (currentTextBuffer.trim()) {
                 const processedContent = processMarkdownContent(currentTextBuffer, isStreaming);
@@ -259,7 +260,8 @@ const AssistantTurn = memo(({ messages, chatId, startIndex, isStreaming, onRegen
         flushTextBuffer('text-final');
 
         return { turnParts: parts, fullContent: textParts.join('\n\n'), lastMessageInTurnIndex: lastIndex };
-    }, [messages, chatId, startIndex, isStreaming, onView]); 
+    }, [messages, chatId, startIndex, isStreaming, onView]);
+
 
     const isStreamingInThisTurn = isStreaming && (messages.length - 1 <= lastMessageInTurnIndex);
 
