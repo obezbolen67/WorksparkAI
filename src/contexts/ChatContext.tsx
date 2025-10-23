@@ -142,6 +142,8 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
         JSON.stringify(messageHistory, null, 2)
       );
 
+      console.log()
+
       setIsSending(true);
       setIsStreaming(true);
       setIsThinking(false);
