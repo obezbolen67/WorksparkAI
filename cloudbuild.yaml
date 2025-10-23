@@ -5,7 +5,7 @@ steps:
     timeout: 240s
     # These are the arguments passed to the 'gcloud' command
     # Each part of the command is a separate item in the list
-    args: ['app', 'deploy']
+    args: ['run', 'deploy']
 
 options:
   logging: CLOUD_LOGGING_ONLY
