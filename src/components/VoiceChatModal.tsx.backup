@@ -1,0 +1,723 @@
+// src/components/VoiceChatModal.tsx
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { FiX, FiMic, FiMicOff } from 'react-icons/fi';
+import { useChat } from '../contexts/ChatContext';
+import { useNotification } from '../contexts/NotificationContext';
+import { API_BASE_URL } from '../utils/api';
+import '../css/VoiceChatModal.css';
+
+interface VoiceChatModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+}
+
+type VoiceMode = 'native' | 'backend' | null;
+
+const SPEECH_THRESHOLD = 0.02; // RMS threshold to detect speech
+const SILENCE_DURATION_MS = 1500; // Stop recording after this much silence
+const MIN_RECORDING_MS = 500; // Minimum recording duration
+const MIN_AUDIO_BYTES = 2000; // Minimum audio size to send
+
+const VoiceChatModal = ({ isOpen, onClose }: VoiceChatModalProps) => {
+  const [isListening, setIsListening] = useState(false);
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  const [isRecording, setIsRecording] = useState(false);
+  const [transcript, setTranscript] = useState('');
+  const [aiResponse, setAiResponse] = useState('');
+  const { sendMessage, messages } = useChat();
+  const { showNotification } = useNotification();
+
+  const speechSynthesisRef = useRef<SpeechSynthesisUtterance | null>(null);
+  const isProcessingRef = useRef(false);
+  const lastSpokenMessageIdRef = useRef<string | null>(null);
+  const isRecordingRef = useRef(false);
+
+  const mediaStreamRef = useRef<MediaStream | null>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const analyserRef = useRef<AnalyserNode | null>(null);
+  const animationFrameRef = useRef<number | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
+  const recordingStartTimeRef = useRef<number>(0);
+  const lastSoundTimeRef = useRef<number>(0);
+
+  const cleanupResources = useCallback(() => {
+    console.log('[VoiceChat] Cleaning up resources');
+    
+    if (animationFrameRef.current !== null) {
+      cancelAnimationFrame(animationFrameRef.current);
+      animationFrameRef.current = null;
+    }
+
+    if (mediaRecorderRef.current) {
+      try {
+        if (mediaRecorderRef.current.state !== 'inactive') {
+          mediaRecorderRef.current.stop();
+        }
+      } catch (_) {
+        // Best effort cleanup.
+      }
+      mediaRecorderRef.current.ondataavailable = null;
+      mediaRecorderRef.current.onstop = null;
+      mediaRecorderRef.current = null;
+    }
+
+    if (audioContextRef.current) {
+      audioContextRef.current.close().catch(() => {});
+      audioContextRef.current = null;
+    }
+
+    if (mediaStreamRef.current) {
+      mediaStreamRef.current.getTracks().forEach((track) => track.stop());
+      mediaStreamRef.current = null;
+    }
+
+    analyserRef.current = null;
+    audioChunksRef.current = [];
+    isRecordingRef.current = false;
+  }, []);
+
+  const speakText = useCallback((text: string) => {
+    console.log('[VoiceChat] speakText called with:', text);
+    window.speechSynthesis.cancel();
+
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = 'en-US';
+    utterance.rate = 1.0;
+    utterance.pitch = 1.0;
+
+    utterance.onstart = () => {
+      console.log('[VoiceChat] TTS onstart - AI speaking');
+      setIsSpeaking(true);
+      // Disable auto-restart and stop all listening (both native and backend)
+      console.log('[VoiceChat] Setting shouldRestartListeningRef = false');
+      shouldRestartListeningRef.current = false;
+      
+      // Stop native recognition
+      if (recognitionRef.current) {
+        try {
+          console.log('[VoiceChat] Stopping recognition');
+          recognitionRef.current.stop();
+        } catch (_) {}
+      }
+      
+      // Stop backend monitoring and recording
+      console.log('[VoiceChat] Stopping backend monitoring');
+      if (animationFrameRef.current !== null) {
+        cancelAnimationFrame(animationFrameRef.current);
+        animationFrameRef.current = null;
+      }
+      if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
+        try {
+          console.log('[VoiceChat] Stopping media recorder');
+          mediaRecorderRef.current.stop();
+        } catch (_) {}
+      }
+      
+      // Clear audio chunks to prevent sending stale data
+      audioChunksRef.current = [];
+      speechStateRef.current.isSpeaking = false;
+      
+      setIsListening(false);
+      listeningRef.current = false;
+      console.log('[VoiceChat] All listening stopped, flags reset');
+    };
+
+    utterance.onend = () => {
+      console.log('[VoiceChat] TTS onend - AI finished speaking');
+      setIsSpeaking(false);
+      // Ensure we stay stopped - do not restart listening
+      console.log('[VoiceChat] Setting shouldRestartListeningRef = false (again)');
+      shouldRestartListeningRef.current = false;
+      console.log('[VoiceChat] Final state - listeningRef:', listeningRef.current, 'shouldRestart:', shouldRestartListeningRef.current);
+    };
+
+    utterance.onerror = (event) => {
+      // 'interrupted' errors are normal when speech is canceled or overlapped
+      if (event.error !== 'interrupted') {
+        console.error('[VoiceChat] Speech synthesis error:', event);
+      }
+      setIsSpeaking(false);
+    };
+
+    speechSynthesisRef.current = utterance;
+    window.speechSynthesis.speak(utterance);
+    console.log('[VoiceChat] TTS started');
+  }, []);
+
+  const handleClose = useCallback(() => {
+    // Cancel any ongoing speech first
+    if (window.speechSynthesis.speaking) {
+      window.speechSynthesis.cancel();
+    }
+    
+    // Clean up all resources
+    cleanupResources();
+    
+    // Reset all state
+    setIsListening(false);
+    setIsSpeaking(false);
+    setTranscript('');
+    setAiResponse('');
+    setVoiceMode(null);
+    lastSpokenMessageIdRef.current = null;
+    
+    onClose();
+  }, [cleanupResources, onClose]);
+
+  const transcribeAudioBlob = useCallback(async (blob: Blob) => {
+    const token = localStorage.getItem('fexo-token');
+    const formData = new FormData();
+    formData.append('audio', blob, `voice-${Date.now()}.webm`);
+
+    const headers: Record<string, string> = {};
+    if (token) {
+      headers['x-auth-token'] = token;
+    }
+
+    const response = await fetch(`${API_BASE_URL}/api/voice/transcribe`, {
+      method: 'POST',
+      headers,
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => null);
+      let message = 'Failed to transcribe audio.';
+      if (errorData?.error) {
+        if (typeof errorData.error === 'string') {
+          message = errorData.error;
+        } else if (typeof errorData.error === 'object') {
+          message = JSON.stringify(errorData.error);
+        }
+      }
+      throw new Error(message);
+    }
+
+    const data = await response.json();
+    return (data?.transcript as string) || '';
+  }, []);
+
+  const handleUserSpeech = useCallback(async (text: string) => {
+    console.log('[VoiceChat] handleUserSpeech called with:', text);
+    if (isProcessingRef.current || !text.trim()) {
+      console.log('[VoiceChat] Skipping - isProcessing:', isProcessingRef.current, 'empty text:', !text.trim());
+      return;
+    }
+
+    console.log('[VoiceChat] Starting message processing');
+    isProcessingRef.current = true;
+    setTranscript(text);
+
+    try {
+      console.log('[VoiceChat] Sending message to chat');
+      await sendMessage(text, [], { isThinkingEnabled: false });
+      console.log('[VoiceChat] Message sent successfully');
+    } catch (error) {
+      console.error('[VoiceChat] Error sending message:', error);
+      showNotification('Failed to send message', 'error');
+    } finally {
+      console.log('[VoiceChat] Message processing complete');
+      isProcessingRef.current = false;
+    }
+  }, [sendMessage, showNotification]);
+
+  const initializeNativeRecognition = useCallback((RecognitionCtor: any) => {
+    const recognition = new RecognitionCtor();
+    recognition.continuous = true;
+    recognition.interimResults = true;
+    recognition.lang = 'en-US';
+
+    recognition.onresult = (event: any) => {
+      console.log('[VoiceChat] Recognition onresult triggered');
+      let finalTranscript = '';
+      let interimTranscript = '';
+
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        const transcriptPiece = event.results[i][0].transcript;
+        if (event.results[i].isFinal) {
+          finalTranscript += transcriptPiece;
+        } else {
+          interimTranscript += transcriptPiece;
+        }
+      }
+
+      if (finalTranscript) {
+        console.log('[VoiceChat] Final transcript detected:', finalTranscript);
+        setTranscript(finalTranscript);
+        // Stop recognition before processing and prevent auto-restart
+        console.log('[VoiceChat] Setting shouldRestartListeningRef = false');
+        shouldRestartListeningRef.current = false;
+        if (recognitionRef.current) {
+          try {
+            console.log('[VoiceChat] Stopping recognition');
+            recognitionRef.current.stop();
+          } catch (_) {}
+        }
+        setIsListening(false);
+        listeningRef.current = false;
+        console.log('[VoiceChat] Calling handleUserSpeech');
+        handleUserSpeech(finalTranscript);
+      } else {
+        setTranscript(interimTranscript);
+      }
+    };
+
+    recognition.onerror = (event: any) => {
+      console.error('Speech recognition error:', event.error);
+      if (event.error === 'not-allowed') {
+        showNotification('Microphone access denied. Please enable microphone permissions.', 'error');
+      }
+    };
+
+    recognition.onend = () => {
+      console.log('[VoiceChat] Recognition onend triggered');
+      console.log('[VoiceChat] State - listeningRef:', listeningRef.current, 'isProcessing:', isProcessingRef.current, 'shouldRestart:', shouldRestartListeningRef.current);
+      
+      // Only restart if explicitly allowed and not processing
+      if (listeningRef.current && !isProcessingRef.current && shouldRestartListeningRef.current) {
+        console.log('[VoiceChat] AUTO-RESTARTING recognition');
+        try {
+          recognition.start();
+        } catch (_) {
+          // Restart failures are expected if the recognizer is already running.
+        }
+      } else {
+        console.log('[VoiceChat] NOT restarting recognition');
+        // If we shouldn't restart, ensure state is clean
+        setIsListening(false);
+        listeningRef.current = false;
+      }
+    };
+
+    recognitionRef.current = recognition;
+  }, [handleUserSpeech, showNotification]);
+
+  const startNativeListening = useCallback(() => {
+    if (!recognitionRef.current) return;
+    try {
+      console.log('[VoiceChat] startNativeListening called');
+      console.log('[VoiceChat] Setting shouldRestartListeningRef = true');
+      shouldRestartListeningRef.current = true; // Allow auto-restart when manually started
+      recognitionRef.current.start();
+      setTranscript('');
+      setIsListening(true);
+      listeningRef.current = true;
+      console.log('[VoiceChat] Native recognition started');
+    } catch (error) {
+      console.error('[VoiceChat] Error starting recognition:', error);
+      showNotification('Unable to start speech recognition.', 'error');
+    }
+  }, [showNotification]);
+
+  const stopNativeListening = useCallback(() => {
+    console.log('[VoiceChat] stopNativeListening called');
+    console.log('[VoiceChat] Setting shouldRestartListeningRef = false');
+    shouldRestartListeningRef.current = false; // Prevent auto-restart
+    if (recognitionRef.current) {
+      try {
+        console.log('[VoiceChat] Stopping recognition');
+        recognitionRef.current.stop();
+      } catch (_) {
+        // Ignore stop errors.
+      }
+    }
+    setIsListening(false);
+    listeningRef.current = false;
+    console.log('[VoiceChat] Native recognition stopped');
+  }, []);
+
+  const cancelBackendMonitor = useCallback(() => {
+    if (animationFrameRef.current !== null) {
+      cancelAnimationFrame(animationFrameRef.current);
+      animationFrameRef.current = null;
+    }
+  }, []);
+
+  const finalizeBackendRecording = useCallback(() => {
+    const recorder = mediaRecorderRef.current;
+    if (!recorder) return;
+    if (recorder.state === 'recording') {
+      try {
+        recorder.stop();
+      } catch (error) {
+        console.error('Failed to stop MediaRecorder:', error);
+      }
+    }
+  }, []);
+
+  const beginBackendRecording = useCallback(() => {
+    const recorder = mediaRecorderRef.current;
+    if (!recorder || !listeningRef.current) return;
+    if (recorder.state === 'inactive') {
+      audioChunksRef.current = [];
+      try {
+        recorder.start(400);
+      } catch (error) {
+        console.error('Failed to start MediaRecorder:', error);
+      }
+    }
+  }, []);
+
+  const initializeBackend = useCallback((stream: MediaStream) => {
+    if (typeof MediaRecorder === 'undefined') {
+      throw new Error('MediaRecorder API is not supported in this browser.');
+    }
+
+    const mimeTypesToTry = [
+      'audio/webm;codecs=opus',
+      'audio/webm',
+      'audio/ogg;codecs=opus',
+      'audio/mp4',
+    ];
+
+    let selectedMimeType = '';
+    for (const mime of mimeTypesToTry) {
+      if (MediaRecorder.isTypeSupported(mime)) {
+        selectedMimeType = mime;
+        break;
+      }
+    }
+
+    const recorder = new MediaRecorder(stream, selectedMimeType ? { mimeType: selectedMimeType } : undefined);
+    mediaRecorderRef.current = recorder;
+
+    recorder.ondataavailable = (event: BlobEvent) => {
+      if (event.data && event.data.size > 0) {
+        audioChunksRef.current.push(event.data);
+      }
+    };
+
+    recorder.onstop = async () => {
+      if (!listeningRef.current) {
+        audioChunksRef.current = [];
+        return;
+      }
+      const chunks = audioChunksRef.current;
+      audioChunksRef.current = [];
+
+      if (!chunks.length || isProcessingRef.current) {
+        return;
+      }
+
+      const blob = new Blob(chunks, { type: recorder.mimeType });
+      if (blob.size < BACKEND_MIN_BLOB_BYTES) {
+        return;
+      }
+
+      try {
+        setTranscript('Processing...');
+        const text = await transcribeAudioBlob(blob);
+        if (text) {
+          setTranscript(text);
+          // Stop monitoring before processing to prevent loop
+          if (animationFrameRef.current !== null) {
+            cancelAnimationFrame(animationFrameRef.current);
+            animationFrameRef.current = null;
+          }
+          setIsListening(false);
+          listeningRef.current = false;
+          speechStateRef.current.isSpeaking = false;
+          await handleUserSpeech(text);
+        } else {
+          setTranscript('');
+        }
+      } catch (error) {
+        console.error('Transcription error:', error);
+        showNotification(error instanceof Error ? error.message : 'Failed to transcribe audio.', 'error');
+        setTranscript('');
+      }
+    };
+
+    const audioContext = new AudioContext();
+    const source = audioContext.createMediaStreamSource(stream);
+    const analyser = audioContext.createAnalyser();
+    analyser.fftSize = 2048;
+    const dataArray = new Float32Array(analyser.fftSize);
+    source.connect(analyser);
+
+    audioContextRef.current = audioContext;
+    analyserRef.current = analyser;
+    analyserDataRef.current = dataArray;
+  }, [handleUserSpeech, showNotification, transcribeAudioBlob]);
+
+  const startBackendListening = useCallback(() => {
+    if (!analyserRef.current || !analyserDataRef.current) {
+      return;
+    }
+
+    setTranscript('');
+    setIsListening(true);
+    listeningRef.current = true;
+    speechStateRef.current = { isSpeaking: false, lastSpeechTime: performance.now() };
+
+    const checkSpeech = () => {
+      if (!analyserRef.current || !analyserDataRef.current) {
+        return;
+      }
+
+      const analyser = analyserRef.current;
+      const dataArray = analyserDataRef.current as Float32Array;
+      // @ts-expect-error Web Audio types mismatch in current TypeScript lib.
+      analyser.getFloatTimeDomainData(dataArray);
+
+      let sumSquares = 0;
+      for (let i = 0; i < dataArray.length; i++) {
+        const value = dataArray[i];
+        sumSquares += value * value;
+      }
+
+      const rms = Math.sqrt(sumSquares / dataArray.length);
+      const now = performance.now();
+
+      if (rms > BACKEND_SPEECH_THRESHOLD) {
+        speechStateRef.current.lastSpeechTime = now;
+        if (!speechStateRef.current.isSpeaking) {
+          speechStateRef.current.isSpeaking = true;
+          beginBackendRecording();
+        }
+      } else if (
+        speechStateRef.current.isSpeaking &&
+        now - speechStateRef.current.lastSpeechTime > BACKEND_SILENCE_MS
+      ) {
+        speechStateRef.current.isSpeaking = false;
+        finalizeBackendRecording();
+      }
+
+      if (listeningRef.current) {
+        animationFrameRef.current = requestAnimationFrame(checkSpeech);
+      }
+    };
+
+    animationFrameRef.current = requestAnimationFrame(checkSpeech);
+  }, [beginBackendRecording, finalizeBackendRecording]);
+
+  const stopBackendListening = useCallback((flushPending: boolean) => {
+    setIsListening(false);
+    listeningRef.current = false;
+    speechStateRef.current.isSpeaking = false;
+    cancelBackendMonitor();
+
+    if (flushPending) {
+      finalizeBackendRecording();
+    } else if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
+      try {
+        mediaRecorderRef.current.stop();
+      } catch (error) {
+        console.error('Failed to stop recorder:', error);
+      }
+    }
+  }, [cancelBackendMonitor, finalizeBackendRecording]);
+
+  useEffect(() => {
+    listeningRef.current = isListening;
+  }, [isListening]);
+
+  useEffect(() => {
+    if (!isOpen) {
+      cleanupResources();
+      setVoiceMode(null);
+      setIsListening(false);
+      setIsSpeaking(false);
+      setTranscript('');
+      setAiResponse('');
+      return;
+    }
+
+    let cancelled = false;
+
+    const setup = async () => {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        if (cancelled) {
+          stream.getTracks().forEach((track) => track.stop());
+          return;
+        }
+        mediaStreamRef.current = stream;
+
+        const RecognitionCtor = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+        if (RecognitionCtor) {
+          initializeNativeRecognition(RecognitionCtor);
+          setVoiceMode('native');
+          startNativeListening();
+        } else {
+          await initializeBackend(stream);
+          setVoiceMode('backend');
+          startBackendListening();
+        }
+      } catch (error) {
+        console.error('Failed to initialize voice chat:', error);
+        const message =
+          error instanceof Error && error.message.includes('MediaRecorder')
+            ? 'Voice capture is not supported in this browser.'
+            : 'Microphone access is required for voice chat.';
+        showNotification(message, 'error');
+        handleClose();
+      }
+    };
+
+    setup();
+
+    return () => {
+      cancelled = true;
+      cleanupResources();
+      setVoiceMode(null);
+    };
+  }, [
+    isOpen,
+    cleanupResources,
+    initializeBackend,
+    initializeNativeRecognition,
+    showNotification,
+    startBackendListening,
+    startNativeListening,
+    handleClose,
+  ]);
+
+  const triggerDebugSample = useCallback(() => {
+    const sampleText = 'This is a debug voice sample message.';
+    handleUserSpeech(sampleText);
+  }, [handleUserSpeech]);
+
+  useEffect(() => {
+    if (!isOpen || messages.length === 0) return;
+
+    const lastMessage = messages[messages.length - 1];
+    
+    // Only speak if it's a new assistant message we haven't spoken yet
+    if (lastMessage.role === 'assistant' && lastMessage.content) {
+      // Use a combination of message length and content hash as unique ID
+      const messageId = `${messages.length}-${lastMessage.content.substring(0, 50)}`;
+      
+      if (messageId !== lastSpokenMessageIdRef.current) {
+        console.log('[VoiceChat] New assistant message detected, triggering TTS (messageId:', messageId, ')');
+        lastSpokenMessageIdRef.current = messageId;
+        
+        const content = lastMessage.content;
+        setAiResponse(content);
+        
+        // Ensure we're not listening while AI is speaking or processing
+        if (isListening) {
+          console.log('[VoiceChat] Stopping listening before AI speaks (mode:', voiceMode, ')');
+          shouldRestartListeningRef.current = false;
+          
+          if (voiceMode === 'backend') {
+            cancelBackendMonitor();
+            if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
+              try {
+                mediaRecorderRef.current.stop();
+              } catch (_) {}
+            }
+            audioChunksRef.current = [];
+            speechStateRef.current.isSpeaking = false;
+          } else if (voiceMode === 'native') {
+            if (recognitionRef.current) {
+              try {
+                recognitionRef.current.stop();
+              } catch (_) {}
+            }
+          }
+          setIsListening(false);
+          listeningRef.current = false;
+        }
+        
+        speakText(content);
+      }
+    }
+  }, [messages, isOpen, speakText, isListening, voiceMode, cancelBackendMonitor]);
+
+  const toggleListening = () => {
+    if (voiceMode === 'native') {
+      if (isListening) {
+        stopNativeListening();
+      } else {
+        startNativeListening();
+      }
+    } else if (voiceMode === 'backend') {
+      if (isListening) {
+        stopBackendListening(true);
+      } else {
+        startBackendListening();
+      }
+    }
+  };
+
+  if (!isOpen) return null;
+
+  let statusText = 'Initializing microphone...';
+  let statusClass = 'idle';
+
+  if (voiceMode) {
+    if (isSpeaking) {
+      statusText = 'Speaking...';
+      statusClass = 'speaking';
+    } else if (isListening) {
+      statusText = 'Listening...';
+      statusClass = 'listening';
+    } else {
+      statusText = 'Press the microphone to start';
+      statusClass = 'idle';
+    }
+  }
+
+  return (
+    <div className="voice-chat-overlay" onClick={handleClose}>
+      <div className="voice-chat-modal" onClick={(e) => e.stopPropagation()}>
+        <button className="voice-chat-close-btn" onClick={handleClose}>
+          <FiX size={24} />
+        </button>
+
+        <div className="voice-chat-content">
+          <div className={`ai-orb ${isSpeaking ? 'speaking' : ''} ${isListening ? 'listening' : ''}`}>
+            <div className="orb-inner"></div>
+            <div className="orb-glow"></div>
+            <div className="orb-pulse"></div>
+          </div>
+
+          <div className="voice-chat-status">
+            <p className={`status-text ${statusClass}`}>{statusText}</p>
+          </div>
+
+          {transcript && (
+            <div className="transcript-display">
+              <p className="transcript-label">You said:</p>
+              <p className="transcript-text">{transcript}</p>
+            </div>
+          )}
+
+          {aiResponse && !isSpeaking && (
+            <div className="response-display">
+              <p className="response-label">AI Response:</p>
+              <p className="response-text">{aiResponse}</p>
+            </div>
+          )}
+
+          <div className="voice-chat-controls">
+            <button
+              className={`voice-control-btn ${isListening ? 'active' : ''}`}
+              onClick={toggleListening}
+              disabled={!voiceMode}
+            >
+              {isListening ? <FiMicOff size={32} /> : <FiMic size={32} />}
+            </button>
+          </div>
+
+          <div className="voice-chat-info">
+            <p className="info-text">
+              Ask me anything - I can search the internet, execute code, find directions, and more!
+            </p>
+          </div>
+              <button
+                className="voice-debug-btn"
+                type="button"
+                onClick={triggerDebugSample}
+              >
+                Run Debug Sample
+              </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default VoiceChatModal;

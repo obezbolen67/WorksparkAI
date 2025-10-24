@@ -26,6 +26,9 @@ const ChatInput = ({ onSendMessage, onStopGeneration, isSending, isThinkingVisib
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [isDragging, setIsDragging] = useState(false);
   const [isVoiceChatOpen, setIsVoiceChatOpen] = useState(false);
+  const isProUser = user?.subscriptionStatus === 'active';
+  const voiceTooltip = isProUser ? 'Voice Chat' : 'Voice chat is available for Pro users only';
+
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -232,10 +235,12 @@ const ChatInput = ({ onSendMessage, onStopGeneration, isSending, isThinkingVisib
       onDragOver={handleDragOver}
       onDrop={handleDrop}
     >
-      <VoiceChatModal 
-        isOpen={isVoiceChatOpen} 
-        onClose={() => setIsVoiceChatOpen(false)} 
-      />
+      {isProUser && (
+        <VoiceChatModal 
+          isOpen={isVoiceChatOpen} 
+          onClose={() => setIsVoiceChatOpen(false)} 
+        />
+      )}
       
       {selectedFiles.length > 0 && (
         <div className="attachment-preview-area">
@@ -314,10 +319,17 @@ const ChatInput = ({ onSendMessage, onStopGeneration, isSending, isThinkingVisib
             </Tooltip>
           ) : (
             <>
-              <Tooltip text="Voice Chat">
+              <Tooltip text={voiceTooltip}>
                 <button 
-                  className="chat-input-button mic-button"
-                  onClick={() => setIsVoiceChatOpen(true)}
+                  className={`chat-input-button mic-button ${isProUser ? '' : 'mic-button-disabled'}`}
+                  onClick={() => {
+                    if (!isProUser) {
+                      showNotification('Voice chat is available for Pro users only.', 'error');
+                      return;
+                    }
+                    setIsVoiceChatOpen(true);
+                  }}
+                  aria-disabled={!isProUser}
                 >
                   <HiOutlineMicrophone size={20} />
                 </button>
