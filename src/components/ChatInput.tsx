@@ -9,6 +9,7 @@ import Tooltip from './Tooltip';
 import { useSettings } from '../contexts/SettingsContext';
 import { useNotification } from '../contexts/NotificationContext';
 import { getFileIcon } from '../utils/fileIcons';
+import VoiceChatModal from './VoiceChatModal';
 
 interface ChatInputProps {
   onSendMessage: (text: string, attachments: Attachment[], metadata?: Record<string, any>) => void;
@@ -24,6 +25,7 @@ const ChatInput = ({ onSendMessage, onStopGeneration, isSending, isThinkingVisib
   const [text, setText] = useState('');
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [isDragging, setIsDragging] = useState(false);
+  const [isVoiceChatOpen, setIsVoiceChatOpen] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -230,6 +232,11 @@ const ChatInput = ({ onSendMessage, onStopGeneration, isSending, isThinkingVisib
       onDragOver={handleDragOver}
       onDrop={handleDrop}
     >
+      <VoiceChatModal 
+        isOpen={isVoiceChatOpen} 
+        onClose={() => setIsVoiceChatOpen(false)} 
+      />
+      
       {selectedFiles.length > 0 && (
         <div className="attachment-preview-area">
           {selectedFiles.map((file, index) => {
@@ -307,9 +314,14 @@ const ChatInput = ({ onSendMessage, onStopGeneration, isSending, isThinkingVisib
             </Tooltip>
           ) : (
             <>
-              <button className="chat-input-button mic-button">
-                <HiOutlineMicrophone size={20} />
-              </button>
+              <Tooltip text="Voice Chat">
+                <button 
+                  className="chat-input-button mic-button"
+                  onClick={() => setIsVoiceChatOpen(true)}
+                >
+                  <HiOutlineMicrophone size={20} />
+                </button>
+              </Tooltip>
               <button
                 className="chat-input-button send-button"
                 onClick={handleSend}
