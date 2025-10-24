@@ -3,11 +3,9 @@
 .voice-chat-overlay {
   position: fixed;
   top: 0;
-  left: 0;
+  left: 260px; /* Width of sidebar */
   right: 0;
   bottom: 0;
-  width: 100%;
-  height: 100%;
   background-color: rgba(0, 0, 0, 0.85);
   backdrop-filter: blur(12px);
   display: flex;
@@ -29,49 +27,20 @@
 
 .voice-chat-modal {
   position: relative;
-  width: 95%;
-  max-width: 800px;
-  height: 90vh;
-  max-height: 900px;
+  width: 100%;
+  height: 100%;
   background: var(--main-bg-color);
-  border-radius: 32px;
-  box-shadow: 0 20px 80px rgba(0, 0, 0, 0.5);
+  border-radius: 0;
+  box-shadow: none;
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  animation: slideUpModal 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  animation: fadeIn 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-@keyframes slideUpModal {
-  from {
-    opacity: 0;
-    transform: translateY(100%);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
+/* Modal now uses fadeIn animation directly */
 
-/* Mobile drag grip */
-.voice-chat-modal::before {
-  content: '';
-  position: absolute;
-  top: 12px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 48px;
-  height: 5px;
-  background-color: var(--border-color);
-  border-radius: 10px;
-  opacity: 0.6;
-  z-index: 10;
-  transition: opacity 0.2s ease;
-}
-
-.voice-chat-modal:hover::before {
-  opacity: 0.8;
-}
+/* Removed mobile drag grip as modal is now fullscreen */
 
 .voice-chat-close-btn {
   position: absolute;
@@ -135,6 +104,71 @@
   border-radius: 50%;
   box-shadow: 0 0 40px rgba(16, 185, 129, 0.5), 0 0 80px rgba(16, 185, 129, 0.3);
   transition: all 0.3s ease;
+  overflow: hidden;
+}
+
+/* Shimmer effect that moves across the orb */
+.orb-inner::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: linear-gradient(
+    45deg,
+    transparent 30%,
+    rgba(52, 211, 153, 0.6) 50%,
+    transparent 70%
+  );
+  animation: shimmer 3s linear infinite;
+}
+
+@keyframes shimmer {
+  0% {
+    transform: translateX(-100%) translateY(-100%) rotate(45deg);
+  }
+  100% {
+    transform: translateX(100%) translateY(100%) rotate(45deg);
+  }
+}
+
+/* Darker torrent effect inside the circle */
+.orb-inner::after {
+  content: '';
+  position: absolute;
+  top: 10%;
+  left: 10%;
+  width: 80%;
+  height: 80%;
+  background: radial-gradient(
+    ellipse at 30% 40%,
+    rgba(5, 150, 105, 0.8) 0%,
+    rgba(5, 150, 105, 0.4) 30%,
+    transparent 60%
+  );
+  border-radius: 50%;
+  animation: torrentMove 4s ease-in-out infinite;
+  filter: blur(8px);
+}
+
+@keyframes torrentMove {
+  0%, 100% {
+    transform: translate(0, 0) scale(1);
+    opacity: 0.7;
+  }
+  25% {
+    transform: translate(10px, -10px) scale(1.1);
+    opacity: 0.8;
+  }
+  50% {
+    transform: translate(-5px, 10px) scale(0.95);
+    opacity: 0.6;
+  }
+  75% {
+    transform: translate(-10px, -5px) scale(1.05);
+    opacity: 0.75;
+  }
 }
 
 .orb-glow {
@@ -177,40 +211,71 @@
   }
 }
 
-/* Speaking state */
+/* Speaking state - voice reactive glow */
 .ai-orb.speaking .orb-inner {
-  background: linear-gradient(135deg, #f59e0b 0%, #f97316 50%, #fbbf24 100%);
-  box-shadow: 0 0 60px rgba(245, 158, 11, 0.7), 0 0 100px rgba(245, 158, 11, 0.4);
-  animation: speakingPulse 0.8s ease-in-out infinite;
+  background: linear-gradient(135deg, #10b981 0%, #059669 50%, #34d399 100%);
+  box-shadow: 
+    0 0 60px rgba(16, 185, 129, 0.9),
+    0 0 100px rgba(16, 185, 129, 0.6),
+    0 0 140px rgba(16, 185, 129, 0.3);
+  animation: voiceReactivePulse 0.15s ease-in-out infinite;
 }
 
-@keyframes speakingPulse {
+/* Fast pulse to simulate voice response */
+@keyframes voiceReactivePulse {
   0%, 100% {
     transform: scale(1);
+    filter: brightness(1);
   }
   50% {
-    transform: scale(1.05);
+    transform: scale(1.03);
+    filter: brightness(1.2);
+  }
+}
+
+.ai-orb.speaking .orb-inner::before {
+  animation: shimmerFast 1.5s linear infinite;
+}
+
+@keyframes shimmerFast {
+  0% {
+    transform: translateX(-100%) translateY(-100%) rotate(45deg);
+  }
+  100% {
+    transform: translateX(100%) translateY(100%) rotate(45deg);
   }
 }
 
 .ai-orb.speaking .orb-glow {
-  background: radial-gradient(circle, rgba(245, 158, 11, 0.5) 0%, transparent 70%);
-  animation: speakingGlow 0.8s ease-in-out infinite;
+  background: radial-gradient(circle, rgba(16, 185, 129, 0.6) 0%, transparent 70%);
+  animation: voiceGlow 0.15s ease-in-out infinite;
 }
 
-@keyframes speakingGlow {
+@keyframes voiceGlow {
   0%, 100% {
-    transform: scale(1);
-    opacity: 0.7;
+    transform: scale(1.1);
+    opacity: 0.8;
   }
   50% {
-    transform: scale(1.2);
+    transform: scale(1.3);
     opacity: 1;
   }
 }
 
 .ai-orb.speaking .orb-pulse {
-  border-color: rgba(245, 158, 11, 0.8);
+  border-color: rgba(16, 185, 129, 0.9);
+  animation: voicePulse 0.3s ease-out infinite;
+}
+
+@keyframes voicePulse {
+  0% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1.4);
+    opacity: 0;
+  }
 }
 
 /* Listening state */
@@ -474,9 +539,13 @@
 
 /* Responsive */
 @media (max-width: 768px) {
+  .voice-chat-overlay {
+    left: 0; /* Full width on mobile */
+    top: 56px; /* Account for mobile header */
+  }
+
   .voice-chat-modal {
-    border-top-left-radius: 28px;
-    border-top-right-radius: 28px;
+    border-radius: 0;
   }
 
   .voice-chat-content {
@@ -508,9 +577,13 @@
 }
 
 @media (max-width: 480px) {
+  .voice-chat-overlay {
+    left: 0;
+    top: 56px;
+  }
+
   .voice-chat-modal {
-    border-top-left-radius: 24px;
-    border-top-right-radius: 24px;
+    border-radius: 0;
   }
 
   .voice-chat-content {
@@ -543,11 +616,5 @@
     right: 14px;
     width: 36px;
     height: 36px;
-  }
-
-  .voice-chat-modal::before {
-    top: 10px;
-    width: 40px;
-    height: 4px;
   }
 }
