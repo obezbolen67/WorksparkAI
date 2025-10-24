@@ -420,29 +420,39 @@ const VoiceChatModal = ({ isOpen, onClose }: VoiceChatModalProps) => {
 
   // Calculate sidebar width for proper positioning
   const [sidebarWidth, setSidebarWidth] = useState(260);
+  const [isMobile, setIsMobile] = useState(false);
   
   useEffect(() => {
     if (!isOpen) return;
     
+    const sidebar = document.querySelector('.sidebar');
+    
     const updateSidebarWidth = () => {
-      const sidebar = document.querySelector('.sidebar');
       if (sidebar) {
         const width = sidebar.getBoundingClientRect().width;
         setSidebarWidth(width);
       }
     };
     
+    const updateIsMobile = () => {
+      setIsMobile(window.innerWidth <= 768);
+    };
+    
     updateSidebarWidth();
+    updateIsMobile();
     
     // Listen for sidebar width changes
-    const observer = new ResizeObserver(updateSidebarWidth);
-    const sidebar = document.querySelector('.sidebar');
+    const resizeObserver = new ResizeObserver(updateSidebarWidth);
     if (sidebar) {
-      observer.observe(sidebar);
+      resizeObserver.observe(sidebar);
     }
     
+    // Listen for window resize for mobile detection
+    window.addEventListener('resize', updateIsMobile);
+    
     return () => {
-      observer.disconnect();
+      resizeObserver.disconnect();
+      window.removeEventListener('resize', updateIsMobile);
     };
   }, [isOpen]);
 
@@ -471,7 +481,7 @@ const VoiceChatModal = ({ isOpen, onClose }: VoiceChatModalProps) => {
     <div 
       className="voice-chat-overlay" 
       onClick={handleClose}
-      style={{ left: window.innerWidth <= 768 ? 0 : `${sidebarWidth}px` }}
+      style={{ left: isMobile ? 0 : `${sidebarWidth}px` }}
     >
       <div className="voice-chat-modal" onClick={(e) => e.stopPropagation()}>
         <button className="voice-chat-close-btn" onClick={handleClose}>
