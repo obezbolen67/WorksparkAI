@@ -3,7 +3,7 @@
 .voice-chat-overlay {
   position: fixed;
   top: 0;
-  left: 260px; /* Width of sidebar */
+  /* left is set dynamically via inline style to account for sidebar width */
   right: 0;
   bottom: 0;
   background-color: rgba(0, 0, 0, 0.85);

@@ -418,6 +418,34 @@ const VoiceChatModal = ({ isOpen, onClose }: VoiceChatModalProps) => {
     handleUserSpeech(sampleText);
   }, [handleUserSpeech]);
 
+  // Calculate sidebar width for proper positioning
+  const [sidebarWidth, setSidebarWidth] = useState(260);
+  
+  useEffect(() => {
+    if (!isOpen) return;
+    
+    const updateSidebarWidth = () => {
+      const sidebar = document.querySelector('.sidebar');
+      if (sidebar) {
+        const width = sidebar.getBoundingClientRect().width;
+        setSidebarWidth(width);
+      }
+    };
+    
+    updateSidebarWidth();
+    
+    // Listen for sidebar width changes
+    const observer = new ResizeObserver(updateSidebarWidth);
+    const sidebar = document.querySelector('.sidebar');
+    if (sidebar) {
+      observer.observe(sidebar);
+    }
+    
+    return () => {
+      observer.disconnect();
+    };
+  }, [isOpen]);
+
   if (!isOpen) return null;
 
   let statusText = 'Initializing microphone...';
@@ -440,7 +468,11 @@ const VoiceChatModal = ({ isOpen, onClose }: VoiceChatModalProps) => {
   }
 
   return (
-    <div className="voice-chat-overlay" onClick={handleClose}>
+    <div 
+      className="voice-chat-overlay" 
+      onClick={handleClose}
+      style={{ left: window.innerWidth <= 768 ? 0 : `${sidebarWidth}px` }}
+    >
       <div className="voice-chat-modal" onClick={(e) => e.stopPropagation()}>
         <button className="voice-chat-close-btn" onClick={handleClose}>
           <FiX size={24} />
