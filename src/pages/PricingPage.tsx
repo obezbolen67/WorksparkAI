@@ -6,7 +6,7 @@ import { useNotification } from '../contexts/NotificationContext';
 import '../css/PricingPage.css';
 import { FiCheckCircle } from 'react-icons/fi';
 import api from '../utils/api';
-const stripePromise = loadStripe("pk_test_51S97ATJHhdy0TngLOIvBqbtccieQ0FlzHHkxvyH58mot9dvhDj2LzuQ77L0wFBxGrsg7HLqm1JubQaisylnVXF8200H5kii7k3");
+import { fetchPublicConfig } from '../utils/config';
 
 const PricingPage = () => {
   const { user } = useSettings();
@@ -46,14 +46,15 @@ const PricingPage = () => {
     if (!priceId) return;
     setIsLoading(true);
     try {
+      const publishableKey = (import.meta as any).env?.VITE_STRIPE_PUBLISHABLE_KEY || (await fetchPublicConfig()).stripePublicKey;
+      if (!publishableKey) throw new Error('Stripe publishable key is missing.');
       const response = await api('/stripe/create-checkout-session', {
         method: 'POST',
         body: JSON.stringify({ priceId }),
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.msg || 'Could not start subscription.');
-
-      const stripe = await stripePromise;
+      const stripe = await loadStripe(publishableKey);
       if (stripe) {
         await stripe.redirectToCheckout({ sessionId: data.sessionId });
       }

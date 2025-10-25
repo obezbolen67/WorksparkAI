@@ -1,11 +1,51 @@
-steps:
-  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
-    # This is the command to run
-    entrypoint: 'gcloud'
-    timeout: 240s
-    # These are the arguments passed to the 'gcloud' command
-    # Each part of the command is a separate item in the list
-    args: ['run', 'deploy']
+substitutions:
+  _REGION: us-central1
+  _SERVICE: worksparkai
+  _REPO: worksparkairepo
 
 options:
   logging: CLOUD_LOGGING_ONLY
+
+availableSecrets:
+  secretManager:
+    - versionName: projects/$PROJECT_ID/secrets/GOOGLE_MAPS_API_KEY/versions/latest
+      env: GOOGLE_MAPS_API_KEY
+    - versionName: projects/$PROJECT_ID/secrets/STRIPE_PUBLISHABLE_KEY/versions/latest
+      env: STRIPE_PUBLISHABLE_KEY
+    - versionName: projects/$PROJECT_ID/secrets/VITE_API_URL/versions/latest
+      env: VITE_API_URL
+
+steps:
+  # 1) Write .env.production from Secret Manager (not committed to git)
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: 'bash'
+    secretEnv: [ 'GOOGLE_MAPS_API_KEY', 'STRIPE_PUBLISHABLE_KEY', 'VITE_API_URL' ]
+    args:
+      - -lc
+      - |
+        cat > .env.production << 'EOF'
+        VITE_API_URL=${VITE_API_URL}
+        VITE_GOOGLE_MAPS_API_KEY=${GOOGLE_MAPS_API_KEY}
+        VITE_STRIPE_PUBLISHABLE_KEY=${STRIPE_PUBLISHABLE_KEY}
+        EOF
+        echo "Wrote .env.production"
+
+  # 2) Build and push the container image
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['build', '-t', '${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/${_SERVICE}:$SHORT_SHA', '.']
+
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', '${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/${_SERVICE}:$SHORT_SHA']
+
+  # 3) Deploy to Cloud Run
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: 'gcloud'
+    args:
+      [
+        'run','deploy','${_SERVICE}',
+        '--image=${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/${_SERVICE}:$SHORT_SHA',
+        '--region=${_REGION}',
+        '--platform=managed',
+        '--allow-unauthenticated',
+        '--port=8080'
+      ]

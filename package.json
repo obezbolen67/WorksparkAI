@@ -8,9 +8,15 @@
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "start": "serve -s dist"
+    "start": "serve -s dist",
+    "cap:add:android": "npx cap add android",
+    "cap:copy": "npx cap copy",
+    "cap:sync": "npx cap sync",
+    "cap:open:android": "npx cap open android",
+    "cap:build": "npm run build && npm run cap:copy"
   },
   "dependencies": {
+    "@capacitor/core": "^6.2.0",
     "@react-google-maps/api": "^2.20.7",
     "@stripe/react-stripe-js": "^4.0.2",
     "@stripe/stripe-js": "^7.9.0",
@@ -29,6 +35,8 @@
     "vite-plugin-svgr": "^4.3.0"
   },
   "devDependencies": {
+    "@capacitor/android": "^6.2.0",
+    "@capacitor/cli": "^6.2.0",
     "@eslint/js": "^9.25.0",
     "@types/node": "^24.9.1",
     "@types/react": "^19.1.2",

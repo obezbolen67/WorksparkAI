@@ -1,10 +1,11 @@
 // src/components/GoogleMapsBlock.tsx
-import { memo, useMemo, useState, useCallback } from 'react';
+import { memo, useMemo, useState, useCallback, useEffect } from 'react';
 import { GoogleMap, useLoadScript, Marker, Polyline, TrafficLayer, StreetViewPanorama } from '@react-google-maps/api';
 import { FiMap, FiNavigation, FiClock, FiMapPin, FiMaximize2, FiMinimize2, FiLayers, FiEye, FiNavigation2, FiAlertTriangle } from 'react-icons/fi';
 import type { GoogleMapsData } from '../types';
 import '../css/AnalysisBlock.css';
 import '../css/GoogleMapsBlock.css';
+import { fetchPublicConfig } from '../utils/config';
 
 interface GoogleMapsBlockProps {
   integrationData: GoogleMapsData;
@@ -72,7 +73,17 @@ const GoogleMapsBlock = memo(({ integrationData }: GoogleMapsBlockProps) => {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [showStreetView, setShowStreetView] = useState(false);
 
-  const mapsApiKey = "AIzaSyBNqMjztHTnwKTk0rmGbIgfRDJOG2wjqcM";
+  const [mapsApiKey, setMapsApiKey] = useState<string>(
+    (import.meta as any).env?.VITE_GOOGLE_MAPS_API_KEY || ''
+  );
+
+  useEffect(() => {
+    if (!mapsApiKey) {
+      fetchPublicConfig().then(cfg => {
+        if (cfg.googleMapsApiKey) setMapsApiKey(cfg.googleMapsApiKey);
+      }).catch(() => {});
+    }
+  }, [mapsApiKey]);
 
   const { isLoaded, loadError } = useLoadScript({
     googleMapsApiKey: mapsApiKey || "",
@@ -147,7 +158,7 @@ const GoogleMapsBlock = memo(({ integrationData }: GoogleMapsBlockProps) => {
   }), [integrationData]);
 
   const renderMapContent = () => {
-    if (loadError || !mapsApiKey) {
+  if (loadError || !mapsApiKey) {
         const errorMessage = !mapsApiKey 
             ? "Google Maps API Key is missing in client environment variables."
             : "Failed to load Google Maps. Please check your API key and browser console.";
@@ -156,9 +167,11 @@ const GoogleMapsBlock = memo(({ integrationData }: GoogleMapsBlockProps) => {
                 <FiAlertTriangle size={24} />
                 <p><strong>Map Loading Error</strong></p>
                 <p>{errorMessage}</p>
-                {!mapsApiKey && 
-                    <pre>Add VITE_GOOGLE_MAPS_API_KEY="YOUR_KEY" to FexoApp/.env and restart the server.</pre>
-                }
+        {!mapsApiKey && (
+          <pre>
+          Provide a key via Vite env (VITE_GOOGLE_MAPS_API_KEY), or expose it from the server at /api/config.
+          </pre>
+        )}
             </div>
         );
     }
