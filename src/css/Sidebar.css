@@ -609,6 +609,11 @@
 
 /* --- RESPONSIVE STYLES --- */
 @media (max-width: 768px) {
+  /* On mobile, sidebar doesn't affect layout (it's fixed and hidden) */
+  .app-container {
+    --sidebar-width: 0;
+  }
+  
   .sidebar {
     position: fixed;
     top: 0;

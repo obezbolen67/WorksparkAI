@@ -1,6 +1,7 @@
 /* src/css/App.css */
 :root {
   /* Default to light theme */
+  --sidebar-width: 260px; /* Default desktop sidebar width for global overlays */
   --sidebar-bg-color: #f4f4f5;
   --main-bg-color: #ffffff;
   --input-bg-color: #ffffff;
@@ -36,6 +37,11 @@ body {
   color: var(--primary-text-color);
 }
 
+/* When the sidebar is collapsed on desktop, shrink the global sidebar width */
+body:has(.sidebar.is-collapsed) {
+  --sidebar-width: 80px;
+}
+
 .app-container {
   display: flex;
   height: 100vh;
@@ -55,6 +61,8 @@ body {
     height: 100vh; /* Use full viewport height */
     box-sizing: border-box;
   }
+  /* On mobile, overlays should cover the full width, so sidebar width is 0 */
+  :root { --sidebar-width: 0px; }
 }
 
 /* --- NEW: Full-screen loading background --- */

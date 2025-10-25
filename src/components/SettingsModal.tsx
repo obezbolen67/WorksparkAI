@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useSettings } from '../contexts/SettingsContext';
 import { useNotification } from '../contexts/NotificationContext';
 import '../css/SettingsModal.css';
-import { FiRefreshCw, FiCpu, FiSliders, FiEye, FiEyeOff, FiMoreVertical, FiX, FiCreditCard, FiCheckCircle, FiLink, FiStar } from "react-icons/fi";
+import { FiRefreshCw, FiCpu, FiSliders, FiEye, FiEyeOff, FiMoreVertical, FiX, FiCreditCard, FiCheckCircle, FiLink, FiStar, FiVolume2, FiPlay, FiPause } from "react-icons/fi";
 import OpenAIIcon from '../icons/openai.svg?react';
 import AnthropicIcon from '../icons/anthropic.svg?react';
 import GeminiIcon from '../icons/gemini.svg?react';
@@ -13,6 +13,7 @@ import Portal from './Portal';
 import ProviderSelector, { type Provider } from './ProviderSelector';
 import CustomModelSelector from './CustomModelSelector';
 import '../css/ProviderSelector.css';
+import '../css/VoiceSettings.css';
 import '../css/CustomModelSelector.css';
 
 type Model = { id: string };
@@ -27,7 +28,7 @@ type Integration = {
 };
 
 interface SettingsModalProps { isOpen: boolean; onClose: () => void; }
-type ActiveTab = 'GPT' | 'Subscription' | 'Appearance' | 'Integrations';
+type ActiveTab = 'GPT' | 'Subscription' | 'Appearance' | 'Integrations' | 'Voice';
 
 const providers: Provider[] = [
   { id: 'default', name: "Default (Free)",Icon: GeminiIcon},
@@ -90,6 +91,17 @@ const SettingsModal = ({ isOpen, onClose }: SettingsModalProps) => {
   const [editableMaxOutputValue, setEditableMaxOutputValue] = useState(String(maxOutputTokens));
 
   const [modelSearchQuery, setModelSearchQuery] = useState('');
+  // --- Voice state ---
+  const curatedVoices = [
+    { id: '9BWtsMINqrJLrRacOk9x', name: 'Aria', gender: 'female' as const, description: 'Warm, conversational' },
+    { id: '21m00Tcm4TlvDq8ikWAM', name: 'Rachel', gender: 'female' as const, description: 'Casual, personable' },
+    { id: '29vD33N1CtxCmqQRPOHJ', name: 'Drew', gender: 'male' as const, description: 'Well-rounded, newsy' },
+    { id: '4YYIPFl9wE5c4L2eu2Gb', name: 'Burt Reynolds™', gender: 'male' as const, description: 'Iconic, deep' },
+  ];
+  const [voiceId, setVoiceId] = useState(user?.voiceSettings?.voiceId || curatedVoices[0].id);
+  const [voiceName, setVoiceName] = useState(user?.voiceSettings?.voiceName || curatedVoices[0].name);
+  const [previewingId, setPreviewingId] = useState<string | null>(null);
+  const audioEl = useRef<HTMLAudioElement | null>(null);
 
 
   useEffect(() => {
@@ -115,6 +127,8 @@ const SettingsModal = ({ isOpen, onClose }: SettingsModalProps) => {
       setContextLength(user.contextLength || MIN_CONTEXT);
       setMaxOutputTokens(user.maxOutputTokens || 4096);
       setEnabledIntegrations(user.enabledIntegrations || []);
+      setVoiceId(user.voiceSettings?.voiceId || voiceId);
+      setVoiceName(user.voiceSettings?.voiceName || voiceName);
     }
   }, [user]);
 
@@ -276,6 +290,7 @@ const SettingsModal = ({ isOpen, onClose }: SettingsModalProps) => {
           quickAccessModels,
         }),
         enabledIntegrations,
+        voiceSettings: { voiceId, voiceName },
       };
       
       console.log(settingsToSave)
@@ -288,6 +303,103 @@ const SettingsModal = ({ isOpen, onClose }: SettingsModalProps) => {
     } catch (err) {
       showNotification(`Failed to save settings.\n${err}`, "error");
     }
+  };
+  const previewVoice = async (id: string, name: string) => {
+    setPreviewingId(id);
+    try {
+      // Try local pre-downloaded preview first to avoid API cost
+      const tryLocal = async (): Promise<boolean> => {
+        const exts = ['mp3', 'ogg', 'wav'];
+        for (const ext of exts) {
+          const url = `/voices/${id}.${ext}`;
+          try {
+            const resp = await fetch(url, { method: 'GET' });
+            if (resp.ok) {
+              if (!audioEl.current) audioEl.current = new Audio();
+              audioEl.current.src = `${url}?v=${Date.now()}`; // bust cache during dev
+              await audioEl.current.play();
+              return true;
+            }
+          } catch (_) {
+            // try next extension
+          }
+        }
+        return false;
+      };
+
+      const playedLocal = await tryLocal();
+      if (playedLocal) return;
+
+      // Fallback: call server TTS preview
+      if (!audioEl.current) audioEl.current = new Audio();
+      const res = await api('/voice/tts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Accept: 'audio/mpeg' },
+        body: JSON.stringify({
+          text: `Hi, I am ${name}. This is a sample of my voice.`,
+          voiceId: id,
+        }),
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err?.error || 'Could not preview voice');
+      }
+      const buf = await res.arrayBuffer();
+      const blob = new Blob([buf], { type: 'audio/mpeg' });
+      const url = URL.createObjectURL(blob);
+      audioEl.current.src = url;
+      await audioEl.current.play();
+    } catch (e) {
+      console.error(e);
+      showNotification(e instanceof Error ? e.message : 'Failed to preview voice', 'error');
+    } finally {
+      setPreviewingId(null);
+    }
+  };
+
+  const renderVoiceTab = () => {
+    const isPro = user?.subscriptionStatus === 'active';
+    return (
+      <>
+        <h3>Voice</h3>
+        <p>Choose how the assistant sounds. Preview each voice and pick your favorite.</p>
+        {!isPro && (
+          <div className="upgrade-prompt">
+            <FiStar size={18} />
+            <span>Voice is a Pro feature.</span>
+            <button onClick={handleUpgrade}>Upgrade to Pro</button>
+          </div>
+        )}
+
+        <div className="voice-grid">
+          {curatedVoices.map(v => (
+            <div key={v.id} className={`voice-card ${voiceId === v.id ? 'selected' : ''}`} onClick={() => { setVoiceId(v.id); setVoiceName(v.name);} }>
+              <div className="voice-card-header">
+                <div className={`voice-gender ${v.gender}`}></div>
+                <h4>{v.name}</h4>
+              </div>
+              <p className="voice-desc">{v.description}</p>
+              <div className="voice-actions">
+                <button className="preview-btn" onClick={(e) => { e.stopPropagation(); previewVoice(v.id, v.name); }} disabled={!isPro || !!previewingId}>
+                  {previewingId === v.id ? <FiPause /> : <FiPlay />} Preview
+                </button>
+                <label className="select-radio">
+                  <input type="radio" checked={voiceId === v.id} onChange={() => { setVoiceId(v.id); setVoiceName(v.name);} } disabled={!isPro} />
+                  <span>Use</span>
+                </label>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div className="modal-actions">
+          <button className="modal-button modal-button-cancel" onClick={handleClose}>Cancel</button>
+          <button className="modal-button modal-button-save" onClick={handleSave}>
+            <FiVolume2 style={{marginRight: 8}}/> Save & Close
+          </button>
+        </div>
+      </>
+    );
   };
 
   const handleIntegrationToggle = (integrationId: string) => {
@@ -856,12 +968,17 @@ const SettingsModal = ({ isOpen, onClose }: SettingsModalProps) => {
             <FiSliders size={18} />
             <span>Appearance</span>
           </button>
+          <button className={`settings-tab-button ${activeTab === 'Voice' ? 'active' : ''}`} onClick={() => setActiveTab('Voice')}>
+            <FiVolume2 size={18} />
+            <span>Voice</span>
+          </button>
         </aside>
         <main className="settings-content">
           {activeTab === 'GPT' && renderGptTab()}
           {activeTab === 'Integrations' && renderIntegrationsTab()}
           {activeTab === 'Subscription' && renderSubscriptionTab()}
           {activeTab === 'Appearance' && renderAppearanceTab()}
+          {activeTab === 'Voice' && renderVoiceTab()}
         </main>
       </div>
     </div>

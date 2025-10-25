@@ -14,6 +14,13 @@ type ModelConfig = {
 };
 
 type Theme = 'dark' | 'light';
+type VoiceSettings = {
+  voiceId: string;
+  voiceName?: string;
+  ttsModel?: string;
+  stability?: number;
+  similarity?: number;
+};
 
 type ApiKeyEntry = {
   provider: string;
@@ -38,6 +45,7 @@ type User = {
   subscriptionId?: string | null;
   subscriptionStatus?: 'active' | 'canceled' | 'incomplete' | 'past_due' | 'unpaid' | null;
   planId?: string | null;
+  voiceSettings?: VoiceSettings;
 
 };
 // --- END OF CHANGE ---

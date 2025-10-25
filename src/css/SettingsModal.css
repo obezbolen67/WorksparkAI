@@ -134,6 +134,8 @@
   flex-grow: 1;
   padding: 2rem;
   overflow-y: auto;
+  overflow-x: hidden; /* avoid horizontal scroll within modal */
+  box-sizing: border-box;
 }
 
 .settings-content h3 {
@@ -411,7 +413,7 @@
 .error-text { color: #f87171; font-size: 0.8rem; margin-top: 0.5rem; padding-left: 0.25rem; }
 
 /* --- ACTION BUTTONS --- */
-.modal-actions { margin-top: 2rem; display: flex; justify-content: flex-end; gap: 0.75rem; }
+.modal-actions { margin-top: 2rem; display: flex; justify-content: flex-end; gap: 0.75rem; flex-wrap: wrap; }
 .modal-button { border: none; padding: 0.5rem 1rem; border-radius: 0.75rem; font-weight: 500; cursor: pointer; transition: all 0.2s ease-in-out; font-size: 0.9rem; }
 .modal-button:hover:not(:disabled) { transform: scale(1.05); }
 .modal-button-cancel { background-color: var(--main-bg-color); color: var(--primary-text-color); border: 1px solid var(--border-color); }
