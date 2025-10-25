@@ -66,6 +66,7 @@ interface ChatContextType {
 const ChatContext = createContext<ChatContextType | undefined>(undefined);
 
 export const ChatProvider = ({ children }: { children: ReactNode }) => {
+  const DEBUG_LOCAL = import.meta.env.VITE_API_URL === 'http://localhost:3001';
   const navigate = useNavigate();
   const { token } = useSettings();
   const { showNotification } = useNotification();
@@ -115,6 +116,10 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
   }, [loadChatList]);
 
   const stopGeneration = useCallback(() => {
+    if (DEBUG_LOCAL) {
+      // eslint-disable-next-line no-console
+      console.debug('[DEBUG STREAM] stopGeneration called. Aborting stream and clearing waiting states.');
+    }
     if (streamAbortControllerRef.current) {
       streamAbortControllerRef.current.abort();
     }
@@ -134,7 +139,7 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
     ) => {
       
 
-      setIsSending(true);
+  setIsSending(true);
       setIsStreaming(true);
       setIsThinking(false);
       setThinkingContent(null);
@@ -145,6 +150,15 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
       let streamEndedForClientTool = false;
 
       try {
+        if (DEBUG_LOCAL) {
+          // eslint-disable-next-line no-console
+          console.debug('[DEBUG STREAM] → POST /chats/%s/stream', chatId, {
+            historyLen: messageHistory.length,
+            lastRole: messageHistory[messageHistory.length - 1]?.role,
+            meta: metadata,
+          });
+        }
+
         const response = await api(`/chats/${chatId}/stream`, {
           method: 'POST',
           body: JSON.stringify({ messagesFromClient: messageHistory, metadata }),
@@ -152,6 +166,10 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
         });
 
         if (!response.ok) {
+          if (DEBUG_LOCAL) {
+            // eslint-disable-next-line no-console
+            console.debug('[DEBUG STREAM] HTTP error from /stream:', response.status, response.statusText);
+          }
           const errorData = await response
             .json()
             .catch(() => ({ error: 'Streaming failed with status ' + response.status }));
@@ -182,7 +200,17 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
 
               try {
                 const event = JSON.parse(jsonString);
-                
+                if (DEBUG_LOCAL) {
+                  const t = event?.type;
+                  // Avoid noisy logs for token deltas; summarize instead
+                  if (t === 'ASSISTANT_DELTA' || t === 'TOOL_CODE_DELTA' || t === 'TOOL_SEARCH_DELTA' || t === 'TOOL_DOC_EXTRACT_DELTA' || t === 'TOOL_INTEGRATION_DELTA' || t === 'THINKING_DELTA') {
+                    // eslint-disable-next-line no-console
+                    console.debug('[DEBUG SSE] Δ', t, (event.content ? `len=${event.content.length}` : '')); 
+                  } else {
+                    // eslint-disable-next-line no-console
+                    console.debug('[DEBUG SSE] evt', t, { tool_id: event.tool_id, state: event.state, reason: event.reason });
+                  }
+                }
 
                 if (event.type === 'error') {
                   const errorMessage =
@@ -195,6 +223,10 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
 
                 if (event.type === 'STREAM_END' && event.reason === 'tool_use') {
                   streamEndedForClientTool = true;
+                  if (DEBUG_LOCAL) {
+                    // eslint-disable-next-line no-console
+                    console.debug('[DEBUG STREAM] STREAM_END for client-side tool, pausing stream.');
+                  }
                   continue;
                 }
 
@@ -336,6 +368,10 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
                     break;
 
                   case 'ASSISTANT_COMPLETE':
+                    if (DEBUG_LOCAL) {
+                      // eslint-disable-next-line no-console
+                      console.debug('[DEBUG SSE] ASSISTANT_COMPLETE');
+                    }
                     break;
 
                   case 'TOOL_CODE_CREATE':
@@ -429,6 +465,10 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
                 }
               } catch (error) {
                 const errorMessage = JSON.parse(jsonString)?.error?.message;
+                if (DEBUG_LOCAL) {
+                  // eslint-disable-next-line no-console
+                  console.debug('[DEBUG SSE] parse-error for event JSON:', jsonString);
+                }
                 throw new Error(`Received error from the server.\n${errorMessage}`);
               }
             }
@@ -436,6 +476,10 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
           }
         }
       } catch (error) {
+        if (DEBUG_LOCAL) {
+          // eslint-disable-next-line no-console
+          console.debug('[DEBUG STREAM] caught error:', error);
+        }
         if (error instanceof DOMException && error.name === 'AbortError') {
           if (activeChatId) {
             const finalMessages = messagesRef.current.filter((m) => !m.isWaiting);
@@ -458,8 +502,16 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
         if (streamEndedForClientTool) {
           setIsStreaming(false);
           streamAbortControllerRef.current = null;
+          if (DEBUG_LOCAL) {
+            // eslint-disable-next-line no-console
+            console.debug('[DEBUG STREAM] Finalized after client-side tool.');
+          }
         } else {
           stopGeneration();
+          if (DEBUG_LOCAL) {
+            // eslint-disable-next-line no-console
+            console.debug('[DEBUG STREAM] stopGeneration called from finally.');
+          }
         }
       }
     },
@@ -472,6 +524,10 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
     metadata?: Record<string, any>
   ) => {
     if (isStreaming || isSending) return;
+    if (DEBUG_LOCAL) {
+      // eslint-disable-next-line no-console
+      console.debug('[DEBUG SEND] sendMessage', { hasAttachments: attachments.length > 0, textLen: text?.length, meta: metadata });
+    }
     const userMessage: Message = { role: 'user', content: text, attachments };
 
     // --- START OF FIX ---
@@ -503,7 +559,7 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
         setMessages(messagesWithPlaceholder);
 
         const streamMetadata = { ...metadata, isThinkingEnabled, userMessageAlreadySaved: true };
-        await streamAndSaveResponse(newChat._id, newChat.messages, streamMetadata);
+  await streamAndSaveResponse(newChat._id, newChat.messages, streamMetadata);
 
         await loadChatList();
       } else {
@@ -518,6 +574,10 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
         await streamAndSaveResponse(activeChatId, updatedMessages, metadata);
       }
     } catch (error) {
+      if (DEBUG_LOCAL) {
+        // eslint-disable-next-line no-console
+        console.debug('[DEBUG SEND] sendMessage error:', error);
+      }
       if (!(error instanceof DOMException && error.name === 'AbortError')) {
         showNotification(error instanceof Error ? error.message : 'Could not send message.', 'error');
       }
@@ -646,6 +706,10 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
 
   const regenerateResponse = async (metadata?: Record<string, any>) => {
     if (!activeChatId || isStreaming || isSending) return;
+    if (DEBUG_LOCAL) {
+      // eslint-disable-next-line no-console
+      console.debug('[DEBUG REGEN] regenerateResponse triggered');
+    }
 
     // --- START OF FIX ---
     const currentMessages = messagesRef.current;

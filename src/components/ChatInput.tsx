@@ -317,21 +317,23 @@ const ChatInput = ({ onSendMessage, onStopGeneration, isSending, isThinkingVisib
             </Tooltip>
           ) : (
             <>
-              <Tooltip text={voiceTooltip}>
-                <button 
-                  className={`chat-input-button mic-button ${isProUser ? '' : 'mic-button-disabled'}`}
-                  onClick={() => {
-                    if (!isProUser) {
-                      showNotification('Voice chat is available for Pro users only.', 'error');
-                      return;
-                    }
-                    setIsVoiceChatOpen(true);
-                  }}
-                  aria-disabled={!isProUser}
-                >
-                  <HiOutlineMicrophone size={20} />
-                </button>
-              </Tooltip>
+              {!hasContent && (
+                <Tooltip text={voiceTooltip}>
+                  <button 
+                    className={`chat-input-button mic-button ${isProUser ? '' : 'mic-button-disabled'}`}
+                    onClick={() => {
+                      if (!isProUser) {
+                        showNotification('Voice chat is available for Pro users only.', 'error');
+                        return;
+                      }
+                      setIsVoiceChatOpen(true);
+                    }}
+                    aria-disabled={!isProUser}
+                  >
+                    <HiOutlineMicrophone size={20} />
+                  </button>
+                </Tooltip>
+              )}
               <button
                 className="chat-input-button send-button"
                 onClick={handleSend}

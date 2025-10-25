@@ -45,37 +45,38 @@ const CodeAnalysisBlock = ({ toolCodeMessage, toolOutputMessage, onView }: CodeA
   const isOutputError = hasError || (state === 'completed' && output.toLowerCase().includes('error:'));
   
   const fileOutputs = toolOutputMessage?.fileOutputs || [];
+  
+  // Separate images and regular files
+  const imageOutputs = useMemo(() => 
+    fileOutputs.filter(f => f.mimeType.startsWith('image/')), 
+    [fileOutputs]
+  );
+  
+  const regularFiles = useMemo(() => 
+    fileOutputs.filter(f => !f.mimeType.startsWith('image/')), 
+    [fileOutputs]
+  );
 
-  // --- START OF THE FIX ---
   const handleDownload = async (fileOutput: FileOutput) => {
     try {
-      // Fetch the file content from the signed URL
-      const response = await fetch(fileOutput.url);
-      if (!response.ok) {
-        throw new Error(`Network response was not ok: ${response.statusText}`);
-      }
-      // Convert the response to a Blob
-      const blob = await response.blob();
-      
-      // Create a temporary local URL for the Blob
-      const objectUrl = window.URL.createObjectURL(blob);
-      
-      // Use the temporary URL to trigger the download
+      // Use the signed URL directly to avoid CORS issues with fetch()
       const link = document.createElement('a');
-      link.href = objectUrl;
-      link.download = fileOutput.fileName;
+      link.href = fileOutput.url;
+      link.setAttribute('download', fileOutput.fileName);
+      link.rel = 'noopener';
+      link.target = '_blank';
       document.body.appendChild(link);
       link.click();
-      
-      // Clean up by removing the link and revoking the temporary URL
       document.body.removeChild(link);
-      window.URL.revokeObjectURL(objectUrl);
-
     } catch (error) {
-      showNotification('Could not download the file.', 'error');
+      // Fallback: open in new tab
+      try {
+        window.open(fileOutput.url, '_blank', 'noopener');
+      } catch {
+        showNotification('Could not open the file URL.', 'error');
+      }
     }
   };
-  // --- END OF THE FIX ---
 
   const OutputSection = (toolOutputMessage || ['completed', 'error'].includes(state)) ? (
     <div className="analysis-section">
@@ -89,54 +90,57 @@ const CodeAnalysisBlock = ({ toolCodeMessage, toolOutputMessage, onView }: CodeA
     </div>
   ) : null;
 
-  const FilesSection = fileOutputs.length > 0 ? (
+  const MediaSection = imageOutputs.length > 0 ? (
     <div className="analysis-section">
       <div className="analysis-section-title">
-        File Output{fileOutputs.length > 1 ? 's' : ''} ({fileOutputs.length})
+        Media Output{imageOutputs.length > 1 ? 's' : ''} ({imageOutputs.length})
       </div>
-      <div className={fileOutputs.length > 1 ? "file-outputs-grid" : ""}>
-        {fileOutputs.map((fileOutput, index) => {
-          const imageUrl = fileOutput.url;
-          const isImage = fileOutput.mimeType.startsWith('image/');
-          const isGrid = fileOutputs.length > 1;
-          
-          return (
-            <div key={index} className="file-output-item">
-              {isImage ? (
-                <div className="image-output-container">
-                  <button onClick={() => onView(imageUrl)} className="file-output-image-wrapper">
-                    <img src={imageUrl} alt={fileOutput.fileName} className="file-output-image" />
+      <div className="file-outputs-grid">
+        {imageOutputs.map((fileOutput, index) => (
+          <div key={index} className="file-output-item">
+            <div className="image-output-container">
+              <button onClick={() => onView(fileOutput.url)} className="file-output-image-wrapper">
+                <img src={fileOutput.url} alt={fileOutput.fileName} className="file-output-image" />
+              </button>
+              <div className="file-output-actions">
+                <Tooltip text={fileOutput.fileName}>
+                  <button
+                    onClick={() => handleDownload(fileOutput)}
+                    className="download-button"
+                  >
+                    <FiDownload size={14} />
                   </button>
-                  <div className="file-output-actions">
-                    <Tooltip text={fileOutput.fileName}>
-                      <button
-                        onClick={() => handleDownload(fileOutput)}
-                        className="download-button"
-                      >
-                        <FiDownload size={14} />
-                        {!isGrid && <span>Download</span>}
-                      </button>
-                    </Tooltip>
-                  </div>
-                </div>
-              ) : (
-                <div className="file-output-content">
-                  <FiFileText size={20} className="file-icon" />
-                  <span className="file-name">{fileOutput.fileName}</span>
-                  <Tooltip text={fileOutput.fileName}>
-                    <button
-                      onClick={() => handleDownload(fileOutput)}
-                      className="download-button"
-                    >
-                      <FiDownload size={14} />
-                      {!isGrid && <span>Download</span>}
-                    </button>
-                  </Tooltip>
-                </div>
-              )}
+                </Tooltip>
+              </div>
             </div>
-          );
-        })}
+          </div>
+        ))}
+      </div>
+    </div>
+  ) : null;
+
+  const FilesSection = regularFiles.length > 0 ? (
+    <div className="analysis-section">
+      <div className="analysis-section-title">
+        File Output{regularFiles.length > 1 ? 's' : ''} ({regularFiles.length})
+      </div>
+      <div className="file-outputs-list">
+        {regularFiles.map((fileOutput, index) => (
+          <div key={index} className="file-output-item file-item">
+            <div className="file-output-content">
+              <FiFileText size={20} className="file-icon" />
+              <span className="file-name">{fileOutput.fileName}</span>
+              <Tooltip text={`Download ${fileOutput.fileName}`}>
+                <button
+                  onClick={() => handleDownload(fileOutput)}
+                  className="download-button"
+                >
+                  <FiDownload size={14} />
+                </button>
+              </Tooltip>
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   ) : null;
@@ -174,12 +178,14 @@ const CodeAnalysisBlock = ({ toolCodeMessage, toolOutputMessage, onView }: CodeA
             </div>
           </div>
           {OutputSection}
+          {MediaSection}
           {FilesSection}
         </div>
       )}
 
-      {!isExpanded && FilesSection && (
+      {!isExpanded && (MediaSection || FilesSection) && (
         <div className="analysis-content">
+          {MediaSection}
           {FilesSection}
         </div>
       )}

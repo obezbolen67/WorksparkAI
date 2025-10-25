@@ -138,10 +138,18 @@ export const SettingsProvider = ({ children }: { children: ReactNode }) => {
         if (user.apiKeys.some(k => k.provider === provider && k.key)) {
             try {
                 const res = await api('/models', { method: 'POST', body: JSON.stringify({ provider }) });
-                if (res.ok) {
-                    const data = await res.json();
-                    setModels(data);
-                } else {
+        if (res.ok) {
+          const data = await res.json();
+          // Deduplicate models by id to avoid React key collisions in selectors
+          const seen = new Set<string>();
+          const uniqueModels = (Array.isArray(data) ? data : []).filter((m: Model) => {
+            if (!m || !m.id) return false;
+            if (seen.has(m.id)) return false;
+            seen.add(m.id);
+            return true;
+          });
+          setModels(uniqueModels);
+        } else {
                     
                     setModels([]);
                 }

@@ -3,6 +3,7 @@
 export const API_BASE_URL = import.meta.env.VITE_API_URL || 
   (import.meta.env.DEV ? 'http://localhost:3001' : 'https://worksparkaiserver-215678188656.europe-west1.run.app');
 
+const DEBUG_LOCAL = import.meta.env.VITE_API_URL === 'http://localhost:3001';
 
 
 /**
@@ -12,7 +13,7 @@ export const API_BASE_URL = import.meta.env.VITE_API_URL ||
  * @param options The standard fetch options object
  * @returns A Promise that resolves to the Response object
  */
-export const api = (endpoint: string, options: RequestInit = {}): Promise<Response> => {
+export const api = async (endpoint: string, options: RequestInit = {}): Promise<Response> => {
   const token = localStorage.getItem('fexo-token');
 
   const headers = new Headers(options.headers || {});
@@ -32,7 +33,22 @@ export const api = (endpoint: string, options: RequestInit = {}): Promise<Respon
     headers,
   };
 
-  return fetch(`${API_BASE_URL}/api${endpoint}`, config);
+  if (DEBUG_LOCAL) {
+    // Safe log: do not print bodies for large payloads
+    const method = (config.method || 'GET').toString().toUpperCase();
+    const hasBody = !!config.body;
+    // eslint-disable-next-line no-console
+    console.debug('[DEBUG API] →', method, `/api${endpoint}`, { hasBody, headers: Object.fromEntries(headers) });
+  }
+
+  const resp = await fetch(`${API_BASE_URL}/api${endpoint}`, config);
+
+  if (DEBUG_LOCAL) {
+    // eslint-disable-next-line no-console
+    console.debug('[DEBUG API] ←', resp.status, resp.statusText, `/api${endpoint}`);
+  }
+
+  return resp;
 };
 
 /**
