@@ -44,11 +44,12 @@ const MAX_OUTPUT_TOKENS = 64000;
 
 // --- START: Added for Subscription Tab ---
 const proFeatures = [
-    'Premium default model (GPT-5)',
-    'Code Interpreter & File Analysis',
-    'Web Search capabilities',
-    'Bring your own API keys',
-    'Priority support',
+  'Premium default model (GPT-5)',
+  'Code Interpreter & File Analysis',
+  'Web Search capabilities',
+  'Bring your own API keys',
+  'Voice chat included',
+  'Priority support',
 ];
 const freeFeatures = [
     'Standard default model',
@@ -142,7 +143,6 @@ const SettingsModal = ({ isOpen, onClose }: SettingsModalProps) => {
           const data = await response.json();
           setAvailableIntegrations(data);
         } catch (error) {
-          console.error(error);
           showNotification('Failed to load available integrations.', 'error');
         } finally {
           setIsLoadingIntegrations(false);
@@ -269,8 +269,6 @@ const SettingsModal = ({ isOpen, onClose }: SettingsModalProps) => {
             } else {
               prevConfigs.push({id: "default", modalities: ["text", "image"]})
             }
-
-            console.log(prevConfigs)
             return prevConfigs;
         })
       }
@@ -293,8 +291,6 @@ const SettingsModal = ({ isOpen, onClose }: SettingsModalProps) => {
         voiceSettings: { voiceId, voiceName },
       };
       
-      console.log(settingsToSave)
-
       await updateSettings(settingsToSave);
       // END CHANGE
 
@@ -350,7 +346,6 @@ const SettingsModal = ({ isOpen, onClose }: SettingsModalProps) => {
       audioEl.current.src = url;
       await audioEl.current.play();
     } catch (e) {
-      console.error(e);
       showNotification(e instanceof Error ? e.message : 'Failed to preview voice', 'error');
     } finally {
       setPreviewingId(null);

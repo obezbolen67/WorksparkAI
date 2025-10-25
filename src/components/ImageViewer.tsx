@@ -66,7 +66,6 @@ const ImageViewer = ({ src, alt, isOpen, onClose }: ImageViewerProps) => {
       document.body.removeChild(link);
       window.URL.revokeObjectURL(objectUrl);
     } catch (error) {
-      console.error('Image download failed:', error);
       showNotification('Could not download the image.', 'error');
     }
   };

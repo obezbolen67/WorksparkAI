@@ -86,7 +86,7 @@ const GoogleMapsBlock = memo(({ integrationData }: GoogleMapsBlockProps) => {
       try {
         return window.google.maps.geometry.encoding.decodePath(integrationData.polyline);
       } catch (error) {
-        console.warn('Fallback: Decoding polyline manually.', error);
+        
       }
     }
     return decodePolyline(integrationData.polyline);

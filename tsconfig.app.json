@@ -27,5 +27,5 @@
     "noFallthroughCasesInSwitch": true
   },
   // "src/utils" is redundant because "src" already includes it.
-  "include": ["src"] // <-- CLEANED UP
+  "include": ["src", "../vite-env.d.ts"] // <-- CLEANED UP
 }

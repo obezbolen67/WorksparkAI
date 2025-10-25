@@ -14,6 +14,8 @@
   --tooltip-text-color: #ffffff;
   --code-block-header: #171717;
   --code-text: #ffffff;
+  /* Overlay scrim for modals/overlays in light theme */
+  --overlay-scrim: rgba(0, 0, 0, 0.35);
 }
 
 [data-theme="dark"] {
@@ -27,6 +29,8 @@
   --assistant-message-bg: #2f2f2f;
   --tooltip-bg-color: hsl(0, 0%, 15%);
   --tooltip-text-color: #e5e5e5;
+  /* Darker scrim in dark theme */
+  --overlay-scrim: rgba(0, 0, 0, 0.55);
 }
 
 

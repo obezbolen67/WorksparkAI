@@ -3,7 +3,6 @@
 export const API_BASE_URL = import.meta.env.VITE_API_URL || 
   (import.meta.env.DEV ? 'http://localhost:3001' : 'https://worksparkaiserver-215678188656.europe-west1.run.app');
 
-console.log('API Base URL:', API_BASE_URL);
 
 
 /**

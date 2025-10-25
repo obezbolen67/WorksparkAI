@@ -72,7 +72,6 @@ const CodeAnalysisBlock = ({ toolCodeMessage, toolOutputMessage, onView }: CodeA
       window.URL.revokeObjectURL(objectUrl);
 
     } catch (error) {
-      console.error('Download failed:', error);
       showNotification('Could not download the file.', 'error');
     }
   };

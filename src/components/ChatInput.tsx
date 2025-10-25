@@ -61,7 +61,6 @@ const ChatInput = ({ onSendMessage, onStopGeneration, isSending, isThinkingVisib
     if (containsImage) {
       const modelConfigs = user?.modelConfigs || [];
       const modelConfig = modelConfigs.find(c => c.id === selectedModel);
-      console.log(modelConfig);
       const supportsImage = modelConfig?.modalities.includes('image');
 
       if (!supportsImage) {
@@ -173,7 +172,6 @@ const ChatInput = ({ onSendMessage, onStopGeneration, isSending, isThinkingVisib
       setText('');
       setSelectedFiles([]);
     } catch (error) {
-      console.error("Failed to upload files and send message:", error);
       showNotification((error as Error).message || 'An error occurred during upload.', 'error');
     }
   };

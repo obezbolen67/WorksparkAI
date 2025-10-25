@@ -1,21 +1,30 @@
 // src/components/VoiceChatModal.tsx
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { FiX } from 'react-icons/fi';
+import { FiX, FiAlertTriangle } from 'react-icons/fi';
 import { useChat } from '../contexts/ChatContext';
 import { useSettings } from '../contexts/SettingsContext';
 import { useNotification } from '../contexts/NotificationContext';
 import { API_BASE_URL } from '../utils/api';
 import '../css/VoiceChatModal.css';
 import Portal from './Portal';
+import type { Message } from '../types';
+import CodeAnalysisBlock from './CodeAnalysisBlock';
+import SearchBlock from './SearchBlock';
+import AnalysisBlock from './AnalysisBlock';
+import GeolocationBlock from './GeolocationBlock';
+import GeolocationRequestBlock from './GeolocationRequestBlock';
+import GoogleMapsBlock from './GoogleMapsBlock';
+import ImageViewer from './ImageViewer';
 
 interface VoiceChatModalProps {
   isOpen: boolean;
   onClose: () => void;
 }
 
-const SPEECH_THRESHOLD = 0.32; // RMS threshold to detect speech (raised per request)
-const SILENCE_DURATION_MS = 1500; // Stop recording after this much silence
-const MIN_RECORDING_MS = 500; // Minimum recording duration
+const SPEECH_START_THRESHOLD = 0.19; // Start speaking when above this RMS
+const SPEECH_STOP_THRESHOLD = 0.15; // Consider silence only when below this RMS (hysteresis)
+const SILENCE_DURATION_MS = 2800; // Longer hangover to avoid early cutoff
+const MIN_RECORDING_MS = 1100; // Require a bit longer minimum capture
 const MIN_AUDIO_BYTES = 2000; // Minimum audio size to send
 
 const VoiceChatModal = ({ isOpen, onClose }: VoiceChatModalProps) => {
@@ -24,7 +33,8 @@ const VoiceChatModal = ({ isOpen, onClose }: VoiceChatModalProps) => {
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [isThinking, setIsThinking] = useState(false); // UI hint while waiting for assistant
-  const { sendMessage, messages, isStreaming } = useChat();
+  const [voiceError, setVoiceError] = useState<string | null>(null);
+  const { sendMessage, messages, isStreaming, activeChatId } = useChat();
   const { user } = useSettings();
   const { showNotification } = useNotification();
 
@@ -64,9 +74,17 @@ const VoiceChatModal = ({ isOpen, onClose }: VoiceChatModalProps) => {
   const audioChunksRef = useRef<Blob[]>([]);
   const recordingStartTimeRef = useRef<number>(0);
   const lastSoundTimeRef = useRef<number>(0);
+  const smoothedRmsRef = useRef<number>(0);
+  const [viewerSrc, setViewerSrc] = useState<string | null>(null);
+  const [isViewerOpen, setIsViewerOpen] = useState(false);
+
+  const handleOpenViewer = useCallback((src: string) => {
+    setViewerSrc(src);
+    setIsViewerOpen(true);
+  }, []);
 
   const cleanupResources = useCallback(() => {
-    console.log('[VoiceChat] Cleaning up resources');
+    
     
     if (animationFrameRef.current !== null) {
       cancelAnimationFrame(animationFrameRef.current);
@@ -178,7 +196,6 @@ const VoiceChatModal = ({ isOpen, onClose }: VoiceChatModalProps) => {
       audioUnlockedRef.current = true;
     } catch (err) {
       // Best-effort unlock; continue even if this fails
-      // console.warn('[VoiceChat] Audio unlock attempt failed', err);
     }
   }, []);
 
@@ -223,7 +240,6 @@ const VoiceChatModal = ({ isOpen, onClose }: VoiceChatModalProps) => {
           try {
             await playUrl(url);
           } catch (err) {
-            console.error('[VoiceChat] Playback error:', err);
           }
           // small, natural pause between segments
           if (SPEECH_GAP_MS > 0) {
@@ -316,7 +332,7 @@ const VoiceChatModal = ({ isOpen, onClose }: VoiceChatModalProps) => {
               if (msg.includes('401') || msg.includes('403') || msg.toLowerCase().includes('unauthor')) {
                 ttsServerAvailableRef.current = false;
                 replyUseFallbackRef.current = true;
-                showNotification('Voice requires sign-in and Pro subscription.', 'error');
+                setVoiceError('Slow down! Our voice service is experiencing rate exceed. Please try again later.');
                 const key = segmentKey(text);
                 if (!spokenSegmentsSetRef.current.has(key)) {
                   spokenSegmentsSetRef.current.add(key);
@@ -324,13 +340,17 @@ const VoiceChatModal = ({ isOpen, onClose }: VoiceChatModalProps) => {
                 }
               } else if (msg.includes('429') || msg.includes('Too Many') || msg.includes('concurrent')) {
                 providerCooldownUntilRef.current = Date.now() + 2000;
+                setVoiceError('Slow down! Our voice service is experiencing rate exceed. Please try again later.');
                 const key = segmentKey(text);
                 if (!spokenSegmentsSetRef.current.has(key)) {
                   spokenSegmentsSetRef.current.add(key);
                   enqueueSpeechFallback(text);
                 }
               } else {
-                console.error('[VoiceChat] TTS fetch failed:', err);
+                const emsg = String(err?.message || '').toLowerCase();
+                if (emsg.includes('500') || emsg.includes('internal') || emsg.includes('server')) {
+                  setVoiceError('Slow down! Our voice service is experiencing rate exceed. Please try again later.');
+                }
                 const key = segmentKey(text);
                 if (!spokenSegmentsSetRef.current.has(key)) {
                   spokenSegmentsSetRef.current.add(key);
@@ -372,33 +392,45 @@ const VoiceChatModal = ({ isOpen, onClose }: VoiceChatModalProps) => {
   // Deprecated: chunked enqueue no longer used (single-shot TTS per reply)
 
   const handleClose = useCallback(() => {
-    if (window.speechSynthesis.speaking) {
-      window.speechSynthesis.cancel();
-    }
-    if (audioRef.current) {
-      try { audioRef.current.pause(); } catch {}
-    }
-    // Don't accidentally kill playback mid-sentence via overlay clicks
-    if (isSpeaking || isPlayingQueueRef.current) {
-      showNotification('Still speaking… tap the X to close.');
-      return;
-    }
-    // Clear any pending playback
+    // Force stop any ongoing speech synthesis and audio playback
+    try { if (window.speechSynthesis.speaking) window.speechSynthesis.cancel(); } catch {}
+    try {
+      if (audioRef.current) {
+        const src = audioRef.current.src;
+        audioRef.current.pause();
+        audioRef.current.src = '';
+        playbackGenerationRef.current += 1; // mark intentional interruption
+        if (src && src.startsWith('blob:')) { try { URL.revokeObjectURL(src); } catch {} }
+      }
+    } catch {}
+
+    // Revoke any queued blob URLs and clear queues
+    try {
+      for (const item of playbackQueueRef.current) {
+        const u = item.url;
+        if (u && u.startsWith('blob:')) { try { URL.revokeObjectURL(u); } catch {} }
+      }
+    } catch {}
     playbackQueueRef.current = [];
+    pendingTtsQueueRef.current = [];
+    spokenSegmentsSetRef.current.clear();
+    ttsServerAvailableRef.current = true;
+    replyUseFallbackRef.current = false;
     pendingTextBufferRef.current = '';
     lastAssistantProcessedLenRef.current = 0;
+
     cleanupResources();
     setIsListening(false);
     setIsSpeaking(false);
     setIsRecording(false);
     setIsMicReady(false);
-  
     lastSpokenMessageIdRef.current = null;
+
     onClose();
-  }, [cleanupResources, onClose, isSpeaking, showNotification]);
+  }, [cleanupResources, onClose]);
 
   const transcribeAudioBlob = useCallback(async (blob: Blob) => {
-    console.log('[VoiceChat] Transcribing audio blob, size:', blob.size);
+    
     const token = localStorage.getItem('fexo-token');
     const formData = new FormData();
     formData.append('audio', blob, `voice-${Date.now()}.webm`);
@@ -421,44 +453,49 @@ const VoiceChatModal = ({ isOpen, onClose }: VoiceChatModalProps) => {
         if (typeof errorData.error === 'string') {
           message = errorData.error;
         } else if (typeof errorData.error === 'object') {
-          message = JSON.stringify(errorData.error);
+          try { message = JSON.stringify(errorData.error); } catch {}
         }
+      } else if (errorData?.detail?.message) {
+        message = errorData.detail.message;
+      }
+      const status = response.status;
+      const quotaExceeded =
+        errorData?.detail?.status === 'quota_exceeded' ||
+        errorData?.error?.detail?.status === 'quota_exceeded' ||
+        /quota|rate|exceed/i.test(String(message));
+      if (status === 401 || status === 403 || status === 429 || status >= 500 || quotaExceeded) {
+        setVoiceError('Slow down! Our voice service is experiencing rate exceed. Please try again later.');
       }
       throw new Error(message);
     }
 
     const data = await response.json();
-    console.log('[VoiceChat] Transcription result:', data?.transcript);
     return (data?.transcript as string) || '';
   }, []);
 
   const handleUserSpeech = useCallback(async (text: string) => {
-    console.log('[VoiceChat] handleUserSpeech called with:', text);
+    
     if (isProcessingRef.current || !text.trim()) {
-      console.log('[VoiceChat] Skipping - isProcessing:', isProcessingRef.current, 'empty text:', !text.trim());
+      
       return;
     }
 
-    console.log('[VoiceChat] Starting message processing');
+    
     isProcessingRef.current = true;
     setIsThinking(true);
     
 
     try {
-      console.log('[VoiceChat] Sending message to chat');
       await sendMessage(text, [], { isThinkingEnabled: false, voiceMode: true });
-      console.log('[VoiceChat] Message sent successfully');
     } catch (error) {
-      console.error('[VoiceChat] Error sending message:', error);
       showNotification('Failed to send message', 'error');
     } finally {
-      console.log('[VoiceChat] Message processing complete');
       isProcessingRef.current = false;
     }
   }, [sendMessage, showNotification]);
 
   const stopRecording = useCallback(() => {
-    console.log('[VoiceChat] stopRecording called');
+    
     
     if (animationFrameRef.current !== null) {
       cancelAnimationFrame(animationFrameRef.current);
@@ -466,7 +503,7 @@ const VoiceChatModal = ({ isOpen, onClose }: VoiceChatModalProps) => {
     }
 
     if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
-      console.log('[VoiceChat] Stopping MediaRecorder');
+      
       mediaRecorderRef.current.stop();
     }
 
@@ -490,24 +527,30 @@ const VoiceChatModal = ({ isOpen, onClose }: VoiceChatModalProps) => {
       for (let i = 0; i < dataArray.length; i++) {
         sumSquares += dataArray[i] * dataArray[i];
       }
-      const rms = Math.sqrt(sumSquares / dataArray.length);
+      const instantRms = Math.sqrt(sumSquares / dataArray.length);
+      // Exponential smoothing to stabilize detection
+      const alpha = 0.08; // smoothing factor
+      const prev = smoothedRmsRef.current || 0;
+      const smoothed = prev + alpha * (instantRms - prev);
+      smoothedRmsRef.current = smoothed;
 
       const now = performance.now();
       const recordingDuration = now - recordingStartTimeRef.current;
 
-      // Detect speech
-      if (rms > SPEECH_THRESHOLD) {
-        // Speech detected
+      // Hysteresis-based detection: start vs stop thresholds
+      if (smoothed > SPEECH_START_THRESHOLD) {
+        // Clearly speaking
         lastSoundTimeRef.current = now;
-      } else {
+      } else if (smoothed < SPEECH_STOP_THRESHOLD) {
+        // Clearly below stop threshold: evaluate silence timeout
         const silenceDuration = now - lastSoundTimeRef.current;
-        
-        // Stop recording if we've had enough silence and minimum recording duration
         if (recordingDuration > MIN_RECORDING_MS && silenceDuration > SILENCE_DURATION_MS) {
-          console.log('[VoiceChat] Silence detected, stopping recording');
+          
           stopRecording();
           return;
         }
+      } else {
+        // Between stop and start thresholds: do nothing (neutral zone)
       }
 
       animationFrameRef.current = requestAnimationFrame(checkLevel);
@@ -518,11 +561,10 @@ const VoiceChatModal = ({ isOpen, onClose }: VoiceChatModalProps) => {
 
   const startRecording = useCallback(async () => {
     if (!mediaStreamRef.current || isRecording || isSpeaking || isProcessingRef.current) {
-      console.log('[VoiceChat] Cannot start recording - conditions not met');
       return;
     }
 
-    console.log('[VoiceChat] Starting recording');
+    
     audioChunksRef.current = [];
     recordingStartTimeRef.current = performance.now();
     lastSoundTimeRef.current = performance.now();
@@ -556,20 +598,20 @@ const VoiceChatModal = ({ isOpen, onClose }: VoiceChatModalProps) => {
     };
 
     recorder.onstop = async () => {
-      console.log('[VoiceChat] MediaRecorder stopped');
+      
       const chunks = audioChunksRef.current;
       audioChunksRef.current = [];
 
       if (chunks.length === 0 || isProcessingRef.current) {
-        console.log('[VoiceChat] No chunks or already processing, skipping');
+        
         return;
       }
 
       const blob = new Blob(chunks, { type: recorder.mimeType });
-      console.log('[VoiceChat] Audio blob created, size:', blob.size);
+      
 
       if (blob.size < MIN_AUDIO_BYTES) {
-        console.log('[VoiceChat] Audio too small, skipping transcription');
+        
         return;
       }
 
@@ -578,11 +620,16 @@ const VoiceChatModal = ({ isOpen, onClose }: VoiceChatModalProps) => {
         if (text && text.trim()) {
           await handleUserSpeech(text);
         } else {
-          console.log('[VoiceChat] Empty transcription');
+          
         }
       } catch (error) {
-        console.error('[VoiceChat] Transcription error:', error);
-        showNotification(error instanceof Error ? error.message : 'Failed to transcribe audio.', 'error');
+        const msg = String(error instanceof Error ? error.message : error || '');
+        const isRate = /quota|rate|exceed|429|unauthorized|401|403/i.test(msg);
+        if (isRate) {
+          // voiceError is set inside transcribeAudioBlob; avoid noisy toast
+        } else {
+          showNotification(msg || 'Failed to transcribe audio.', 'error');
+        }
       }
     };
 
@@ -605,7 +652,7 @@ const VoiceChatModal = ({ isOpen, onClose }: VoiceChatModalProps) => {
 
     const setup = async () => {
       try {
-        console.log('[VoiceChat] Requesting microphone access');
+        
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
         if (cancelled) {
           stream.getTracks().forEach((track) => track.stop());
@@ -625,9 +672,8 @@ const VoiceChatModal = ({ isOpen, onClose }: VoiceChatModalProps) => {
         audioContextRef.current = audioContext;
         analyserRef.current = analyser;
 
-        console.log('[VoiceChat] Audio context initialized');
+        
       } catch (error) {
-        console.error('[VoiceChat] Failed to initialize voice chat:', error);
         showNotification('Microphone access is required for voice chat.', 'error');
         onClose();
       }
@@ -778,12 +824,85 @@ const VoiceChatModal = ({ isOpen, onClose }: VoiceChatModalProps) => {
     // No additional gating; auto-restart effect handles readiness
   }, [isOpen, isStreaming, fetchAndQueueTts]);
 
+  // Build tool blocks for the latest assistant turn (no assistant text rendered)
+  const voiceToolBlocks = useCallback(() => {
+    if (!messages || messages.length === 0) return null;
+    const lastUserIndex = [...messages].findLastIndex((m) => m.role === 'user');
+    const startIndex = Math.max(0, lastUserIndex + 1);
+    const processedIds = new Set<string>();
+    const parts: React.ReactNode[] = [];
+
+    for (let i = startIndex; i < messages.length; i++) {
+      const m = messages[i] as Message;
+      if (m.role === 'user') break;
+
+      if (m.role === 'tool_code' && m.tool_id && !processedIds.has(m.tool_id)) {
+        const out = messages.find((x) => x.role === 'tool_code_result' && x.tool_id === m.tool_id);
+        parts.push(
+          <CodeAnalysisBlock key={`v-code-${m.tool_id}`} chatId={activeChatId} toolCodeMessage={m} toolOutputMessage={out} onView={handleOpenViewer} />
+        );
+        processedIds.add(m.tool_id);
+      }
+
+      if (m.role === 'tool_search' && m.tool_id && !processedIds.has(m.tool_id)) {
+        const out = messages.find((x) => x.role === 'tool_search_result' && x.tool_id === m.tool_id);
+        const isGeoMap = out?.content?.includes('[LOCATION]');
+        if (isGeoMap) {
+          parts.push(
+            <GeolocationBlock key={`v-geo-${m.tool_id}`} toolMessage={m} outputMessage={out} />
+          );
+        } else {
+          parts.push(
+            <SearchBlock key={`v-search-${m.tool_id}`} toolSearchMessage={m} toolOutputMessage={out} />
+          );
+        }
+        processedIds.add(m.tool_id);
+      }
+
+      if (m.role === 'tool_doc_extract' && m.tool_id && !processedIds.has(m.tool_id)) {
+        const out = messages.find((x) => x.role === 'tool_doc_extract_result' && x.tool_id === m.tool_id);
+        parts.push(
+          <AnalysisBlock key={`v-extract-${m.tool_id}`} toolMessage={m} outputMessage={out} />
+        );
+        processedIds.add(m.tool_id);
+      }
+
+      if (m.role === 'tool_geolocation' && m.tool_id && !processedIds.has(m.tool_id)) {
+        const hasResult = messages.some((x) => x.role === 'tool_geolocation_result' && x.tool_id === m.tool_id);
+        if (!hasResult) {
+          parts.push(
+            <GeolocationRequestBlock key={`v-geo-req-${m.tool_id}`} toolMessage={m} />
+          );
+        }
+        processedIds.add(m.tool_id);
+      }
+
+      if (m.role === 'tool_integration' && m.tool_id && !processedIds.has(m.tool_id)) {
+        const out = messages.find((x) => x.role === 'tool_integration_result' && x.tool_id === m.tool_id);
+        if (out?.integrationData?.type === 'google_maps_route') {
+          parts.push(
+            <GoogleMapsBlock key={`v-maps-${m.tool_id}`} integrationData={out.integrationData} />
+          );
+        }
+        processedIds.add(m.tool_id);
+      }
+
+      if (m.role === 'tool_integration_result' && m.tool_id && !processedIds.has(m.tool_id)) {
+        if (m.integrationData?.type === 'google_maps_route') {
+          parts.push(
+            <GoogleMapsBlock key={`v-maps-${m.tool_id}`} integrationData={m.integrationData} />
+          );
+        }
+        processedIds.add(m.tool_id);
+      }
+    }
+    if (parts.length === 0) return null;
+    return <div className="voice-tools-pane">{parts}</div>;
+  }, [messages, activeChatId, handleOpenViewer]);
+
   // Mic toggling handled automatically; no manual toggle button is shown.
 
-  const triggerDebugSample = useCallback(() => {
-    const sampleText = 'This is a debug voice sample message.';
-    handleUserSpeech(sampleText);
-  }, [handleUserSpeech]);
+  // Debug sample button removed
 
   if (!isOpen) return null;
 
@@ -821,7 +940,6 @@ const VoiceChatModal = ({ isOpen, onClose }: VoiceChatModalProps) => {
           <div className={`ai-orb ${isSpeaking ? 'speaking' : ''} ${isRecording ? 'listening' : ''}`}>
             <div className="orb-inner"></div>
             <div className="orb-glow"></div>
-            <div className="orb-pulse"></div>
           </div>
 
           <div className="voice-chat-status">
@@ -844,18 +962,27 @@ const VoiceChatModal = ({ isOpen, onClose }: VoiceChatModalProps) => {
             </div>
           </div>
 
+          {voiceToolBlocks()}
+
           <div className="voice-chat-info">
             <p className="info-text">
               Ask me anything - I can search the internet, execute code, find directions, and more!
             </p>
           </div>
-          <button
-            className="voice-debug-btn"
-            type="button"
-            onClick={triggerDebugSample}
-          >
-            Run Debug Sample
-          </button>
+          {/* Debug button removed */}
+          <ImageViewer isOpen={isViewerOpen} src={viewerSrc} alt={viewerSrc || ''} onClose={() => setIsViewerOpen(false)} />
+          {voiceError && (
+            <div className="voice-error-backdrop" role="dialog" aria-modal="true" aria-label="Voice service error">
+              <div className="voice-error-card">
+                <div className="voice-error-icon"><FiAlertTriangle size={28} /></div>
+                <h3 className="voice-error-title">Slow down</h3>
+                <p className="voice-error-message">Our voice service is experiencing rate exceed. Please try again later.</p>
+                <div className="voice-error-actions">
+                  <button className="voice-error-button" onClick={() => { setVoiceError(null); handleClose(); }}>Got it</button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
         </div>
       </div>

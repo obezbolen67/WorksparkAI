@@ -59,7 +59,7 @@ const useTheme = () => {
 async function copyTextToClipboard(text: string): Promise<boolean> {
   if (navigator.clipboard?.writeText) {
     try { await navigator.clipboard.writeText(text); return true; }
-    catch (err) { console.warn("Clipboard API failed, falling back.", err); }
+    catch { }
   }
   const textArea = document.createElement("textarea");
   textArea.value = text;
@@ -67,7 +67,7 @@ async function copyTextToClipboard(text: string): Promise<boolean> {
   document.body.appendChild(textArea);
   textArea.focus(); textArea.select();
   try { return document.execCommand("copy"); }
-  catch (err) { console.error("Fallback failed.", err); return false; }
+  catch { return false; }
   finally { document.body.removeChild(textArea); }
 }
 
@@ -120,7 +120,7 @@ const AuthenticatedImage = ({ chatId, attachment, onView }: { chatId: string, at
         api(apiEndpoint)
             .then(res => { if (!res.ok) throw new Error(`Server responded with ${res.status}`); return res.blob(); })
             .then(blob => { if (isMounted) { tempUrl = URL.createObjectURL(blob); setObjectUrl(tempUrl); }})
-            .catch(error => { console.error(`Failed to load authenticated image for ${attachment.fileName}:`, error); if (isMounted) setHasError(true); });
+            .catch(() => { if (isMounted) setHasError(true); });
         return () => { isMounted = false; if (tempUrl) URL.revokeObjectURL(tempUrl); };
     }, [apiEndpoint, attachment.fileName]);
 
@@ -356,7 +356,6 @@ const ChatMessage = ({ message, messages, chatId, index, isEditing, onStartEdit,
       window.URL.revokeObjectURL(url);
 
     } catch (error) {
-      console.error('Download error:', error);
       showNotification(error instanceof Error ? error.message : 'Could not download file.', 'error');
     } finally {
       setDownloadingId(null); // Reset downloading state

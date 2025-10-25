@@ -178,32 +178,13 @@
   }
 }
 
-.orb-pulse {
-  position: absolute;
-  width: 100%;
-  height: 100%;
-  border: 3px solid rgba(16, 185, 129, 0.6);
-  border-radius: 50%;
-  animation: pulse 2s ease-out infinite;
-  z-index: 2;
-}
-
-@keyframes pulse {
-  0% {
-    transform: scale(1);
-    opacity: 1;
-  }
-  100% {
-    transform: scale(1.6);
-    opacity: 0;
-  }
-}
+/* Removed expanding pulse ring for a cleaner look */
 
 /* Speaking state */
 .ai-orb.speaking .orb-inner {
   background: linear-gradient(135deg, #f59e0b 0%, #f97316 50%, #fbbf24 100%);
-  box-shadow: 0 0 60px rgba(245, 158, 11, 0.7), 0 0 100px rgba(245, 158, 11, 0.4);
-  animation: speakingPulse 0.8s ease-in-out infinite;
+  box-shadow: 0 0 70px rgba(245, 158, 11, 0.8), 0 0 120px rgba(245, 158, 11, 0.5);
+  animation: speakingPulse 0.9s ease-in-out infinite;
 }
 
 @keyframes speakingPulse {
@@ -211,28 +192,24 @@
     transform: scale(1);
   }
   50% {
-    transform: scale(1.05);
+    transform: scale(1.12);
   }
 }
 
 .ai-orb.speaking .orb-glow {
   background: radial-gradient(circle, rgba(245, 158, 11, 0.5) 0%, transparent 70%);
-  animation: speakingGlow 0.8s ease-in-out infinite;
+  animation: speakingGlow 0.9s ease-in-out infinite;
 }
 
 @keyframes speakingGlow {
   0%, 100% {
-    transform: scale(1);
-    opacity: 0.7;
+    transform: scale(1.05);
+    opacity: 0.8;
   }
   50% {
-    transform: scale(1.2);
+    transform: scale(1.28);
     opacity: 1;
   }
-}
-
-.ai-orb.speaking .orb-pulse {
-  border-color: rgba(245, 158, 11, 0.8);
 }
 
 /* Listening state */
@@ -335,7 +312,7 @@
   align-items: center;
   justify-content: center;
   gap: 12px;
-  margin: 24px 0;
+  margin: 0 0 20px 0; /* 20px gap above the info text */
   z-index: 5;
 }
 
@@ -471,6 +448,103 @@
   transform: translateY(0);
   box-shadow: 0 3px 10px rgba(16, 185, 129, 0.3);
 }
+
+/* Voice tools pane inside modal */
+.voice-tools-pane {
+  width: 100%;
+  max-width: 900px;
+  margin: 8px auto 0;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+/* Voice error modal */
+.voice-error-backdrop {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0,0,0,0.35);
+  backdrop-filter: blur(6px);
+  z-index: 1000;
+}
+
+.voice-error-card {
+  position: relative;
+  width: min(520px, 92vw);
+  border-radius: 20px;
+  padding: 22px 22px 18px;
+  animation: errorPop 220ms ease-out;
+  box-shadow: 0 14px 40px rgba(0,0,0,0.28);
+}
+
+/* Theme-contrasted solid card: reverse scheme for emphasis */
+[data-theme="dark"] .voice-error-card {
+  background: #ffffff; /* solid light card in dark theme */
+  color: #0f172a; /* slate-900 text */
+  border: 1px solid #e5e7eb; /* light border */
+}
+
+[data-theme="light"] .voice-error-card {
+  background: #0f172a; /* solid dark card in light theme */
+  color: #f8fafc; /* near-white text */
+  border: 1px solid rgba(255,255,255,0.15);
+}
+
+@keyframes errorPop {
+  from { transform: scale(0.96); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+.voice-error-icon {
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px;
+  margin-bottom: 12px;
+  color: #f59e0b;
+  background: radial-gradient(90px 90px at 20% 20%, rgba(245,158,11,0.22), transparent 60%),
+              linear-gradient(135deg, rgba(245,158,11,0.18), rgba(245,158,11,0.06));
+}
+
+.voice-error-title {
+  margin: 0 0 6px 0;
+  font-size: 1.25rem;
+  font-weight: 800;
+}
+
+.voice-error-message {
+  margin: 0 0 16px 0;
+  font-size: 0.98rem;
+}
+
+[data-theme="dark"] .voice-error-message { color: #334155; } /* slate-600 on light card */
+[data-theme="light"] .voice-error-message { color: rgba(248,250,252,0.82); }
+
+.voice-error-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.voice-error-button {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: white;
+  border: none;
+  border-radius: 10px;
+  padding: 10px 16px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 6px 20px rgba(16,185,129,0.35);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.voice-error-button:hover { transform: translateY(-1px); box-shadow: 0 8px 26px rgba(16,185,129,0.45); }
+.voice-error-button:active { transform: translateY(0); box-shadow: 0 4px 14px rgba(16,185,129,0.3); }
 
 @keyframes activePulse {
   0%, 100% {

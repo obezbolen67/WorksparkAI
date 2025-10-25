@@ -89,7 +89,6 @@ export const SettingsProvider = ({ children }: { children: ReactNode }) => {
       const updatedUser = await res.json();
       setUser(updatedUser);
     } catch (err) {
-      console.error(err);
       throw err;
     }
   };
@@ -97,9 +96,7 @@ export const SettingsProvider = ({ children }: { children: ReactNode }) => {
   const setTheme = (newTheme: Theme) => {
     setThemeState(newTheme);
     if (isAuthenticated) {
-      updateSettings({ theme: newTheme }).catch(err => {
-        console.error("Could not save theme preference to the database.", err);
-      });
+      updateSettings({ theme: newTheme }).catch(() => {});
     }
   };
 
@@ -121,7 +118,6 @@ export const SettingsProvider = ({ children }: { children: ReactNode }) => {
           setThemeState(userData.theme);
         }
       } catch (err) {
-        console.error(err);
         localStorage.removeItem('fexo-token');
         setToken(null);
         setIsAuthenticated(false);
@@ -146,11 +142,11 @@ export const SettingsProvider = ({ children }: { children: ReactNode }) => {
                     const data = await res.json();
                     setModels(data);
                 } else {
-                    console.error('Failed to auto-load models on startup.');
+                    
                     setModels([]);
                 }
             } catch (err) {
-                console.error('Error auto-loading models:', err);
+                
                 setModels([]);
             }
         }

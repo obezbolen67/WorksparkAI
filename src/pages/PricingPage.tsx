@@ -28,13 +28,14 @@ const PricingPage = () => {
     },
     {
       name: 'Pro',
-      price: '$20',
+      price: '$18',
       priceId: 'price_1S98QdJHhdy0TngLXWUWBrzD',
       features: [
         'Premium default model (GPT-5)',
         'Code Interpreter & File Analysis',
         'Web Search capabilities',
         'Bring your own API keys',
+        'Voice chat included',
         'Priority support',
       ],
       isCurrent: user?.subscriptionStatus === 'active',

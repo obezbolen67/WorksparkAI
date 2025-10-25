@@ -104,7 +104,6 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
       const data = await response.json();
       setChatList(data);
     } catch (error) {
-      console.error(error);
       showNotification('Could not load chat history.', 'error');
     } finally {
       setIsLoadingChatList(false);
@@ -133,16 +132,7 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
       messageHistory: Message[],
       metadata?: Record<string, any>
     ) => {
-      console.log(
-        '[CLIENT] Starting streamAndSaveResponse. Metadata:',
-        metadata
-      );
-      console.log(
-        '[CLIENT] History being sent to server:',
-        JSON.stringify(messageHistory, null, 2)
-      );
-
-      console.log()
+      
 
       setIsSending(true);
       setIsStreaming(true);
@@ -192,7 +182,7 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
 
               try {
                 const event = JSON.parse(jsonString);
-                console.log(`[${event.type}]`, event.content);
+                
 
                 if (event.type === 'error') {
                   const errorMessage =
@@ -356,14 +346,11 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
                     if (event.message && event.message.isClientSideTool) {
                       streamEndedForClientTool = true;
                     }
-                    console.log("TRIGGER")
                     setMessages((prev) => {
 
                       const newMessages = [...prev];
                       const lastMessage = newMessages[newMessages.length - 1];
-                      console.log("[LMSG]", lastMessage)
                       if (lastMessage?.isWaiting) {
-                        console.log("TRUE")
                         newMessages[newMessages.length - 1] = event.message;
                       } else {
                         newMessages.push(event.message);
@@ -441,7 +428,6 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
                     break;
                 }
               } catch (error) {
-                console.error('[CLIENT] SSE Parse Error:', { jsonString, error });
                 const errorMessage = JSON.parse(jsonString)?.error?.message;
                 throw new Error(`Received error from the server.\n${errorMessage}`);
               }
@@ -459,12 +445,10 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
                 body: JSON.stringify({ messages: finalMessages }),
               });
             } catch (saveError) {
-              console.error('Failed to save chat state on abort:', saveError);
               showNotification('Could not save the partial response.', 'error');
             }
           }
         } else {
-          console.error('[CLIENT] Stream Error', error);
           showNotification(
             error instanceof Error ? error.message : 'Failed to get response.',
             'error'
@@ -534,7 +518,6 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
         await streamAndSaveResponse(activeChatId, updatedMessages, metadata);
       }
     } catch (error) {
-      console.error(error);
       if (!(error instanceof DOMException && error.name === 'AbortError')) {
         showNotification(error instanceof Error ? error.message : 'Could not send message.', 'error');
       }
@@ -558,9 +541,8 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
         | { coordinates: { latitude: number; longitude: number } }
         | { error: string }
     ) => {
-      console.log(`[CLIENT] sendGeolocationResult triggered for tool_id: ${tool_id}.`);
       if (isStreaming) {
-        console.warn('[CLIENT] Aborting sendGeolocationResult: stream is active.');
+        
         return;
       }
 
@@ -572,7 +554,7 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
       } else {
         result_content = `Could not get user's location. Error: ${result.error}`;
       }
-      console.log('[CLIENT] Formatted tool result content:', result_content);
+      
 
       // --- START OF FIX ---
       // Get the most up-to-date messages from the ref, which is always current.
@@ -584,7 +566,6 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
         (m) => m.tool_id === tool_id && m.role === 'tool_geolocation'
       );
       if (!originalToolMsg) {
-        console.error('Critical: Could not find original geolocation tool message to construct the result.');
         showNotification('An error occurred. Please try again.', 'error');
         return;
       }
@@ -604,10 +585,7 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
 
       const historyForBackend = [...messagesForUI, resultMessage];
 
-      console.log(
-        '[CLIENT] Final history for backend continuation:',
-        JSON.stringify(historyForBackend, null, 2)
-      );
+      
 
       setMessages([...messagesForUI, { role: 'assistant', content: '', isWaiting: true }]);
       await streamAndSaveResponse(chatId, historyForBackend, { isContinuation: true });
@@ -625,7 +603,6 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
         setMessages(data.messages);
         setActiveChatId(data._id);
       } catch (error) {
-        console.error(error);
         showNotification('Could not load chat.', 'error');
         navigate('/', { replace: true });
       } finally {
@@ -696,7 +673,6 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
       await loadChatList();
       showNotification('Chat renamed!', 'success');
     } catch (error) {
-      console.error(error);
       showNotification('Could not rename chat.', 'error');
       throw error;
     }
@@ -712,7 +688,6 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
       }
       showNotification('Chat deleted.', 'success');
     } catch (error) {
-      console.error(error);
       showNotification('Could not delete chat.', 'error');
       throw error;
     }
@@ -725,7 +700,6 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
       clearChat();
       showNotification('All conversations cleared.', 'success');
     } catch (error) {
-      console.error(error);
       showNotification('Could not clear conversations.', 'error');
       throw error;
     }
