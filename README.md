@@ -1,4 +1,4 @@
-# Workspark AI — Frontend (FexoApp)
+# Workspark AI — Frontend
 
 Modern, fast, and thoughtfully-designed AI workspace. Speak, search, analyze, and build with a polished UX that feels delightful on web and mobile.
 
@@ -49,7 +49,7 @@ Requirements: Node 18+.
 npm install
 
 # 2) Configure local env
-# Create .env in FexoApp/ with the variables below (or use .env.example):
+# Create .env in WorksparkAI/ with the variables below (or use .env.example):
 # VITE_API_URL=http://localhost:3001
 # VITE_STRIPE_PUBLISHABLE_KEY=pk_test_...
 # VITE_GOOGLE_MAPS_API_KEY=AIza...
