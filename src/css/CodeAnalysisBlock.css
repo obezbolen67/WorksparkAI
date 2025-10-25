@@ -323,6 +323,26 @@
   overflow: hidden;
 }
 
+/* List layout for regular files (not images) */
+.file-outputs-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.5rem;
+}
+
+.file-outputs-list .file-output-item {
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background-color: var(--main-bg-color);
+  transition: all 0.2s ease;
+}
+
+.file-outputs-list .file-output-item:hover {
+  border-color: var(--secondary-text-color);
+  transform: translateX(2px);
+}
+
 /* In the grid, remove the extra padding from image/file content containers */
 .file-outputs-grid .image-output-container,
 .file-outputs-grid .file-output-content {
