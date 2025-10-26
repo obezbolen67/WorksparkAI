@@ -10,6 +10,8 @@ import { useSettings } from '../contexts/SettingsContext';
 import { useNotification } from '../contexts/NotificationContext';
 import { getFileIcon } from '../utils/fileIcons';
 import VoiceChatModal from './VoiceChatModal';
+import { useChat } from '../contexts/ChatContext';
+import ThinkingIcon from '../icons/thinking.svg?react';
 
 interface ChatInputProps {
   onSendMessage: (text: string, attachments: Attachment[], metadata?: Record<string, any>) => void;
@@ -21,6 +23,7 @@ interface ChatInputProps {
 const ChatInput = ({ onSendMessage, onStopGeneration, isSending, isThinkingVisible }: ChatInputProps) => {
   const { user, selectedModel } = useSettings();
   const { showNotification } = useNotification();
+  const { isThinkingEnabled, toggleThinking } = useChat();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [text, setText] = useState('');
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
@@ -270,6 +273,15 @@ const ChatInput = ({ onSendMessage, onStopGeneration, isSending, isThinkingVisib
       <div className="chat-input-wrapper">
         <input type="file" ref={imageInputRef} onChange={handleFileSelect} multiple accept="image/*" style={{ display: 'none' }} />
         <input type="file" ref={fileInputRef} onChange={handleFileSelect} multiple style={{ display: 'none' }} />
+
+        <Tooltip text={isThinkingEnabled ? "Disable reasoning" : "Enable reasoning"}>
+          <button
+            className={`chat-input-button reasoning-button ${isThinkingEnabled ? 'active' : ''}`}
+            onClick={toggleThinking}
+          >
+            <ThinkingIcon className="reasoning-icon" />
+          </button>
+        </Tooltip>
 
         <div className="chat-input-divider" />
         

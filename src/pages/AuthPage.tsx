@@ -1,6 +1,7 @@
 // src/pages/AuthPage.tsx
 import { useState, type FormEvent, useEffect } from 'react';
 import { useSettings } from '../contexts/SettingsContext';
+import { Link } from 'react-router-dom';
 import '../css/AuthPage.css';
 
 const AuthPage = () => {
@@ -88,6 +89,23 @@ const AuthPage = () => {
               disabled={isLoading}
             />
           </div>
+          
+          {isLogin && (
+            <div style={{ textAlign: 'right', marginBottom: '16px' }}>
+              <Link 
+                to="/forgot-password" 
+                style={{ 
+                  color: 'var(--accent-primary)', 
+                  fontSize: '14px',
+                  textDecoration: 'none',
+                  fontWeight: '500'
+                }}
+              >
+                Forgot Password?
+              </Link>
+            </div>
+          )}
+          
           <button type="submit" className="auth-button" disabled={isLoading}>
             {isLoading ? (
               <div className="auth-loader"></div>
