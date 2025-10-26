@@ -98,6 +98,7 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     const fetchReasoningModels = async () => {
       try {
+        console.log(import.meta.env.VITE_API_URL)
         const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/api/config`);
         if (response.ok) {
           const config = await response.json();
