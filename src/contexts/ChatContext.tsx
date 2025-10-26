@@ -14,6 +14,7 @@ import type { Message, Attachment } from '../types';
 import { useSettings } from './SettingsContext';
 import { useNotification } from './NotificationContext';
 import api from '../utils/api';
+import { fetchPublicConfig } from '../utils/config';
 
 type ChatListItem = {
   _id: string;
@@ -99,7 +100,7 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
     const fetchReasoningModels = async () => {
       try {
         console.log(import.meta.env.VITE_API_URL)
-        const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/api/config`);
+        const response = import.meta.env.VITE_API_URL || await fetchPublicConfig();
         if (response.ok) {
           const config = await response.json();
           if (config.reasoningModels && Array.isArray(config.reasoningModels)) {
