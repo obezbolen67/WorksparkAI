@@ -19,6 +19,8 @@ import { useSettings } from './contexts/SettingsContext';
 const ChatPage = lazy(() => import('./pages/ChatPage'));
 const LandingPage = lazy(() => import('./pages/LandingPage'));
 const PricingPage = lazy(() => import('./pages/PricingPage')); // <-- Add this
+const ForgotPasswordPage = lazy(() => import('./pages/ForgotPasswordPage'));
+const ResetPasswordPage = lazy(() => import('./pages/ResetPasswordPage'));
 
 // --- Full screen loader for suspense fallback ---
 const FullScreenLoader = () => (
@@ -50,6 +52,14 @@ function App() {
         <Route 
           path="/register" 
           element={isAuthenticated ? <Navigate to="/app" /> : <AuthPage />} 
+        />
+        <Route 
+          path="/forgot-password" 
+          element={isAuthenticated ? <Navigate to="/app" /> : <ForgotPasswordPage />} 
+        />
+        <Route 
+          path="/reset-password" 
+          element={isAuthenticated ? <Navigate to="/app" /> : <ResetPasswordPage />} 
         />
         
         {/* --- Private Application Routes --- */}

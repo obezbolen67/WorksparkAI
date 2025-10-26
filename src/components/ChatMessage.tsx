@@ -139,7 +139,7 @@ type AssistantTurnProps = Omit<ChatMessageProps, 'message' | 'index' | 'isEditin
   onView: (src: string) => void; 
 };
 
-const AssistantTurn = memo(({ messages, chatId, startIndex, isStreaming, onRegenerate, onCopy, onView }: AssistantTurnProps) => {
+const AssistantTurn = memo(({ messages, chatId, startIndex, isStreaming, isThinking, onRegenerate, onCopy, onView }: AssistantTurnProps) => {
     const firstMessageOfTurn = messages[startIndex];
     if (firstMessageOfTurn?.isWaiting) {
         return (
@@ -218,7 +218,7 @@ const AssistantTurn = memo(({ messages, chatId, startIndex, isStreaming, onRegen
             if (currentMessage.role === 'assistant') {
                 if (currentMessage.thinking !== undefined) {
                     flushTextBuffer(`text-before-thinking-${i}`);
-                    const isCurrentlyStreamingThinking = isStreaming && i === messages.length - 1;
+                    const isCurrentlyStreamingThinking = isThinking && i === messages.length - 1;
                     parts.push(<InlineThinking key={`thinking-${i}`} content={currentMessage.thinking || ''} isStreaming={isCurrentlyStreamingThinking} />);
                 }
                 if (currentMessage.content) {
@@ -310,6 +310,7 @@ interface ChatMessageProps {
   index: number;
   isEditing: boolean;
   isStreaming: boolean;
+  isThinking: boolean;
   onRegenerate: () => void;
   onCopy: (content: string) => void;
   onStartEdit: (index: number) => void;
@@ -317,7 +318,7 @@ interface ChatMessageProps {
   onCancelEdit: () => void;
 }
 
-const ChatMessage = ({ message, messages, chatId, index, isEditing, onStartEdit, onSaveEdit, onCancelEdit, ...rest }: ChatMessageProps) => {
+const ChatMessage = ({ message, messages, chatId, index, isEditing, isStreaming, isThinking, onStartEdit, onSaveEdit, onCancelEdit, ...rest }: ChatMessageProps) => {
   const { showNotification } = useNotification();
   const [editedContent, setEditedContent] = useState(message.content || '');
   const [viewerSrc, setViewerSrc] = useState<string | null>(null);
@@ -376,7 +377,8 @@ const ChatMessage = ({ message, messages, chatId, index, isEditing, onStartEdit,
       
       setTimeout(() => {
         textarea.style.height = 'auto';
-        textarea.style.height = `${textarea.scrollHeight}px`;
+        const newHeight = Math.min(textarea.scrollHeight, 400); // Max 400px
+        textarea.style.height = `${newHeight}px`;
       }, 0);
     }
   }, [isEditing]);
@@ -387,7 +389,8 @@ const ChatMessage = ({ message, messages, chatId, index, isEditing, onStartEdit,
     setEditedContent(e.target.value);
     const textarea = e.target;
     textarea.style.height = 'auto';
-    textarea.style.height = `${textarea.scrollHeight}px`;
+    const newHeight = Math.min(textarea.scrollHeight, 400); // Max 400px
+    textarea.style.height = `${newHeight}px`;
   };
 
   const handleEditKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -494,7 +497,7 @@ const ChatMessage = ({ message, messages, chatId, index, isEditing, onStartEdit,
     
     const isStartOfTurn = index === 0 || messages[index - 1]?.role === 'user';
     if (isStartOfTurn) {
-      return <AssistantTurn chatId={chatId} messages={messages} startIndex={index} {...rest} onView={handleOpenViewer} />;
+      return <AssistantTurn chatId={chatId} messages={messages} startIndex={index} isStreaming={isStreaming} isThinking={isThinking} {...rest} onView={handleOpenViewer} />;
     }
     
     return null;

@@ -68,7 +68,7 @@ const ChatContext = createContext<ChatContextType | undefined>(undefined);
 export const ChatProvider = ({ children }: { children: ReactNode }) => {
   const DEBUG_LOCAL = import.meta.env.VITE_API_URL === 'http://localhost:3001';
   const navigate = useNavigate();
-  const { token } = useSettings();
+  const { token, selectedModel, user } = useSettings();
   const { showNotification } = useNotification();
 
   const [messages, setMessages] = useState<Message[]>([]);
@@ -83,6 +83,7 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
   const [isThinking, setIsThinking] = useState(false);
   const [thinkingContent, setThinkingContent] = useState<string | null>(null);
   const [isThinkingEnabled, setThinkingEnabled] = useState(false);
+  const [reasoningModels, setReasoningModels] = useState<string[]>([]);
 
   const streamAbortControllerRef = useRef<AbortController | null>(null);
   const messagesRef = useRef<Message[]>([]);
@@ -92,6 +93,46 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
   }, [messages]);
 
   const toggleThinking = () => setThinkingEnabled((prev) => !prev);
+
+  // Fetch reasoning models from server config
+  useEffect(() => {
+    const fetchReasoningModels = async () => {
+      try {
+        const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/api/config`);
+        if (response.ok) {
+          const config = await response.json();
+          if (config.reasoningModels && Array.isArray(config.reasoningModels)) {
+            setReasoningModels(config.reasoningModels);
+            console.log('[ChatContext] Loaded reasoning models from server:', config.reasoningModels);
+          }
+        }
+      } catch (error) {
+        console.error('[ChatContext] Failed to fetch reasoning models:', error);
+        // Fallback to defaults if fetch fails
+        setReasoningModels([
+          'thinking', 'reasoning', 'o1', 'o3', 'deepseek-reasoner',
+          'qwen-plus', 'qwen-turbo', 'qwen-max', 'qwen-vl-plus', 'qwen-vl-max',
+          'qwen2.5', 'qwen-qwq', 'claude-3-7-sonnet', 'gemini-2.5'
+        ]);
+      }
+    };
+    fetchReasoningModels();
+  }, []);
+
+  // Auto-enable thinking for reasoning models
+  useEffect(() => {
+    const modelName = selectedModel?.toLowerCase() || '';
+    const provider = user?.selectedProvider?.toLowerCase() || '';
+    console.log('[ChatContext] Checking model for auto-enable thinking:', modelName, 'provider:', provider);
+    
+    // Enable thinking for default provider or if model name matches reasoning patterns
+    const isReasoningModel = 
+      provider === 'default' ||  // Default provider uses Gemini 2.5 Flash
+      reasoningModels.some(pattern => modelName.includes(pattern.toLowerCase()));
+    
+    console.log('[ChatContext] Is reasoning model?', isReasoningModel, '-> setting isThinkingEnabled to', isReasoningModel);
+    setThinkingEnabled(isReasoningModel);
+  }, [selectedModel, user?.selectedProvider, reasoningModels]);
 
   const loadChatList = useCallback(async () => {
     if (!token) {
@@ -232,6 +273,7 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
 
                 switch (event.type) {
                   case 'THINKING_START':
+                    console.log('[DEBUG THINKING] Received THINKING_START event');
                     setIsThinking(true);
                     setThinkingContent('');
                     currentAssistantThinking = '';
@@ -267,6 +309,7 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
                     break;
 
                   case 'THINKING_DELTA':
+                    console.log('[DEBUG THINKING] Received THINKING_DELTA, length:', event.content?.length);
                     currentAssistantThinking += event.content;
                     setThinkingContent((prev) => (prev || '') + event.content);
                     flushSync(() => {
@@ -300,6 +343,7 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
                     break;
 
                   case 'THINKING_END':
+                    console.log('[DEBUG THINKING] Received THINKING_END, total thinking content length:', currentAssistantThinking.length);
                     setIsThinking(false);
                     break;
 
@@ -559,9 +603,8 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
         setMessages(messagesWithPlaceholder);
 
         const streamMetadata = { ...metadata, isThinkingEnabled, userMessageAlreadySaved: true };
-  await streamAndSaveResponse(newChat._id, newChat.messages, streamMetadata);
-
-        await loadChatList();
+        console.log('[DEBUG THINKING] streamMetadata for new chat:', streamMetadata);
+        await streamAndSaveResponse(newChat._id, newChat.messages, streamMetadata);        await loadChatList();
       } else {
         // --- START OF FIX ---
         const updatedMessages = [...currentMessages, userMessage];
@@ -571,6 +614,7 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
           { role: 'assistant', content: '', isWaiting: true } as Message,
         ];
         setMessages(messagesWithPlaceholder);
+        console.log('[DEBUG THINKING] streamMetadata for existing chat:', { ...metadata, isThinkingEnabled });
         await streamAndSaveResponse(activeChatId, updatedMessages, metadata);
       }
     } catch (error) {
