@@ -180,9 +180,7 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
       messageHistory: Message[],
       metadata?: Record<string, any>
     ) => {
-      
-
-  setIsSending(true);
+      setIsSending(true);
       setIsStreaming(true);
       setIsThinking(false);
       setThinkingContent(null);
@@ -617,7 +615,7 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
         ];
         setMessages(messagesWithPlaceholder);
         console.log('[DEBUG THINKING] streamMetadata for existing chat:', { ...metadata, isThinkingEnabled });
-        await streamAndSaveResponse(activeChatId, updatedMessages, metadata);
+        await streamAndSaveResponse(activeChatId, updatedMessages, {...metadata, isThinkingEnabled});
       }
     } catch (error) {
       if (DEBUG_LOCAL) {
