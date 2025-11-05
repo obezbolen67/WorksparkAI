@@ -11,7 +11,8 @@ interface GoogleMapsBlockProps {
   integrationData: GoogleMapsData;
 }
 
-const LIBRARIES: ("geometry" | "places" | "drawing" | "visualization")[] = ['geometry', 'places'];
+// Use a stable superset of libraries to avoid reloading the script with different URLs across routes
+const LIBRARIES: ("geometry" | "places" | "drawing" | "visualization" | "marker")[] = ['geometry', 'places', 'marker'];
 
 const mapContainerStyle = {
   height: '100%',
@@ -67,28 +68,28 @@ const decodePolyline = (encoded: string): google.maps.LatLngLiteral[] => {
   return poly;
 };
 
-const GoogleMapsBlock = memo(({ integrationData }: GoogleMapsBlockProps) => {
-  const [mapType, setMapType] = useState<MapType>('roadmap');
-  const [showTraffic, setShowTraffic] = useState(false);
-  const [isFullscreen, setIsFullscreen] = useState(false);
-  const [showStreetView, setShowStreetView] = useState(false);
-
-  const [mapsApiKey, setMapsApiKey] = useState<string>(
-    (import.meta as any).env?.VITE_GOOGLE_MAPS_API_KEY || ''
-  );
-
-  useEffect(() => {
-    if (!mapsApiKey) {
-      fetchPublicConfig().then(cfg => {
-        if (cfg.googleMapsApiKey) setMapsApiKey(cfg.googleMapsApiKey);
-      }).catch(() => {});
-    }
-  }, [mapsApiKey]);
-
+// Inner component that actually loads Maps JS API. We only mount this when a valid key is available
+// to prevent duplicate API script loads (root cause of the prod errors seen).
+const GoogleMapsInner = memo(({ 
+  integrationData,
+  mapType,
+  showTraffic,
+  showStreetView,
+  mapsApiKey,
+  onMapLoad,
+}: {
+  integrationData: GoogleMapsData;
+  mapType: 'roadmap' | 'satellite' | 'hybrid' | 'terrain';
+  showTraffic: boolean;
+  showStreetView: boolean;
+  mapsApiKey: string;
+  onMapLoad: (map: google.maps.Map) => void;
+}) => {
   const { isLoaded, loadError } = useLoadScript({
-    googleMapsApiKey: mapsApiKey || "",
+    googleMapsApiKey: mapsApiKey,
     libraries: LIBRARIES,
     preventGoogleFontsLoading: true,
+    id: 'google-maps-script',
   });
 
   const decodedPath = useMemo(() => {
@@ -96,9 +97,7 @@ const GoogleMapsBlock = memo(({ integrationData }: GoogleMapsBlockProps) => {
     if (window.google?.maps?.geometry?.encoding) {
       try {
         return window.google.maps.geometry.encoding.decodePath(integrationData.polyline);
-      } catch (error) {
-        
-      }
+      } catch (error) {}
     }
     return decodePolyline(integrationData.polyline);
   }, [integrationData.polyline, isLoaded]);
@@ -111,10 +110,108 @@ const GoogleMapsBlock = memo(({ integrationData }: GoogleMapsBlockProps) => {
     );
   }, [integrationData.bounds, isLoaded]);
 
-  const handleMapLoad = useCallback((map: google.maps.Map) => {
+  const handleMapLoadInner = useCallback((map: google.maps.Map) => {
     if (mapBounds) map.fitBounds(mapBounds);
     else map.setCenter(integrationData.start);
-  }, [mapBounds, integrationData.start]);
+    onMapLoad(map);
+  }, [mapBounds, integrationData.start, onMapLoad]);
+
+  const mapOptions = useMemo(() => ({
+    disableDefaultUI: false,
+    zoomControl: true,
+    mapTypeControl: false,
+    streetViewControl: false,
+    fullscreenControl: false,
+    mapTypeId: mapType,
+    gestureHandling: 'greedy',
+    styles: mapType === 'roadmap' ? [{
+      featureType: 'poi',
+      elementType: 'labels',
+      stylers: [{ visibility: 'on' }]
+    }] : undefined,
+  }), [mapType]);
+
+  if (loadError) {
+    return (
+      <div className="maps-error-state">
+        <FiAlertTriangle size={24} />
+        <p><strong>Map Loading Error</strong></p>
+        <p>Failed to load Google Maps. Please check your API key and browser console.</p>
+      </div>
+    );
+  }
+  if (!isLoaded || typeof window.google === 'undefined' || !window.google.maps) {
+    return <div className="maps-loading-state">Initializing Map...</div>;
+  }
+
+  if (showStreetView) {
+    return (
+      <StreetViewPanorama
+        options={{
+          position: integrationData.start,
+          visible: true,
+          enableCloseButton: false,
+          fullscreenControl: false,
+        }}
+      />
+    );
+  }
+
+  return (
+    <GoogleMap
+      mapContainerStyle={mapContainerStyle}
+      options={mapOptions}
+      onLoad={handleMapLoadInner}
+    >
+      {/* TODO: migrate to AdvancedMarkerElement in a follow-up */}
+      <Marker
+        position={integrationData.start}
+        label={{ text: "A", color: "white", fontSize: "14px", fontWeight: "bold" }}
+        icon={CIRCLE_MARKER_ICON_START}
+      />
+      <Marker
+        position={integrationData.end}
+        label={{ text: "B", color: "white", fontSize: "14px", fontWeight: "bold" }}
+        icon={CIRCLE_MARKER_ICON_END}
+      />
+      {decodedPath.length > 0 && (
+        <Polyline
+          path={decodedPath}
+          options={{
+            strokeColor: '#4285F4',
+            strokeOpacity: 0.9,
+            strokeWeight: 5,
+          }}
+        />
+      )}
+      {showTraffic && <TrafficLayer />}
+    </GoogleMap>
+  );
+});
+GoogleMapsInner.displayName = 'GoogleMapsInner';
+
+const GoogleMapsBlock = memo(({ integrationData }: GoogleMapsBlockProps) => {
+  const [mapType, setMapType] = useState<MapType>('roadmap');
+  const [showTraffic, setShowTraffic] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [showStreetView, setShowStreetView] = useState(false);
+
+  const [mapsApiKey, setMapsApiKey] = useState<string>(
+    (import.meta as any).env?.GOOGLE_MAPS_API_KEY || ''
+  );
+
+  useEffect(() => {
+    if (!mapsApiKey) {
+      fetchPublicConfig().then(cfg => {
+        if (cfg.googleMapsApiKey) setMapsApiKey(cfg.googleMapsApiKey);
+      }).catch(() => {});
+    }
+  }, [mapsApiKey]);
+
+  // Keep a hook for future map interactions (e.g., migrating to Advanced Markers)
+  const handleMapLoad = useCallback((_map: google.maps.Map) => {
+    // no-op for now
+  }, []);
   
   const toggleFullscreen = () => setIsFullscreen(!isFullscreen);
   const toggleStreetView = () => setShowStreetView(!showStreetView);
@@ -136,20 +233,7 @@ const GoogleMapsBlock = memo(({ integrationData }: GoogleMapsBlockProps) => {
     window.open(url, '_blank', 'noopener,noreferrer');
   };
   
-  const mapOptions = useMemo(() => ({
-    disableDefaultUI: false, 
-    zoomControl: true, 
-    mapTypeControl: false, 
-    streetViewControl: false, 
-    fullscreenControl: false, 
-    mapTypeId: mapType, 
-    gestureHandling: 'greedy',
-    styles: mapType === 'roadmap' ? [{ 
-      featureType: 'poi', 
-      elementType: 'labels', 
-      stylers: [{ visibility: 'on' }] 
-    }] : undefined,
-  }), [mapType]);
+  // Map options are computed inside the inner component
 
   const routeInfo = useMemo(() => ({
     distance: integrationData.distance?.text || '...',
@@ -157,74 +241,7 @@ const GoogleMapsBlock = memo(({ integrationData }: GoogleMapsBlockProps) => {
     steps: integrationData.steps || []
   }), [integrationData]);
 
-  const renderMapContent = () => {
-  if (loadError || !mapsApiKey) {
-        const errorMessage = !mapsApiKey 
-            ? "Google Maps API Key is missing in client environment variables."
-            : "Failed to load Google Maps. Please check your API key and browser console.";
-        return (
-            <div className="maps-error-state">
-                <FiAlertTriangle size={24} />
-                <p><strong>Map Loading Error</strong></p>
-                <p>{errorMessage}</p>
-        {!mapsApiKey && (
-          <pre>
-          Provide a key via Vite env (VITE_GOOGLE_MAPS_API_KEY), or expose it from the server at /api/config.
-          </pre>
-        )}
-            </div>
-        );
-    }
-    if (!isLoaded || typeof window.google === 'undefined' || !window.google.maps) {
-        return <div className="maps-loading-state">Initializing Map...</div>;
-    }
-
-    if (showStreetView) {
-      return (
-        <StreetViewPanorama
-          // --- START OF THE FIX ---
-          // Both 'visible' and 'position' are part of the options object.
-          options={{
-            position: integrationData.start,
-            visible: true,
-            enableCloseButton: false,
-            fullscreenControl: false,
-          }}
-          // --- END OF THE FIX ---
-        />
-      );
-    }
-
-    return (
-        <GoogleMap 
-          mapContainerStyle={mapContainerStyle} 
-          options={mapOptions} 
-          onLoad={handleMapLoad}
-        >
-            <Marker 
-              position={integrationData.start} 
-              label={{ text: "A", color: "white", fontSize: "14px", fontWeight: "bold" }} 
-              icon={CIRCLE_MARKER_ICON_START} 
-            />
-            <Marker 
-              position={integrationData.end} 
-              label={{ text: "B", color: "white", fontSize: "14px", fontWeight: "bold" }} 
-              icon={CIRCLE_MARKER_ICON_END} 
-            />
-            {decodedPath.length > 0 && (
-              <Polyline 
-                path={decodedPath} 
-                options={{ 
-                  strokeColor: '#4285F4', 
-                  strokeOpacity: 0.9, 
-                  strokeWeight: 5 
-                }} 
-              />
-            )}
-            {showTraffic && <TrafficLayer />}
-        </GoogleMap>
-    );
-  };
+  // Map rendering is handled by the inner component
   
   return (
     <div className={`tool-block-container maps-container state-completed ${isFullscreen ? 'fullscreen' : ''}`}>
@@ -275,7 +292,18 @@ const GoogleMapsBlock = memo(({ integrationData }: GoogleMapsBlockProps) => {
       <div className="tool-block-content expanded">
         <div className="maps-layout">
           <div className={`maps-map-wrapper ${isFullscreen ? 'fullscreen-map' : ''}`}>
-            {renderMapContent()}
+            {!mapsApiKey ? (
+              <div className="maps-loading-state">Loading Maps API key...</div>
+            ) : (
+              <GoogleMapsInner
+                integrationData={integrationData}
+                mapType={mapType}
+                showTraffic={showTraffic}
+                showStreetView={showStreetView}
+                mapsApiKey={mapsApiKey}
+                onMapLoad={handleMapLoad}
+              />
+            )}
           </div>
           <div className="maps-info-panel">
             <div className="maps-route-summary">

@@ -52,7 +52,7 @@ npm install
 # Create .env in WorksparkAI/ with the variables below (or use .env.example):
 # VITE_API_URL=http://localhost:3001
 # VITE_STRIPE_PUBLISHABLE_KEY=pk_test_...
-# VITE_GOOGLE_MAPS_API_KEY=AIza...
+# GOOGLE_MAPS_API_KEY=AIza...
 
 # 3) Run dev server
 npm run dev
@@ -68,7 +68,7 @@ The frontend uses Vite’s `VITE_*` variables at build time. Typical keys:
 
 - `VITE_API_URL` — Base URL of the backend (e.g., https://your-api.example.com)
 - `VITE_STRIPE_PUBLISHABLE_KEY` — Stripe publishable key (safe for client)
-- `VITE_GOOGLE_MAPS_API_KEY` — Google Maps JavaScript API key (public; lock down via referrers)
+- `GOOGLE_MAPS_API_KEY` — Google Maps JavaScript API key (public; lock down via referrers)
 
 Runtime fallback (optional): the app can also read a public config from your backend at `GET /api/config` to avoid rebuilds for key rotations. Only return public, non‑secret values there.
 
