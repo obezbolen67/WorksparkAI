@@ -1,8 +1,11 @@
 // src/components/GoogleMapsBlock.tsx
 import { memo, useMemo, useState, useCallback } from 'react';
 import { GoogleMap, useLoadScript, Marker, Polyline, TrafficLayer, StreetViewPanorama } from '@react-google-maps/api';
-import { FiMap, FiNavigation, FiClock, FiMapPin, FiMaximize2, FiMinimize2, FiLayers, FiEye, FiNavigation2, FiAlertTriangle } from 'react-icons/fi';
+import { FiMap, FiNavigation, FiClock, FiMapPin, FiMaximize2, FiMinimize2, FiLayers, FiEye, FiNavigation2, FiAlertTriangle, FiPlay } from 'react-icons/fi';
 import type { GoogleMapsData } from '../types';
+import { useNavigation } from '../contexts/NavigationContext';
+import NavigationPanel from './NavigationPanel';
+import type { NavigationStep } from '../utils/navigationHelpers';
 import '../css/AnalysisBlock.css';
 import '../css/GoogleMapsBlock.css';
 
@@ -67,6 +70,16 @@ const decodePolyline = (encoded: string): google.maps.LatLngLiteral[] => {
   return poly;
 };
 
+// User position marker icon
+const USER_POSITION_ICON = {
+  path: 0, // google.maps.SymbolPath.CIRCLE
+  scale: 12,
+  fillColor: "#4285F4",
+  fillOpacity: 1,
+  strokeColor: "#ffffff",
+  strokeWeight: 3,
+};
+
 // Inner component that actually loads Maps JS API. We only mount this when a valid key is available
 // to prevent duplicate API script loads (root cause of the prod errors seen).
 const GoogleMapsInner = memo(({ 
@@ -76,6 +89,7 @@ const GoogleMapsInner = memo(({
   showStreetView,
   mapsApiKey,
   onMapLoad,
+  userPosition,
 }: {
   integrationData: GoogleMapsData;
   mapType: 'roadmap' | 'satellite' | 'hybrid' | 'terrain';
@@ -83,6 +97,7 @@ const GoogleMapsInner = memo(({
   showStreetView: boolean;
   mapsApiKey: string;
   onMapLoad: (map: google.maps.Map) => void;
+  userPosition: { lat: number; lng: number } | null;
 }) => {
   const { isLoaded, loadError } = useLoadScript({
     googleMapsApiKey: mapsApiKey,
@@ -184,6 +199,14 @@ const GoogleMapsInner = memo(({
         />
       )}
       {showTraffic && <TrafficLayer />}
+      {/* User position marker when navigating */}
+      {userPosition && (
+        <Marker
+          position={userPosition}
+          icon={USER_POSITION_ICON}
+          zIndex={1000}
+        />
+      )}
     </GoogleMap>
   );
 });
@@ -195,6 +218,9 @@ const GoogleMapsBlock = memo(({ integrationData }: GoogleMapsBlockProps) => {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [showStreetView, setShowStreetView] = useState(false);
 
+  // Navigation integration
+  const { navigation, startNavigation } = useNavigation();
+
   // Get Maps API key directly from Vite env (baked in at build time)
   const mapsApiKey = (import.meta as any).env?.VITE_GOOGLE_MAPS_API_KEY || '';
 
@@ -202,6 +228,20 @@ const GoogleMapsBlock = memo(({ integrationData }: GoogleMapsBlockProps) => {
   const handleMapLoad = useCallback((_map: google.maps.Map) => {
     // no-op for now
   }, []);
+
+  // Handle start navigation button
+  const handleStartNavigation = useCallback(() => {
+    const steps: NavigationStep[] = integrationData.steps.map((step: any) => ({
+      instructions: step.html_instructions || step.instructions,
+      distance: step.distance,
+      duration: step.duration,
+      start_location: step.start_location,
+      end_location: step.end_location,
+      maneuver: step.maneuver,
+    }));
+
+    startNavigation(steps, integrationData.end);
+  }, [integrationData, startNavigation]);
   
   const toggleFullscreen = () => setIsFullscreen(!isFullscreen);
   const toggleStreetView = () => setShowStreetView(!showStreetView);
@@ -292,26 +332,46 @@ const GoogleMapsBlock = memo(({ integrationData }: GoogleMapsBlockProps) => {
                 showStreetView={showStreetView}
                 mapsApiKey={mapsApiKey}
                 onMapLoad={handleMapLoad}
+                userPosition={navigation.currentPosition}
               />
             )}
           </div>
           <div className="maps-info-panel">
-            <div className="maps-route-summary">
-              <div className="route-info-item">
-                <FiNavigation className="route-icon" />
-                <div>
-                  <div className="route-label">Distance</div>
-                  <div className="route-value">{routeInfo.distance}</div>
+            {/* Live Navigation Panel */}
+            {navigation.isNavigating ? (
+              <NavigationPanel />
+            ) : (
+              <>
+                {/* Start Navigation Button */}
+                {routeInfo.steps.length > 0 && (
+                  <button 
+                    className="start-navigation-btn" 
+                    onClick={handleStartNavigation}
+                    aria-label="Start live navigation"
+                  >
+                    <FiPlay />
+                    <span>Start Live Navigation</span>
+                  </button>
+                )}
+                
+                <div className="maps-route-summary">
+                  <div className="route-info-item">
+                    <FiNavigation className="route-icon" />
+                    <div>
+                      <div className="route-label">Distance</div>
+                      <div className="route-value">{routeInfo.distance}</div>
+                    </div>
+                  </div>
+                  <div className="route-info-item">
+                    <FiClock className="route-icon" />
+                    <div>
+                      <div className="route-label">Duration</div>
+                      <div className="route-value">{routeInfo.duration}</div>
+                    </div>
+                  </div>
                 </div>
-              </div>
-              <div className="route-info-item">
-                <FiClock className="route-icon" />
-                <div>
-                  <div className="route-label">Duration</div>
-                  <div className="route-value">{routeInfo.duration}</div>
-                </div>
-              </div>
-            </div>
+              </>
+            )}
             
             <div className="maps-locations">
               <div className="location-item start">

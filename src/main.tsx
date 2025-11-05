@@ -5,13 +5,16 @@ import './index.css'
 import App from './App.tsx'
 import { SettingsProvider } from './contexts/SettingsContext.tsx'
 import { NotificationProvider } from './contexts/NotificationContext.tsx'
+import { NavigationProvider } from './contexts/NavigationContext.tsx'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <BrowserRouter>
       <NotificationProvider>
         <SettingsProvider>
-          <App />
+          <NavigationProvider>
+            <App />
+          </NavigationProvider>
         </SettingsProvider>
       </NotificationProvider>
     </BrowserRouter>
