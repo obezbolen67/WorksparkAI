@@ -1,6 +1,6 @@
 // src/components/GoogleMapsBlock.tsx
 import { memo, useMemo, useState, useCallback } from 'react';
-import { GoogleMap, useLoadScript, Marker, Polyline, TrafficLayer, StreetViewPanorama } from '@react-google-maps/api';
+import { GoogleMap, useLoadScript, Marker, Polyline, TrafficLayer } from '@react-google-maps/api';
 import { FiMap, FiNavigation, FiClock, FiMapPin, FiMaximize2, FiMinimize2, FiLayers, FiEye, FiNavigation2, FiAlertTriangle, FiPlay } from 'react-icons/fi';
 import type { GoogleMapsData } from '../types';
 import { useNavigation } from '../contexts/NavigationContext';
@@ -160,12 +160,21 @@ const GoogleMapsInner = memo(({
 
   if (showStreetView) {
     return (
-      <StreetViewPanorama
-        options={{
-          position: integrationData.start,
-          visible: true,
-          enableCloseButton: false,
-          fullscreenControl: false,
+      <GoogleMap
+        mapContainerStyle={mapContainerStyle}
+        options={mapOptions}
+        onLoad={(map) => {
+          const panorama = new window.google.maps.StreetViewPanorama(
+            map.getDiv(),
+            {
+              position: integrationData.start,
+              pov: { heading: 0, pitch: 0 },
+              visible: true,
+              enableCloseButton: false,
+              fullscreenControl: false,
+            }
+          );
+          map.setStreetView(panorama);
         }}
       />
     );
