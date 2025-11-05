@@ -19,16 +19,16 @@ steps:
   # 1) Write .env.production from Secret Manager (not committed to git)
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     entrypoint: 'bash'
-  secretEnv: [ 'GOOGLE_MAPS_API_KEY', 'STRIPE_PUBLISHABLE_KEY', 'VITE_API_URL' ]
+    secretEnv: [ 'GOOGLE_MAPS_API_KEY', 'STRIPE_PUBLISHABLE_KEY', 'VITE_API_URL' ]
     args:
       - -lc
       - |
-  cat > .env.production << 'EOF'
-  # Only variables prefixed with VITE_ are exposed to the client in Vite
-  VITE_API_URL=${VITE_API_URL}
-  VITE_GOOGLE_MAPS_API_KEY=${GOOGLE_MAPS_API_KEY}
-  VITE_STRIPE_PUBLISHABLE_KEY=${STRIPE_PUBLISHABLE_KEY}
-  EOF
+        cat > .env.production << 'EOF'
+        # Only variables prefixed with VITE_ are exposed to the client in Vite
+        VITE_API_URL=${VITE_API_URL}
+        VITE_GOOGLE_MAPS_API_KEY=${GOOGLE_MAPS_API_KEY}
+        VITE_STRIPE_PUBLISHABLE_KEY=${STRIPE_PUBLISHABLE_KEY}
+        EOF
         echo "Wrote .env.production"
 
   # 2) Build and push the container image
