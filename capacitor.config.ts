@@ -1,14 +1,23 @@
 import { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'com.fexo.app',
-  appName: 'Fexo',
+  appId: 'com.worksparkai.app',
+  appName: 'Workspark AI',
   webDir: 'dist',
-  bundledWebRuntime: false,
   server: {
-    androidScheme: 'https'
-    // If you load content from your own domain(s), you can allow navigation like:
-    // allowNavigation: ['your-domain.com', 'api.your-domain.com']
+    androidScheme: 'https',
+    cleartext: false
+  },
+  android: {
+    allowMixedContent: false,
+    captureInput: true,
+    webContentsDebuggingEnabled: true
+  },
+  plugins: {
+    LocalNotifications: {
+      smallIcon: 'ic_stat_icon_config_sample',
+      iconColor: '#4285F4'
+    }
   }
 };
 

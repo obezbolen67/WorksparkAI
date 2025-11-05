@@ -164,11 +164,15 @@ export const SettingsProvider = ({ children }: { children: ReactNode }) => {
   }, [user]);
 
   const apiAuthRequest = async (endpoint: 'login' | 'register', body: object) => {
-    const res = await fetch(`${API_BASE_URL}/api/auth/${endpoint}`, {
+    const url = `${API_BASE_URL}/api/auth/${endpoint}`;
+    console.log('[AUTH] Attempting request to:', url);
+    console.log('[AUTH] API_BASE_URL:', API_BASE_URL);
+    const res = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
     });
+    console.log('[AUTH] Response status:', res.status, res.statusText);
     const data = await res.json();
     if (!res.ok) {
       throw new Error(data.error || data.errors?.[0]?.msg || 'Authentication failed');

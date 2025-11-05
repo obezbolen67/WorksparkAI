@@ -1,0 +1,129 @@
+# Android APK Build Setup Guide
+
+## Current Status
+✅ Java 17 configured in gradle.properties
+✅ Gradle 8.10.2 configured
+✅ Build configuration ready
+⚠️ Android SDK required
+
+## Step 1: Install Android SDK
+
+You have two options:
+
+### Option A: Install Android Studio (Recommended)
+1. Download from: https://developer.android.com/studio
+2. Install Android Studio
+3. During installation, it will install Android SDK automatically
+4. Default location: `C:\Users\plays\AppData\Local\Android\Sdk`
+
+### Option B: Install SDK Command Line Tools Only
+1. Download from: https://developer.android.com/studio#command-line-tools-only
+2. Extract to: `C:\Users\plays\AppData\Local\Android\Sdk`
+3. Run SDK Manager to install required components
+
+## Step 2: Update local.properties
+
+After installing Android SDK, update the path in:
+`C:\Users\plays\Code\Web\Fexo\FexoApp\android\local.properties`
+
+The file should contain:
+```
+sdk.dir=C\:\\Users\\plays\\AppData\\Local\\Android\\Sdk
+```
+
+## Step 3: Install Required SDK Components
+
+Open Android Studio > Tools > SDK Manager, or use command line:
+
+```cmd
+cd C:\Users\plays\AppData\Local\Android\Sdk\cmdline-tools\latest\bin
+sdkmanager "platform-tools" "platforms;android-34" "build-tools;34.0.0"
+```
+
+Required components:
+- Android SDK Platform 34 (or your targetSdkVersion)
+- Android SDK Build-Tools 34.0.0
+- Android SDK Platform-Tools
+- Android SDK Command-line Tools
+
+## Step 4: Build APK
+
+Once Android SDK is installed, run:
+
+```powershell
+cd C:\Users\plays\Code\Web\Fexo\FexoApp\android
+.\gradlew.bat assembleDebug
+```
+
+The APK will be created at:
+`android\app\build\outputs\apk\debug\app-debug.apk`
+
+## Quick Build Script
+
+After setup, you can use:
+
+```powershell
+cd C:\Users\plays\Code\Web\Fexo\FexoApp
+.\build-apk.ps1
+```
+
+## Verification
+
+Check if Android SDK is properly installed:
+
+```cmd
+# Check SDK location exists
+dir C:\Users\plays\AppData\Local\Android\Sdk
+
+# Check ADB is available (part of platform-tools)
+C:\Users\plays\AppData\Local\Android\Sdk\platform-tools\adb.exe version
+```
+
+## Alternative: Use Online Build Service
+
+If you don't want to install Android SDK locally, you can use:
+
+1. **Expo EAS Build** (https://expo.dev/eas)
+2. **Appetize.io** (https://appetize.io)
+3. **GitHub Actions** with Android build workflow
+4. **Bitrise** (https://www.bitrise.io)
+
+## What's Already Configured
+
+✅ Java 17 set in gradle.properties (Java 25 causes issues)
+✅ Gradle 8.10.2 (latest stable)
+✅ Android Gradle Plugin 8.7.3
+✅ ProGuard rules for release builds
+✅ Signing configuration ready (need keystore)
+✅ Local notifications plugin
+✅ Build scripts ready
+
+## Next Steps After SDK Installation
+
+1. Build debug APK: `.\gradlew.bat assembleDebug`
+2. Test on device/emulator
+3. Create keystore for signed release
+4. Build release APK: `.\gradlew.bat assembleRelease`
+5. Test thoroughly
+6. Prepare for Play Store upload
+
+## Troubleshooting
+
+**"SDK location not found"**
+- Install Android SDK
+- Update local.properties with correct path
+
+**"Java version too high"**
+- Already fixed: Using Java 17 via gradle.properties
+
+**"Build tools not found"**
+- Install build-tools via SDK Manager
+- Match version in build.gradle
+
+**"Platform not found"**
+- Install required Android platform via SDK Manager
+- Check compileSdkVersion in build.gradle
+
+---
+
+**Ready to build once Android SDK is installed!** 🚀
