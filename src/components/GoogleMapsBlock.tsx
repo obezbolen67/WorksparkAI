@@ -1,11 +1,10 @@
 // src/components/GoogleMapsBlock.tsx
-import { memo, useMemo, useState, useCallback, useEffect } from 'react';
+import { memo, useMemo, useState, useCallback } from 'react';
 import { GoogleMap, useLoadScript, Marker, Polyline, TrafficLayer, StreetViewPanorama } from '@react-google-maps/api';
 import { FiMap, FiNavigation, FiClock, FiMapPin, FiMaximize2, FiMinimize2, FiLayers, FiEye, FiNavigation2, FiAlertTriangle } from 'react-icons/fi';
 import type { GoogleMapsData } from '../types';
 import '../css/AnalysisBlock.css';
 import '../css/GoogleMapsBlock.css';
-import { fetchPublicConfig } from '../utils/config';
 
 interface GoogleMapsBlockProps {
   integrationData: GoogleMapsData;
@@ -196,17 +195,8 @@ const GoogleMapsBlock = memo(({ integrationData }: GoogleMapsBlockProps) => {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [showStreetView, setShowStreetView] = useState(false);
 
-  const [mapsApiKey, setMapsApiKey] = useState<string>(
-    (import.meta as any).env?.GOOGLE_MAPS_API_KEY || ''
-  );
-
-  useEffect(() => {
-    if (!mapsApiKey) {
-      fetchPublicConfig().then(cfg => {
-        if (cfg.googleMapsApiKey) setMapsApiKey(cfg.googleMapsApiKey);
-      }).catch(() => {});
-    }
-  }, [mapsApiKey]);
+  // Get Maps API key directly from Vite env (baked in at build time)
+  const mapsApiKey = (import.meta as any).env?.VITE_GOOGLE_MAPS_API_KEY || '';
 
   // Keep a hook for future map interactions (e.g., migrating to Advanced Markers)
   const handleMapLoad = useCallback((_map: google.maps.Map) => {

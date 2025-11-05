@@ -1,5 +1,6 @@
 // src/utils/config.ts
-import { API_BASE_URL } from './api';
+// All public config is now provided via Vite environment variables at build time
+// No runtime config fetching needed - more secure and faster
 
 export type PublicConfig = {
   googleMapsApiKey?: string;
@@ -7,42 +8,10 @@ export type PublicConfig = {
   [key: string]: any;
 };
 
-let cachedConfig: PublicConfig | null = null;
-
-function readWindowConfig(): PublicConfig | null {
-  if (typeof window !== 'undefined' && (window as any).__APP_CONFIG__) {
-    return (window as any).__APP_CONFIG__ as PublicConfig;
-  }
-  return null;
-}
-
 export async function fetchPublicConfig(): Promise<PublicConfig> {
-  if (cachedConfig) return cachedConfig;
-
-  // Prefer a server-provided config endpoint if available
-  try {
-    const res = await fetch(`${API_BASE_URL}/api/config`, { credentials: 'include' });
-    if (res.ok) {
-      cachedConfig = await res.json();
-      return cachedConfig || {};
-    }
-  } catch {}
-
-  // Fallback: a static config file served with the app (optional)
-  try {
-    const res = await fetch(`/app-config.json`, { cache: 'no-store' });
-    if (res.ok) {
-      cachedConfig = await res.json();
-      return cachedConfig || {};
-    }
-  } catch {}
-
-  // Fallback: a global injected at runtime (optional)
-  const winCfg = readWindowConfig();
-  if (winCfg) {
-    cachedConfig = winCfg;
-    return cachedConfig || {};
-  }
-
-  return {};
+  // Return config from Vite environment variables (baked in at build time)
+  return {
+    googleMapsApiKey: (import.meta as any).env?.VITE_GOOGLE_MAPS_API_KEY || '',
+    stripePublicKey: (import.meta as any).env?.VITE_STRIPE_PUBLISHABLE_KEY || '',
+  };
 }
