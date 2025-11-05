@@ -1,0 +1,31 @@
+/* src/css/StreamingText.css */
+
+.streaming-text-container {
+  position: relative;
+}
+
+.markdown-body {
+  position: relative;
+}
+
+/* Enable GPU acceleration for smoother rendering */
+.streaming-text-container .markdown-body {
+  will-change: transform, opacity;
+  transform: translateZ(0);
+}
+
+/* Smooth fade animation when new content is added */
+.streaming-text-container.content-updating .markdown-body {
+  animation: smoothFadeIn 0.3s ease-out;
+}
+
+@keyframes smoothFadeIn {
+  0% {
+    opacity: 0.7;
+    transform: translateY(1px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

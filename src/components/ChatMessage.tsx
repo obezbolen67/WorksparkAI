@@ -26,6 +26,7 @@ import { useNotification } from '../contexts/NotificationContext';
 import GeolocationBlock from './GeolocationBlock';
 import GeolocationRequestBlock from './GeolocationRequestBlock';
 import GoogleMapsBlock from './GoogleMapsBlock';
+import StreamingText from './StreamingText';
 
 interface CodeComponentProps {
   node?: any;
@@ -192,16 +193,15 @@ const AssistantTurn = memo(({ messages, chatId, startIndex, isStreaming, isThink
         const flushTextBuffer = (key: string) => {
             if (currentTextBuffer.trim()) {
                 const processedContent = processMarkdownContent(currentTextBuffer, isStreaming);
+                const isCurrentlyStreaming = isStreaming && key.includes('final');
 
                 parts.push(
-                    <ReactMarkdown
+                    <StreamingText
                         key={key}
-                        remarkPlugins={[remarkGfm, remarkMath]}
-                        rehypePlugins={[rehypeKatex]}
+                        content={processedContent}
+                        isStreaming={isCurrentlyStreaming}
                         components={{ code: CustomCode, p: Paragraph, img: ImageRenderer }}
-                    >
-                        {processedContent}
-                    </ReactMarkdown>
+                    />
                 );
             }
             currentTextBuffer = '';
