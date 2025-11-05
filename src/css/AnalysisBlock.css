@@ -56,6 +56,12 @@
     font-size: 14px;
     color: var(--primary-text-color);
     border: 1px solid var(--color-border);
+    transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+
+.analysis-source-file:hover {
+    background-color: var(--button-hover-bg);
+    border-color: var(--secondary-text-color);
 }
 .analysis-source-file .file-name {
     white-space: nowrap;
