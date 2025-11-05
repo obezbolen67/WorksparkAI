@@ -1,7 +1,7 @@
 substitutions:
   _REGION: us-central1
   _SERVICE: worksparkai
-  _REPO: worksparkairepo
+  _REPO: worksparkai
 
 options:
   logging: CLOUD_LOGGING_ONLY
