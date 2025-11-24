@@ -1,5 +1,4 @@
-// src/components/ChatInput.tsx
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, memo } from 'react';
 import { FiPlus, FiSend, FiX, FiImage, FiPaperclip, FiSquare } from 'react-icons/fi';
 import { HiOutlineMicrophone } from "react-icons/hi2";
 import { uploadFile } from '../utils/api';
@@ -19,6 +18,74 @@ interface ChatInputProps {
   isSending: boolean;
   isThinkingVisible: boolean;
 }
+
+// --- HELPER: Generate Thumbnail ---
+const generateThumbnail = async (file: File): Promise<string> => {
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        const maxWidth = 150; // Thumbnail size
+        const scale = maxWidth / img.width;
+        // If image is already small, don't resize
+        if (scale >= 1) {
+            resolve(e.target?.result as string);
+            return;
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = maxWidth;
+        canvas.height = img.height * scale;
+        const ctx = canvas.getContext('2d');
+        ctx?.drawImage(img, 0, 0, canvas.width, canvas.height);
+        resolve(canvas.toDataURL(file.type));
+      };
+      img.src = e.target?.result as string;
+    };
+    reader.readAsDataURL(file);
+  });
+};
+
+// --- SUB-COMPONENT: Attachment Preview Item ---
+// Handles async thumbnail generation to prevent blocking the main render loop
+const AttachmentPreviewItem = memo(({ file, onRemove }: { file: File, onRemove: (f: File) => void }) => {
+    const [thumbnailSrc, setThumbnailSrc] = useState<string | null>(null);
+    const isImage = file.type.startsWith('image/');
+  
+    useEffect(() => {
+      let active = true;
+      if (isImage) {
+        generateThumbnail(file).then(src => {
+          if (active) setThumbnailSrc(src);
+        });
+      }
+      return () => { active = false; };
+    }, [file, isImage]);
+  
+    return (
+      <div className="attachment-preview-wrapper">
+        {isImage ? (
+          <div className="attachment-thumbnail">
+            {thumbnailSrc ? (
+                <img src={thumbnailSrc} alt={file.name} />
+            ) : (
+                <div className="skeleton-loader" style={{width: '100%', height: '100%', background: 'rgba(128,128,128,0.1)'}}></div>
+            )}
+          </div>
+        ) : (
+          <div className="attachment-file-preview">
+            <div className="file-preview-icon">{getFileIcon(file.type)}</div>
+            <span className="file-preview-name">{file.name}</span>
+          </div>
+        )}
+        <Tooltip text={`Remove ${file.name}`}>
+          <button onClick={() => onRemove(file)} className="remove-attachment-btn">
+            <FiX size={14} />
+          </button>
+        </Tooltip>
+      </div>
+    );
+});
 
 const ChatInput = ({ onSendMessage, onStopGeneration, isSending, isThinkingVisible }: ChatInputProps) => {
   const { user, selectedModel } = useSettings();
@@ -164,14 +231,13 @@ const ChatInput = ({ onSendMessage, onStopGeneration, isSending, isThinkingVisib
   const handleSend = async () => {
     if (!hasContent || isGenerating) return;
 
-    // Remove hardcoded location detection - let the LLM ask for it when needed
     const messageMetadata: Record<string, any> = { isThinkingEnabled: isThinkingVisible };
 
     try {
       const uploadPromises = selectedFiles.map(file => uploadFile(file));
       const uploadResults = await Promise.all(uploadPromises);
       const newAttachments: Attachment[] = uploadResults.map(result => result.file);
-      onSendMessage(text, newAttachments, messageMetadata);  // ← Fixed to use messageMetadata
+      onSendMessage(text, newAttachments, messageMetadata);
       setText('');
       setSelectedFiles([]);
     } catch (error) {
@@ -245,28 +311,14 @@ const ChatInput = ({ onSendMessage, onStopGeneration, isSending, isThinkingVisib
       
       {selectedFiles.length > 0 && (
         <div className="attachment-preview-area">
-          {selectedFiles.map((file, index) => {
-            const isImage = file.type.startsWith('image/');
-            return (
-              <div key={index} className="attachment-preview-wrapper">
-                {isImage ? (
-                  <div className="attachment-thumbnail">
-                    <img src={URL.createObjectURL(file)} alt={file.name} />
-                  </div>
-                ) : (
-                  <div className="attachment-file-preview">
-                    <div className="file-preview-icon">{getFileIcon(file.type)}</div>
-                    <span className="file-preview-name">{file.name}</span>
-                  </div>
-                )}
-                <Tooltip text={`Remove ${file.name}`}>
-                  <button onClick={() => removeFile(file)} className="remove-attachment-btn">
-                    <FiX size={14} />
-                  </button>
-                </Tooltip>
-              </div>
-            );
-          })}
+          {selectedFiles.map((file, index) => (
+            // --- OPTIMIZATION: Use sub-component for resizing ---
+            <AttachmentPreviewItem 
+                key={`${file.name}-${index}`} 
+                file={file} 
+                onRemove={removeFile} 
+            />
+          ))}
         </div>
       )}
 

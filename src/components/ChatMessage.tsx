@@ -34,6 +34,35 @@ interface CodeComponentProps {
   [key: string]: any;
 }
 
+// --- HELPER: Client-side Image Resizing ---
+const generateThumbnailFromBlob = async (blob: Blob): Promise<string> => {
+    return new Promise((resolve) => {
+      const img = new Image();
+      const url = URL.createObjectURL(blob);
+      img.onload = () => {
+        const maxWidth = 300; // Larger than input thumbnail, good for chat
+        const scale = maxWidth / img.width;
+        
+        // If already small enough, just return original object URL
+        if (scale >= 1) {
+            resolve(url);
+            return;
+        }
+
+        const canvas = document.createElement('canvas');
+        canvas.width = maxWidth;
+        canvas.height = img.height * scale;
+        const ctx = canvas.getContext('2d');
+        ctx?.drawImage(img, 0, 0, canvas.width, canvas.height);
+        
+        // Clean up original URL if we made a new one
+        URL.revokeObjectURL(url);
+        resolve(canvas.toDataURL(blob.type));
+      };
+      img.src = url;
+    });
+};
+
 const useTheme = () => {
     const [theme, setTheme] = useState(
         () => document.documentElement.getAttribute('data-theme') || 'dark'
@@ -106,31 +135,77 @@ const Paragraph: Components['p'] = ({ node, ...props }) => {
     return <p {...props} />;
 };
 
-const AuthenticatedImage = ({ chatId, attachment, onView }: { chatId: string, attachment: Attachment, onView: (src: string) => void }) => {
-    const [objectUrl, setObjectUrl] = useState<string | null>(null);
+// --- COMPONENT: Local Attachment (Optimistic) with Resizing ---
+const LocalAttachmentImage = memo(({ src, fileName, onView }: { src: string, fileName: string, onView: (s: string) => void }) => {
+    const [thumbSrc, setThumbSrc] = useState<string | null>(null);
+
+    useEffect(() => {
+        let active = true;
+        // Fetch the blob from the local URL (it's likely a blob: url)
+        fetch(src).then(r => r.blob()).then(blob => {
+            return generateThumbnailFromBlob(blob);
+        }).then(thumb => {
+            if (active) setThumbSrc(thumb);
+        }).catch(() => {
+            // Fallback to original if processing fails
+            if (active) setThumbSrc(src);
+        });
+        return () => { active = false; };
+    }, [src]);
+
+    if (!thumbSrc) return <div className="attachment-image-wrapper loading" />;
+
+    return (
+        <a href={src} onClick={(e) => { e.preventDefault(); onView(src); }} className="attachment-image-wrapper">
+            <img src={thumbSrc} alt={fileName} />
+        </a>
+    );
+});
+
+// --- COMPONENT: Authenticated Image (Server) with Resizing ---
+const AuthenticatedImage = memo(({ chatId, attachment, onView }: { chatId: string, attachment: Attachment, onView: (src: string) => void }) => {
+    const [thumbUrl, setThumbUrl] = useState<string | null>(null);
+    const [fullUrl, setFullUrl] = useState<string | null>(null);
     const [hasError, setHasError] = useState(false);
     const apiEndpoint = attachment._id ? `/files/view/${chatId}/${attachment._id}` : null;
 
     useEffect(() => {
-        if (!apiEndpoint) { setObjectUrl(null); setHasError(false); return; }
-        let isMounted = true, tempUrl: string | null = null;
-        setHasError(false); setObjectUrl(null);
+        if (!apiEndpoint) { setThumbUrl(null); setFullUrl(null); setHasError(false); return; }
+        let isMounted = true;
+        setHasError(false); 
+        
         api(apiEndpoint)
             .then(res => { if (!res.ok) throw new Error(`Server responded with ${res.status}`); return res.blob(); })
-            .then(blob => { if (isMounted) { tempUrl = URL.createObjectURL(blob); setObjectUrl(tempUrl); }})
+            .then(async (blob) => { 
+                if (isMounted) { 
+                    const full = URL.createObjectURL(blob);
+                    setFullUrl(full);
+                    
+                    // Generate thumbnail asynchronously
+                    const thumb = await generateThumbnailFromBlob(blob);
+                    if (isMounted) setThumbUrl(thumb);
+                }
+            })
             .catch(() => { if (isMounted) setHasError(true); });
-        return () => { isMounted = false; if (tempUrl) URL.revokeObjectURL(tempUrl); };
+            
+        return () => { 
+            isMounted = false; 
+            // We can't easily revoke the internal URLs of generateThumbnail here without complex tracking,
+            // but browsers handle Data URLs fine. We should revoke the fullUrl though.
+            if (fullUrl) URL.revokeObjectURL(fullUrl); 
+        };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [apiEndpoint, attachment.fileName]);
 
     if (hasError) return <div className="attachment-image-wrapper error"><span>Error Loading Image</span></div>;
-    if (!objectUrl) return <div className="attachment-image-wrapper loading" />;
+    if (!thumbUrl || !fullUrl) return <div className="attachment-image-wrapper loading" />;
 
     return (
-        <a href={objectUrl} onClick={(e) => { e.preventDefault(); onView(objectUrl); }} className="attachment-image-wrapper">
-            <img src={objectUrl} alt={attachment.fileName} />
+        <a href={fullUrl} onClick={(e) => { e.preventDefault(); onView(fullUrl); }} className="attachment-image-wrapper">
+            <img src={thumbUrl} alt={attachment.fileName} />
         </a>
     );
-};
+});
 
 // Reusable styles for the link button
 const linkButtonStyle: React.CSSProperties = {
@@ -196,10 +271,11 @@ const AssistantTurn = memo(({ messages, chatId, startIndex, isStreaming, isThink
             );
         }
 
-        // 2. Determine if it's a Raw URL (e.g., AI wrote "https://..." directly) or a Named Link (e.g., "[Google](...)")
-        // If child text matches href (or close to it), treat as raw URL and hide text.
+        // 2. Raw URL vs Named Link Logic
         const childText = String(children);
-        const isRawUrl = childText === href || childText.startsWith('http') || childText.length > 50 && href.includes(childText.substring(0, 20));
+        const isRawUrl = childText === href || 
+                         childText === href + '/' ||
+                         (childText.startsWith('http') && href.includes(childText));
 
         return (
             <span className="link-container" style={{ alignItems: 'center', display: 'inline-flex', verticalAlign: 'middle' }}>
@@ -479,9 +555,10 @@ const ChatMessage = ({ message, messages, chatId, index, isEditing, isStreaming,
     }
 
     // 2. Raw URL vs Named Link Logic
-    // If child text is the URL itself, we hide the text and just show the button.
     const childText = String(children);
-    const isRawUrl = childText === href || childText.startsWith('http') || childText.length > 50 && href.includes(childText.substring(0, 20));
+    const isRawUrl = childText === href || 
+                     childText === href + '/' ||
+                     (childText.startsWith('http') && href.includes(childText));
 
     return (
         <span className="link-container" style={{ alignItems: 'center', display: 'inline-flex', verticalAlign: 'middle' }}>
@@ -514,9 +591,27 @@ const ChatMessage = ({ message, messages, chatId, index, isEditing, isStreaming,
       const isImage = att.mimeType.startsWith('image/');
       const hasId = Boolean(chatId && att._id);
       
+      const directUrl = (att as any).url || 
+                        (att as any).content || 
+                        (att as any).preview || 
+                        (att as any).previewUrl || 
+                        (att as any).data ||
+                        (att as any).base64;
+
       if (isImage) {
+        // --- OPTIMIZATION: Use LocalAttachmentImage for optimistic updates ---
+        if (directUrl) {
+            return (
+                <LocalAttachmentImage 
+                    key={key} 
+                    src={directUrl} 
+                    fileName={att.fileName} 
+                    onView={handleOpenViewer} 
+                />
+            );
+        }
+
         if (!hasId) {
-          // For images without _id, show placeholder
           return (
             <div key={key} className="attachment-image-wrapper unavailable">
               <span>Image unavailable</span>
