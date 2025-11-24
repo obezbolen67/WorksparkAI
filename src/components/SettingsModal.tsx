@@ -152,6 +152,22 @@ const SettingsModal = ({ isOpen, onClose }: SettingsModalProps) => {
     }
   }, [isOpen, showNotification]);
 
+  useEffect(() => {
+    // If we have models loaded and the provider is NOT default (default has implicit models)
+    if (isOpen && models.length > 0 && selectedProvider !== 'default') {
+      const isModelValid = models.some(m => m.id === selectedModel);
+      
+      // If the currently selected model isn't in the new provider's list, clear it or pick a fallback
+      if (!isModelValid && selectedModel !== '') {
+        // Try to keep a selection if it's in quick access, otherwise clear
+        const fallback = quickAccessModels.find(qaId => models.some(m => m.id === qaId));
+        setSelectedModel(fallback || '');
+      }
+    } else if (selectedProvider !== 'default' && models.length === 0 && !isFetching) {
+      // If no models loaded yet for this provider, clear selection to avoid mismatch
+      setSelectedModel('');
+    }
+  }, [selectedProvider, models, isOpen, quickAccessModels]);
 
   useEffect(() => {
     if (!isOpen) {
