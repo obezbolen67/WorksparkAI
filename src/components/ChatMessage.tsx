@@ -1,12 +1,9 @@
 import { useState, useEffect, memo, useMemo, useRef, useCallback } from 'react';
-// --- START OF THE FIX ---
-// Removed unused 'GoogleMapsData' import.
 import type { Message, Attachment } from '../types';
-// --- END OF THE FIX ---
 import api, { API_BASE_URL } from '../utils/api';
 import '../css/ChatMessage.css';
 import React from 'react';
-import { FiCopy, FiRefreshCw, FiEdit, FiCheck, FiLoader } from 'react-icons/fi';
+import { FiCopy, FiRefreshCw, FiEdit, FiCheck, FiLoader, FiExternalLink } from 'react-icons/fi';
 import ImageViewer from './ImageViewer';
 import Tooltip from './Tooltip';
 import ReactMarkdown from 'react-markdown';
@@ -135,6 +132,25 @@ const AuthenticatedImage = ({ chatId, attachment, onView }: { chatId: string, at
     );
 };
 
+// Reusable styles for the link button
+const linkButtonStyle: React.CSSProperties = {
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: '4px',
+    padding: '4px',
+    borderRadius: '6px',
+    backgroundColor: 'var(--bg-secondary, rgba(128, 128, 128, 0.1))',
+    border: '1px solid var(--border-color, rgba(128, 128, 128, 0.2))',
+    color: 'var(--text-primary, inherit)',
+    verticalAlign: 'middle',
+    lineHeight: 0,
+    cursor: 'pointer',
+    transition: 'background-color 0.2s',
+    fontSize: '0.8em',
+    textDecoration: 'none'
+};
+
 type AssistantTurnProps = Omit<ChatMessageProps, 'message' | 'index' | 'isEditing' | 'onStartEdit' | 'onSaveEdit' | 'onCancelEdit'> & { 
   startIndex: number;
   onView: (src: string) => void; 
@@ -167,6 +183,48 @@ const AssistantTurn = memo(({ messages, chatId, startIndex, isStreaming, isThink
         );
     };
 
+    const LinkRenderer: Components['a'] = ({ href, children }) => {
+        if (!href) return <>{children}</>;
+        
+        // 1. Check for Images
+        const isImage = href.match(/\.(jpeg|jpg|gif|png|bmp|webp)($|\?)/i);
+        if (isImage) {
+            return (
+                <a href={href} onClick={(e) => { e.preventDefault(); onView(href); }} className="markdown-image-wrapper">
+                    <img src={href} alt={String(children) || 'generated image'} />
+                </a>
+            );
+        }
+
+        // 2. Determine if it's a Raw URL (e.g., AI wrote "https://..." directly) or a Named Link (e.g., "[Google](...)")
+        // If child text matches href (or close to it), treat as raw URL and hide text.
+        const childText = String(children);
+        const isRawUrl = childText === href || childText.startsWith('http') || childText.length > 50 && href.includes(childText.substring(0, 20));
+
+        return (
+            <span className="link-container" style={{ alignItems: 'center', display: 'inline-flex', verticalAlign: 'middle' }}>
+                {!isRawUrl && (
+                    <a href={href} target="_blank" rel="noopener noreferrer" style={{ color: 'inherit', textDecoration: 'underline' }}>
+                        {children}
+                    </a>
+                )}
+                <Tooltip text={href}>
+                    <a 
+                        href={href} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        style={linkButtonStyle}
+                        onClick={(e) => e.stopPropagation()}
+                        className="chat-link-button"
+                        aria-label={`Open link: ${href}`}
+                    >
+                        <FiExternalLink size={14} />
+                    </a>
+                </Tooltip>
+            </span>
+        );
+    };
+
     const { turnParts, fullContent, lastMessageInTurnIndex } = useMemo(() => {
         const parts: React.ReactNode[] = [];
         const textParts: string[] = [];
@@ -186,7 +244,6 @@ const AssistantTurn = memo(({ messages, chatId, startIndex, isStreaming, isThink
                     lines[lastLineIndex] = lines[lastLineIndex] + '\u200B';
                 }
             }
-            
             return lines.join('\n');
         };
 
@@ -200,7 +257,7 @@ const AssistantTurn = memo(({ messages, chatId, startIndex, isStreaming, isThink
                         key={key}
                         content={processedContent}
                         isStreaming={isCurrentlyStreaming}
-                        components={{ code: CustomCode, p: Paragraph, img: ImageRenderer }}
+                        components={{ code: CustomCode, p: Paragraph, img: ImageRenderer, a: LinkRenderer }}
                     />
                 );
             }
@@ -408,6 +465,48 @@ const ChatMessage = ({ message, messages, chatId, index, isEditing, isStreaming,
     );
   };
 
+  const LinkRenderer: Components['a'] = ({ href, children }) => {
+    if (!href) return <>{children}</>;
+    
+    // 1. Check for Images
+    const isImage = href.match(/\.(jpeg|jpg|gif|png|bmp|webp)($|\?)/i);
+    if (isImage) {
+        return (
+            <a href={href} onClick={(e) => { e.preventDefault(); handleOpenViewer(href); }} className="markdown-image-wrapper">
+                <img src={href} alt={String(children) || 'generated image'} />
+            </a>
+        );
+    }
+
+    // 2. Raw URL vs Named Link Logic
+    // If child text is the URL itself, we hide the text and just show the button.
+    const childText = String(children);
+    const isRawUrl = childText === href || childText.startsWith('http') || childText.length > 50 && href.includes(childText.substring(0, 20));
+
+    return (
+        <span className="link-container" style={{ alignItems: 'center', display: 'inline-flex', verticalAlign: 'middle' }}>
+            {!isRawUrl && (
+                <a href={href} target="_blank" rel="noopener noreferrer" style={{ color: 'inherit', textDecoration: 'underline' }}>
+                    {children}
+                </a>
+            )}
+            <Tooltip text={href}>
+                <a 
+                    href={href} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    style={linkButtonStyle}
+                    onClick={(e) => e.stopPropagation()}
+                    className="chat-link-button"
+                    aria-label={`Open link: ${href}`}
+                >
+                    <FiExternalLink size={14} />
+                </a>
+            </Tooltip>
+        </span>
+    );
+  };
+
   const renderAttachments = (attachments: Attachment[]) => (
     <div className="message-attachments">
     {attachments.map((att, idx) => {
@@ -466,7 +565,7 @@ const ChatMessage = ({ message, messages, chatId, index, isEditing, isStreaming,
               {!isEditing ? (
                 <div className="message-content">
                   {message.attachments && message.attachments.length > 0 && renderAttachments(message.attachments)}
-                  {message.content && <ReactMarkdown remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[rehypeKatex]} components={{ code: CustomCode, p: Paragraph, img: ImageRenderer }}>{message.content}</ReactMarkdown>}
+                  {message.content && <ReactMarkdown remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[rehypeKatex]} components={{ code: CustomCode, p: Paragraph, img: ImageRenderer, a: LinkRenderer }}>{message.content}</ReactMarkdown>}
                   {!message.content && !message.attachments?.length && '\u00A0'}
                 </div>
               ) : (
