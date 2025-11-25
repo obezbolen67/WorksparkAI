@@ -1,6 +1,6 @@
 // src/components/AnalysisBlock.tsx
 import { useState, useMemo, memo } from 'react';
-import { FiChevronDown, FiCheck, FiFileText, FiLoader, FiAlertTriangle } from 'react-icons/fi';
+import { FiChevronDown, FiCheck, FiFileText, FiAlertTriangle } from 'react-icons/fi';
 import type { Message } from '../types';
 import '../css/AnalysisBlock.css';
 

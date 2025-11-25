@@ -1,6 +1,6 @@
 // src/components/CodeAnalysisBlock.tsx
 import { useState, useMemo, memo } from 'react';
-import { FiChevronDown, FiDownload, FiFileText, FiCheck, FiCopy, FiImage } from 'react-icons/fi';
+import { FiChevronDown, FiDownload, FiFileText, FiCheck, FiCopy } from 'react-icons/fi';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { vscDarkPlus, oneLight } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import type { Message, FileOutput } from '../types';
