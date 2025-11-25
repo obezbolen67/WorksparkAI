@@ -1,5 +1,6 @@
-import { useState, memo } from 'react'; // Import useEffect
-import { FiCpu, FiChevronDown } from 'react-icons/fi';
+// src/components/InlineThinking.tsx
+import { useState, memo } from 'react'; 
+import { FiChevronDown } from 'react-icons/fi';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import '../css/InlineThinking.css';
@@ -10,17 +11,15 @@ interface InlineThinkingProps {
 }
 
 const InlineThinking = ({ content, isStreaming = false }: InlineThinkingProps) => {
-  // This initializes the state on the first render.
   const [isExpanded, setIsExpanded] = useState(false);
 
   return (
     <div className={`inline-thinking-container ${isExpanded ? 'expanded' : ''}`}>
       <button className="thinking-header" onClick={() => setIsExpanded(prev => !prev)}>
         <div className="thinking-status">
-          <FiCpu className="thinking-icon" />
-          <span className="thinking-text-shimmer">Thinking...</span>
+          <span className={`thinking-text-shimmer ${isStreaming ? 'animate' : ''}`}>Thinking</span>
         </div>
-        <FiChevronDown className="chevron-icon" />
+        <FiChevronDown className="chevron-icon" size={16} />
       </button>
       <div className="thinking-content-details">
         {content ? (

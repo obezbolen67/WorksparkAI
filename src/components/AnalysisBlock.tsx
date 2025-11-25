@@ -1,6 +1,6 @@
 // src/components/AnalysisBlock.tsx
 import { useState, useMemo, memo } from 'react';
-import { FiChevronDown, FiCheckCircle, FiXCircle, FiLoader, FiFileText } from 'react-icons/fi';
+import { FiChevronDown, FiCheck, FiFileText, FiLoader, FiAlertTriangle } from 'react-icons/fi';
 import type { Message } from '../types';
 import '../css/AnalysisBlock.css';
 
@@ -14,67 +14,59 @@ const AnalysisBlock = memo(({ toolMessage, outputMessage }: AnalysisBlockProps) 
 
   const state = toolMessage.state || (outputMessage ? 'completed' : 'writing');
   const hasError = state === 'error';
+  const filename = toolMessage.content || 'document';
 
-  const { statusText, StatusIcon } = useMemo(() => {
+  const { statusText, labelClass } = useMemo(() => {
     switch (state) {
       case 'analyzing':
-        return { statusText: 'Analyzing document...', StatusIcon: <FiLoader className="spinner-icon" /> };
+      case 'writing':
+      case 'ready_to_execute':
+        return { statusText: 'Reading document...', labelClass: 'animate-shine' };
       case 'error':
-        return { statusText: 'Analysis Error', StatusIcon: <FiXCircle /> };
+        return { statusText: 'Failed to read document', labelClass: 'error' };
       case 'completed':
-        return { statusText: 'Analysis Complete', StatusIcon: <FiCheckCircle /> };
-      default: // writing, ready_to_execute
-        return { statusText: 'Preparing analysis...', StatusIcon: <FiLoader className="spinner-icon" /> };
+        return { statusText: 'Document Read', labelClass: 'completed' };
+      default:
+        return { statusText: 'Analysis', labelClass: '' };
     }
   }, [state]);
 
-  const output = outputMessage?.content || '';
-  const isOutputError = hasError || (state === 'completed' && output.toLowerCase().startsWith('error:'));
-  const isDocExtraction = toolMessage.role === 'tool_doc_extract';
-
-  const hasContent = output || state === 'analyzing';
-  if (!hasContent) {
-    return null; // Don't render the block if there's nothing to show yet
-  }
-
   return (
-    <div className={`tool-block-container analysis-container state-${state}`}>
-      <button className="tool-block-header" onClick={() => setIsExpanded(!isExpanded)}>
-        <div className="status">
-          <div className="status-icon-wrapper">{StatusIcon}</div>
-          <span>{statusText}</span>
-        </div>
-        <FiChevronDown className={`chevron-icon ${isExpanded ? 'expanded' : ''}`} />
-      </button>
-
-      <div className={`tool-block-content ${isExpanded ? 'expanded' : ''}`}>
-        <div className="analysis-section">
-          <div className="section-title">Source Document</div>
-          <div className="analysis-source-file">
-            <FiFileText size={16} />
-            <span className="file-name">{toolMessage.content || '...'}</span>
+    <div className={`analysis-container ${state} ${isExpanded ? 'expanded' : ''}`}>
+      {/* Header */}
+      <div className="analysis-header" onClick={() => setIsExpanded(!isExpanded)}>
+        <div className="analysis-header-content">
+          <div className="analysis-header-left">
+            <span className={`analysis-label ${labelClass}`}>{statusText}</span>
           </div>
+          <FiChevronDown className="chevron-icon" />
         </div>
-        {(output || state === 'analyzing') && (
-          <div className="analysis-section">
-            <div className="section-title">Result</div>
-            {state === 'analyzing' && !output ? (
-              <div className="analyzing-placeholder">
-                  <div className="dot"></div>
-                  <div className="dot"></div>
-                  <div className="dot"></div>
-              </div>
-            ) : (
-              <pre className={`analysis-output-text ${isOutputError ? 'error' : ''}`}>
-                {isDocExtraction && state === 'completed' && !isOutputError
-                  ? 'Success.'
-                  : output
-                }
-              </pre>
-            )}
-          </div>
-        )}
       </div>
+
+      {/* Expanded Content: Just the file card, no raw text results */}
+      {isExpanded && (
+        <div className="analysis-content">
+          <div className="analysis-file-card">
+            <div className="file-icon-box">
+              {hasError ? <FiAlertTriangle size={18} /> : <FiFileText size={18} />}
+            </div>
+            <div className="file-info">
+              <span className="file-name">{filename}</span>
+              <span className="file-status">
+                {hasError ? 'Extraction failed' : 'Content extracted to context'}
+              </span>
+            </div>
+            {!hasError && <FiCheck className="file-check-icon" size={16} />}
+          </div>
+          
+          {/* Only show error details if present */}
+          {hasError && outputMessage?.content && (
+             <div className="analysis-error-details">
+               {outputMessage.content}
+             </div>
+          )}
+        </div>
+      )}
     </div>
   );
 });

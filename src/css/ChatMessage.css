@@ -531,7 +531,7 @@
 [data-theme="light"] .message-content tr:nth-child(2n) { background-color: transparent; }
 [data-theme="light"] .message-content code:not([class*="language-"]) { color: var(--primary-text-color); }
 [data-theme="light"] .code-block-wrapper { background-color: #fafafa; border-color: var(--border-color); }
-[data-theme="light"] .code-block-header { background-color: var(--code-block-header); color: var(--main-bg-color); }
+[data-theme="light"] .code-block-header { background-color: var(--code-block-header); color: var(--code-block-text); }
 [data-theme="light"] .code-block-header .language-name { color: var(--code-text); }
 [data-theme="light"] .code-block-header .copy-code-button { color: var(--code-text); }
 [data-theme="light"] .code-block-header .copy-code-button:hover { background-color: #374151; color: var(--main-bg-color); }
@@ -623,4 +623,44 @@
   cursor: wait;
   opacity: 0.7;
   pointer-events: none; /* Prevent clicking again while downloading */
+}
+
+/* Styling for the text part of a named link */
+.chat-link-text {
+  color: #60a5fa;
+  text-decoration: none;
+  border-bottom: 1px dotted #60a5fa;
+}
+.chat-link-text:hover {
+  color: #93c5fd;
+  border-bottom-style: solid;
+}
+
+/* The standalone icon button (when URL text is hidden) */
+.chat-link-icon-only {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--button-hover-bg);
+  border: 1px solid var(--border-color);
+  color: #60a5fa; /* Blue accent */
+  border-radius: 6px;
+  padding: 4px 8px;
+  margin: 0 4px;
+  transition: all 0.2s ease;
+  vertical-align: middle;
+  line-height: 0;
+  cursor: pointer;
+}
+
+.chat-link-icon-only:hover {
+  background-color: rgba(96, 165, 250, 0.15); /* Light blue tint */
+  transform: translateY(-1px);
+  border-color: #60a5fa;
+}
+
+/* Adjust icon size inside */
+.chat-link-icon-only svg {
+  width: 16px;
+  height: 16px;
 }

@@ -1,109 +1,178 @@
 /* src/css/AnalysisBlock.css */
 
-/* Using generic tool-block classes for consistency, from SearchBlock.css */
-/* No need to redefine them if they are globally available or imported from a shared CSS file. */
-/* For this example, we'll assume they are available. */
-
-/* --- AnalysisBlock Specific Styles & Colors --- */
-.analysis-container .status {
-    transition: color 0.2s ease;
+.analysis-container {
+  margin: 8px 0;
+  border-radius: 8px;
+  overflow: hidden;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  background-color: transparent;
+  border: none;
+  transition: none;
+  width: 100%;
 }
 
-.analysis-container.state-analyzing .status,
-.analysis-container.state-analyzing .status-icon-wrapper {
-    color: #3b82f6; /* Blue */
-}
-.analysis-container.state-analyzing::before {
-    background-color: #3b82f6;
-}
-
-.analysis-container.state-completed .status {
-    color: #22c55e; /* Green */
-}
-.analysis-container.state-completed::before {
-    background-color: #22c55e;
-}
-
-.analysis-container.state-error .status,
-.analysis-container.state-error .status-icon-wrapper {
-    color: #ef4444; /* Red */
-}
-.analysis-container.state-error::before {
-    background-color: #ef4444;
+/* --- Header Styling (Matches Code Block) --- */
+.analysis-header {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  padding: 6px 0;
+  background-color: transparent;
+  cursor: pointer;
+  user-select: none;
+  border-radius: 6px;
+  width: fit-content;
+  max-width: 100%;
 }
 
-.analysis-section {
-    margin-top: 12px;
+.analysis-header:hover {
+  opacity: 0.9;
 }
 
-.analysis-section .section-title {
-    font-size: 12px;
-    font-weight: 600;
-    color: var(--secondary-text-color);
-    margin-bottom: 8px;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
+.analysis-header-content {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
 }
 
-.analysis-source-file {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    background-color: var(--color-background-code);
-    padding: 8px 12px;
-    border-radius: 6px;
-    font-family: var(--font-mono);
-    font-size: 14px;
-    color: var(--primary-text-color);
-    border: 1px solid var(--color-border);
-    transition: background-color 0.2s ease, border-color 0.2s ease;
+.analysis-header-left {
+  display: flex;
+  align-items: center;
+  font-size: 0.95rem;
+  color: var(--primary-text-color);
+  font-weight: 500;
 }
 
-.analysis-source-file:hover {
-    background-color: var(--button-hover-bg);
-    border-color: var(--secondary-text-color);
-}
-.analysis-source-file .file-name {
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+.analysis-label {
+  color: var(--primary-text-color);
+  font-weight: 500;
 }
 
-
-.analysis-output-text {
-    font-size: 14px;
-    line-height: 1.6;
-    white-space: pre-wrap;
-    word-wrap: break-word;
-    color: var(--primary-text-color);
+.analysis-label.error {
+  color: #ef4444;
 }
 
-.analysis-output-text.error {
-    color: var(--color-error);
-    background-color: var(--color-background-error);
-    padding: 8px 12px;
-    border-radius: 6px;
-    font-family: var(--font-mono);
+.chevron-icon {
+  color: var(--secondary-text-color);
+  transition: transform 0.2s ease;
 }
 
-.analyzing-placeholder {
-    display: flex;
-    align-items: center;
-    padding: 10px 0;
+.analysis-container.expanded .chevron-icon {
+  transform: rotate(180deg);
 }
-.analyzing-placeholder .dot {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    background-color: var(--color-text-secondary);
-    animation: waiting-animation 1.4s infinite ease-in-out both;
-    margin: 0 4px;
-}
-.analyzing-placeholder .dot:nth-child(1) { animation-delay: -0.32s; }
-.analyzing-placeholder .dot:nth-child(2) { animation-delay: -0.16s; }
 
-/* Light Theme Adjustments */
-[data-theme="light"] .analysis-container.state-analyzing .status { color: #2563eb; }
-[data-theme="light"] .analysis-container.state-completed .status { color: #166534; }
-[data-theme="light"] .analysis-container.state-error .status { color: #b91c1c; }
-[data-theme="light"] .analysis-source-file { background-color: #f3f4f6; }
+/* --- Expanded Content Area --- */
+.analysis-content {
+  margin-top: 4px;
+  background-color: #0d0d0d;
+  border-radius: 8px;
+  border: 1px solid #333;
+  overflow: hidden;
+  animation: expandBlock 0.3s ease-out;
+  padding: 8px; /* Padding around the internal card */
+}
+
+[data-theme="light"] .analysis-content {
+  background-color: #f9f9f9;
+  border-color: #e5e7eb;
+}
+
+@keyframes expandBlock {
+  from { opacity: 0; transform: translateY(-5px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* --- File Card Styling --- */
+.analysis-file-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  background-color: #1f2937; /* Dark inner card */
+  border: 1px solid #374151;
+  border-radius: 6px;
+  transition: background-color 0.2s;
+}
+
+[data-theme="light"] .analysis-file-card {
+  background-color: #ffffff;
+  border-color: #e5e7eb;
+}
+
+.file-icon-box {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  background-color: rgba(59, 130, 246, 0.15); /* Blue tint */
+  border-radius: 6px;
+  color: #60a5fa;
+  flex-shrink: 0;
+}
+
+[data-theme="light"] .file-icon-box {
+  background-color: #eff6ff;
+  color: #3b82f6;
+}
+
+.analysis-container.state-error .file-icon-box {
+  background-color: rgba(239, 68, 68, 0.15);
+  color: #f87171;
+}
+
+.file-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+
+.file-name {
+  font-size: 0.9rem;
+  color: var(--primary-text-color);
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.file-status {
+  font-size: 0.75rem;
+  color: var(--secondary-text-color);
+}
+
+.file-check-icon {
+  color: #10b981; /* Green check */
+  flex-shrink: 0;
+}
+
+/* Error Details Text */
+.analysis-error-details {
+  margin-top: 8px;
+  padding: 8px;
+  background-color: rgba(239, 68, 68, 0.1);
+  border-radius: 6px;
+  color: #f87171;
+  font-size: 0.85rem;
+  font-family: var(--font-mono);
+  white-space: pre-wrap;
+}
+
+/* Animations */
+.analysis-label.animate-shine {
+  background: linear-gradient(to right, var(--primary-text-color) 20%, var(--secondary-text-color) 50%, var(--primary-text-color) 80%);
+  background-size: 200% auto;
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: shine 3s linear infinite;
+}
+
+@keyframes shine {
+  to {
+    background-position: 200% center;
+  }
+}

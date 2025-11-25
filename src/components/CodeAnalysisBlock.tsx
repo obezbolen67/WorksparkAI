@@ -1,13 +1,12 @@
 // src/components/CodeAnalysisBlock.tsx
 import { useState, useMemo, memo } from 'react';
-import { FiChevronDown, FiCheckCircle, FiXCircle, FiLoader, FiDownload, FiFileText } from 'react-icons/fi';
+import { FiChevronDown, FiDownload, FiFileText, FiCheck, FiCopy, FiImage } from 'react-icons/fi';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { vscDarkPlus, oneLight } from 'react-syntax-highlighter/dist/esm/styles/prism';
-import { useSettings } from '../contexts/SettingsContext';
 import type { Message, FileOutput } from '../types';
-import Tooltip from './Tooltip';
 import '../css/CodeAnalysisBlock.css';
 import { useNotification } from '../contexts/NotificationContext';
+import { useSettings } from '../contexts/SettingsContext';
 
 interface CodeAnalysisBlockProps {
   chatId: string | null;
@@ -17,176 +16,144 @@ interface CodeAnalysisBlockProps {
 }
 
 const CodeAnalysisBlock = ({ toolCodeMessage, toolOutputMessage, onView }: CodeAnalysisBlockProps) => {
-  const state = toolCodeMessage.state || 'writing';
-  
   const [isExpanded, setIsExpanded] = useState(false);
+  const [isCopied, setIsCopied] = useState(false);
   const { showNotification } = useNotification();
   const { theme } = useSettings();
-  const syntaxTheme = theme === 'light' ? oneLight : vscDarkPlus;
 
+  const state = toolCodeMessage.state || 'writing';
   const code = toolCodeMessage.content || '';
   const hasError = state === 'error';
-  const isWriting = state === 'writing';
-
-  const { statusText, StatusIcon } = useMemo(() => {
-    if (state === 'writing') {
-      return { statusText: 'Processing...', StatusIcon: <FiLoader className="spinner-icon" /> };
-    }
-    if (state === 'ready_to_execute' || state === 'executing') {
-      return { statusText: 'Executing...', StatusIcon: <FiLoader className="spinner-icon" /> };
-    }
-    if (hasError) {
-      return { statusText: 'Error', StatusIcon: <FiXCircle /> };
-    }
-    return { statusText: 'Finished', StatusIcon: <FiCheckCircle /> };
-  }, [state, hasError]);
-  
   const output = toolOutputMessage?.content || '';
-  const isOutputError = hasError || (state === 'completed' && output.toLowerCase().includes('error:'));
-  
   const fileOutputs = toolOutputMessage?.fileOutputs || [];
-  
-  // Separate images and regular files
-  const imageOutputs = useMemo(() => 
-    fileOutputs.filter(f => f.mimeType.startsWith('image/')), 
-    [fileOutputs]
-  );
-  
-  const regularFiles = useMemo(() => 
-    fileOutputs.filter(f => !f.mimeType.startsWith('image/')), 
-    [fileOutputs]
-  );
 
-  const handleDownload = async (fileOutput: FileOutput) => {
+  const isPending = state === 'writing' || state === 'executing';
+
+  const syntaxTheme = theme === 'light' ? oneLight : vscDarkPlus;
+
+  const handleCopy = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    await navigator.clipboard.writeText(code);
+    setIsCopied(true);
+    setTimeout(() => setIsCopied(false), 2000);
+  };
+
+  const handleDownload = async (e: React.MouseEvent, fileOutput: FileOutput) => {
+    e.stopPropagation(); // Prevent accordion toggle
     try {
-      // Use the signed URL directly to avoid CORS issues with fetch()
       const link = document.createElement('a');
       link.href = fileOutput.url;
       link.setAttribute('download', fileOutput.fileName);
-      link.rel = 'noopener';
       link.target = '_blank';
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
     } catch (error) {
-      // Fallback: open in new tab
-      try {
-        window.open(fileOutput.url, '_blank', 'noopener');
-      } catch {
-        showNotification('Could not open the file URL.', 'error');
-      }
+      window.open(fileOutput.url, '_blank');
+      showNotification('Could not download file', 'error');
     }
   };
 
-  const OutputSection = (toolOutputMessage || ['completed', 'error'].includes(state)) ? (
-    <div className="analysis-section">
-      <div className="analysis-section-title">
-        {state === 'executing' && !output ? 'Output (Executing...)' : 'Output'}
-      </div>
-      <pre className={`analysis-output-text ${isOutputError ? 'error' : ''}`}>
-        {output || (state === 'executing' ? '' : 'No text output.')}
-        {state === 'executing' && !output && <span className="streaming-cursor"></span>}
-      </pre>
-    </div>
-  ) : null;
+  const handlePreviewClick = (e: React.MouseEvent, url: string) => {
+    e.stopPropagation(); // Prevent accordion toggle
+    onView(url);
+  };
 
-  const MediaSection = imageOutputs.length > 0 ? (
-    <div className="analysis-section">
-      <div className="analysis-section-title">
-        Media Output{imageOutputs.length > 1 ? 's' : ''} ({imageOutputs.length})
-      </div>
-      <div className="file-outputs-grid">
-        {imageOutputs.map((fileOutput, index) => (
-          <div key={index} className="file-output-item">
-            <div className="image-output-container">
-              <button onClick={() => onView(fileOutput.url)} className="file-output-image-wrapper">
-                <img src={fileOutput.url} alt={fileOutput.fileName} className="file-output-image" />
-              </button>
-              <div className="file-output-actions">
-                <Tooltip text={fileOutput.fileName}>
-                  <button
-                    onClick={() => handleDownload(fileOutput)}
-                    className="download-button"
-                  >
-                    <FiDownload size={14} />
-                  </button>
-                </Tooltip>
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  ) : null;
-
-  const FilesSection = regularFiles.length > 0 ? (
-    <div className="analysis-section">
-      <div className="analysis-section-title">
-        File Output{regularFiles.length > 1 ? 's' : ''} ({regularFiles.length})
-      </div>
-      <div className="file-outputs-list">
-        {regularFiles.map((fileOutput, index) => (
-          <div key={index} className="file-output-item file-item">
-            <div className="file-output-content">
-              <FiFileText size={20} className="file-icon" />
-              <span className="file-name">{fileOutput.fileName}</span>
-              <Tooltip text={`Download ${fileOutput.fileName}`}>
-                <button
-                  onClick={() => handleDownload(fileOutput)}
-                  className="download-button"
-                >
-                  <FiDownload size={14} />
-                </button>
-              </Tooltip>
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  ) : null;
+  const label = useMemo(() => {
+    if (isPending) return 'Analyzing...';
+    if (state === 'error') return 'Analysis Failed';
+    return 'Analyzed';
+  }, [state, isPending]);
 
   return (
     <div className={`code-analysis-container ${state} ${isExpanded ? 'expanded' : ''}`}>
+      {/* Header */}
       <div className="analysis-header" onClick={() => setIsExpanded(!isExpanded)}>
-        <div className="status">
-          {StatusIcon}
-          <span>{statusText}</span>
+        <div className="analysis-header-content">
+          <div className="analysis-header-left">
+            <span className={`analysis-label ${isPending ? 'animate-shine' : ''}`}>{label}</span>
+          </div>
+          <FiChevronDown className="chevron-icon" />
         </div>
-        <FiChevronDown className="chevron-icon" />
+
+        {/* --- NEW: File Preview Strip (Visible when collapsed) --- */}
+        {!isExpanded && fileOutputs.length > 0 && (
+          <div className="analysis-file-preview">
+            {fileOutputs.map((f, i) => (
+              f.mimeType.startsWith('image/') ? (
+                <div 
+                  key={i} 
+                  className="preview-item image" 
+                  onClick={(e) => handlePreviewClick(e, f.url)}
+                  title={f.fileName}
+                >
+                  <img src={f.url} alt={f.fileName} />
+                </div>
+              ) : (
+                <div 
+                  key={i} 
+                  className="preview-item file" 
+                  onClick={(e) => handleDownload(e, f)}
+                  title={`Download ${f.fileName}`}
+                >
+                  <div className="file-icon-wrapper">
+                    <FiFileText size={14} />
+                  </div>
+                  <span className="preview-filename">{f.fileName}</span>
+                </div>
+              )
+            ))}
+          </div>
+        )}
       </div>
 
+      {/* Expanded Content */}
       {isExpanded && (
         <div className="analysis-content">
-          <div className="analysis-section">
-            <div className="analysis-section-title">Code</div>
-            <div className="code-wrapper">
-              {code ? (
-                <SyntaxHighlighter
-                  style={syntaxTheme}
-                  language="python"
-                  PreTag="div"
-                >
-                  {code}
-                </SyntaxHighlighter>
-              ) : (
-                <div className="code-placeholder">
-                  <pre className="analysis-output-text">
-                    {isWriting && <span className="streaming-cursor"></span>}
-                  </pre>
+          <div className="code-block-header">
+            <span className="lang-label">python</span>
+            <button className="copy-btn" onClick={handleCopy}>
+              {isCopied ? <><FiCheck size={12} /> Copied</> : <><FiCopy size={12} /> Copy code</>}
+            </button>
+          </div>
+          
+          <div className="code-wrapper">
+            <SyntaxHighlighter
+              style={syntaxTheme}
+              language="python"
+              PreTag="div"
+              wrapLines={true}
+              wrapLongLines={true}
+              customStyle={{ margin: 0, padding: '1rem', background: 'transparent', fontSize: '0.9rem' }}
+            >
+              {code}
+            </SyntaxHighlighter>
+          </div>
+
+          {(output || fileOutputs.length > 0) && (
+            <div className="console-output">
+              <div className="console-header">Output</div>
+              {output && <pre className={`console-text ${hasError ? 'error' : ''}`}>{output}</pre>}
+              
+              {/* Full File List in Expanded View */}
+              {fileOutputs.length > 0 && (
+                <div className="console-files">
+                  {fileOutputs.map((f, i) => (
+                    f.mimeType.startsWith('image/') ? (
+                      <div key={i} className="console-image" onClick={() => onView(f.url)}>
+                        <img src={f.url} alt={f.fileName} />
+                      </div>
+                    ) : (
+                      <div key={i} className="console-file">
+                        <FiFileText /> <span>{f.fileName}</span>
+                        <button onClick={(e) => handleDownload(e, f)}><FiDownload /></button>
+                      </div>
+                    )
+                  ))}
                 </div>
               )}
             </div>
-          </div>
-          {OutputSection}
-          {MediaSection}
-          {FilesSection}
-        </div>
-      )}
-
-      {!isExpanded && (MediaSection || FilesSection) && (
-        <div className="analysis-content">
-          {MediaSection}
-          {FilesSection}
+          )}
         </div>
       )}
     </div>

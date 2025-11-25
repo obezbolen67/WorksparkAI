@@ -1,330 +1,79 @@
-/* --- General Tool Block Styles --- */
-.tool-block-container {
-    background-color: var(--color-background-secondary);
-    border: 1px solid var(--color-border);
-    border-radius: 12px; /* Slightly larger radius for a softer look */
-    margin: 16px 0;
-    overflow: hidden; /* Important for the max-height animation */
-    transition: box-shadow 0.3s ease;
-    position: relative; /* Anchor for the vertical timeline bar */
+/* src/css/SearchBlock.css */
+
+/* The line that appears during/after search */
+.search-indicator {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background-color: transparent;
+  color: var(--secondary-text-color);
+  font-size: 0.95rem;
+  margin-bottom: 8px;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
 }
 
-/* Add a subtle shadow on hover for depth */
-.tool-block-container:hover {
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-    border-color: var(--color-border-hover);
+/* Search Icon (Static, no spinner) */
+.search-icon-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--primary-text-color);
 }
 
-.tool-block-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 12px 16px; /* Increased padding */
-    cursor: pointer;
-    width: 100%;
-    background-color: transparent; /* Make header transparent to show container bg */
-    border: none;
-    color: var(--color-text-primary);
-    font-family: inherit;
-    font-size: 14px;
-    transition: background-color 0.2s ease;
+/* The text "Searching for..." or "Searched..." */
+.search-text {
+  color: var(--secondary-text-color);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
 }
 
-.tool-block-header:hover {
-    background-color: var(--color-background-tertiary);
+/* The sources section at the bottom of the message */
+.message-sources-section {
+  display: flex;
+  align-items: center;
+  /* No border-top, just inline with actions */
+  margin-top: 0; 
+  padding-top: 0;
 }
 
-.tool-block-header .status {
-    display: flex;
-    align-items: center;
-    gap: 12px; /* Increased gap */
-    font-weight: 500;
+/* Sources button style - circular favicons row */
+.sources-trigger {
+  display: flex;
+  align-items: center;
+  gap: -8px; /* Overlap slightly */
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 6px;
+  border-radius: 20px;
+  transition: background-color 0.2s;
+  margin-right: 4px;
 }
 
-/* Wrapper for the icon to give it a background and consistent size */
-.status-icon-wrapper {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 24px;
-    height: 24px;
-    border-radius: 50%;
-    background-color: var(--color-background-code);
+.sources-trigger:hover {
+  background-color: var(--button-hover-bg);
 }
 
-.tool-block-header .chevron-icon {
-    color: var(--color-text-secondary);
-    transition: transform 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94); /* Smoother easing */
+.source-favicon-stack {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 2px solid var(--main-bg-color);
+  background-color: var(--button-hover-bg);
+  object-fit: cover;
+  /* Negative margin for stacking effect */
+  margin-left: -8px; 
 }
 
-.tool-block-header .chevron-icon.expanded {
-    transform: rotate(180deg);
+.source-favicon-stack:first-child {
+  margin-left: 0;
 }
 
-/* --- Vertical Timeline Bar --- */
-/* This pseudo-element creates the vertical line */
-.tool-block-container::before {
-    content: '';
-    position: absolute;
-    top: 45px; /* Start below the header */
-    left: 27px; /* Align with the center of the icon (16px padding + 12px half-icon) */
-    width: 2px;
-    height: calc(100% - 60px); /* Adjust height to not touch the bottom */
-    background-color: var(--color-border);
-    border-radius: 2px;
-    transition: all 0.35s ease-in-out;
-    opacity: 0;
-    transform: scaleY(0);
-    transform-origin: top;
-}
-
-/* Show the line only when the block is expanded */
-.tool-block-content.expanded + .tool-block-container::before, /* This is for React 17/18 strict mode double render */
-.tool-block-container:has(.tool-block-content.expanded)::before {
-    opacity: 1;
-    transform: scaleY(1);
-}
-
-/* --- Smooth Expand/Collapse Animation --- */
-.tool-block-content {
-    padding: 0 16px 0 48px; /* Left padding to make room for the timeline */
-    max-height: 0;
-    opacity: 0;
-    overflow: hidden;
-    transform: translateY(-10px);
-    transition: max-height 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94),
-                opacity 0.2s ease-out,
-                transform 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94),
-                padding 0.35s ease-in-out;
-}
-
-.tool-block-content.expanded {
-    max-height: 1500px; /* Increased value to accommodate many images */
-    opacity: 1;
-    padding-top: 0;
-    padding-bottom: 16px;
-    transform: translateY(0);
-    transition: max-height 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94),
-                opacity 0.3s ease-in 0.1s, /* Fade in slightly after expanding */
-                transform 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94),
-                padding 0.4s ease-in-out;
-}
-
-/* --- Collapsed Preview Styles --- */
-.tool-block-preview {
-    padding: 0 16px 12px 16px;
-}
-
-.search-image-gallery-preview {
-    display: flex;
-    gap: 8px;
-    align-items: center;
-}
-
-.search-image-item-preview img {
-    width: 40px;
-    height: 40px;
-    object-fit: cover;
-    border-radius: 6px;
-    border: 1px solid var(--color-border);
-    background-color: var(--color-background-tertiary);
-}
-
-
-.spinner-icon {
-    animation: spin 1.5s linear infinite;
-}
-
-@keyframes spin {
-    from { transform: rotate(0deg); }
-    to { transform: rotate(360deg); }
-}
-
-/* --- SearchBlock Specific Styles & Colors --- */
-.search-container .status {
-    transition: color 0.2s ease;
-}
-
-.search-container.state-searching .status,
-.search-container.state-searching .status-icon-wrapper {
-    color: var(--color-accent);
-}
-.search-container.state-searching::before {
-    background-color: var(--color-accent);
-}
-
-.search-container.state-completed .status,
-.search-container.state-searched .status {
-    color: var(--color-text-secondary);
-}
-.search-container.state-completed::before,
-.search-container.state-searched::before {
-    background-color: var(--color-border-hover);
-}
-
-.search-container.state-error .status,
-.search-container.state-error .status-icon-wrapper {
-    color: var(--color-error);
-}
-.search-container.state-error::before {
-    background-color: var(--color-error);
-}
-
-
-.search-section {
-    margin-top: 12px;
-}
-
-.search-section .section-title {
-    font-size: 12px;
-    font-weight: 600;
-    color: var(--color-text-secondary);
-    margin-bottom: 8px;
-    text-transform: uppercase;
-    letter-spacing: 0.05em; /* Add some letter spacing */
-}
-
-.search-query-text {
-    background-color: var(--color-background-code);
-    padding: 8px 12px;
-    border-radius: 6px;
-    font-family: var(--font-mono);
-    font-size: 14px;
-    white-space: pre-wrap;
-    word-wrap: break-word;
-    color: var(--color-text-primary);
-    border: 1px solid var(--color-border);
-}
-
-.search-output-text {
-    font-size: 14px;
-    line-height: 1.6;
-    white-space: pre-wrap;
-    word-wrap: break-word;
-}
-
-.search-output-text.error {
-    color: var(--color-error);
-    background-color: var(--color-background-error);
-    padding: 8px 12px;
-    border-radius: 6px;
-    font-family: var(--font-mono);
-}
-
-.search-output-text a {
-    color: var(--color-accent);
-    text-decoration: none;
-    font-weight: 500;
-}
-
-.search-output-text a:hover {
-    text-decoration: underline;
-}
-
-.search-output-text strong {
-    font-weight: 600;
-    color: var(--color-text-primary);
-}
-
-.search-output-text em {
-    font-style: normal;
-    color: var(--color-text-secondary);
-    display: block;
-    font-size: 12px;
-    margin-top: -2px;
-    margin-bottom: 4px;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-
-
-/* Re-using waiting indicator from ChatMessage.css for consistency */
-.searching-placeholder {
-    display: flex;
-    align-items: center;
-    padding: 10px 0;
-}
-.searching-placeholder .dot {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    background-color: var(--color-text-secondary);
-    animation: waiting-animation 1.4s infinite ease-in-out both;
-    margin: 0 4px;
-}
-.searching-placeholder .dot:nth-child(1) { animation-delay: -0.32s; }
-.searching-placeholder .dot:nth-child(2) { animation-delay: -0.16s; }
-
-/* --- Styling for Image Gallery in Search Results --- */
-.search-image-gallery {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-    gap: 12px;
-}
-
-.search-image-item {
-    background-color: var(--color-background-code);
-    border: 1px solid var(--color-border);
-    border-radius: 8px;
-    overflow: hidden;
-    transition: all 0.2s ease-in-out;
-    display: flex;
-    flex-direction: column;
-}
-
-.search-image-item:hover {
-    border-color: var(--color-border-hover);
-    transform: translateY(-2px);
-    box-shadow: 0 4px 8px rgba(0,0,0,0.05);
-}
-
-.search-image-item img {
-    width: 100%;
-    height: 120px;
-    object-fit: cover;
-    display: block;
-    background-color: var(--color-background-tertiary); /* Placeholder bg */
-}
-
-.search-image-info {
-    padding: 8px 10px;
-    flex-grow: 1;
-    display: flex;
-    flex-direction: column;
-    justify-content: space-between;
-}
-
-.search-image-title {
-    font-size: 13px;
-    font-weight: 500;
-    color: var(--color-text-primary);
-    line-height: 1.4;
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    line-clamp: 2; /* Standard property for compatibility */
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    margin-bottom: 6px;
-}
-
-.search-image-source {
-    font-size: 11px;
-    color: var(--color-text-secondary);
-    text-decoration: none;
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    margin-top: auto; /* Pushes it to the bottom */
-}
-
-.search-image-source:hover {
-    color: var(--color-accent);
-    text-decoration: underline;
-}
-
-.search-image-source svg {
-    width: 12px;
-    height: 12px;
+.sources-count {
+  font-size: 0.8rem;
+  color: var(--secondary-text-color);
+  margin-left: 8px;
+  font-weight: 750;
 }

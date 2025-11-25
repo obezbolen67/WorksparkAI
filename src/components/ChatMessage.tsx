@@ -1,9 +1,12 @@
+// src/components/ChatMessage.tsx
 import { useState, useEffect, memo, useMemo, useRef, useCallback } from 'react';
 import type { Message, Attachment } from '../types';
 import api, { API_BASE_URL } from '../utils/api';
 import '../css/ChatMessage.css';
+import '../css/AnalysisBlock.css';
+import '../css/SearchBlock.css';
 import React from 'react';
-import { FiCopy, FiRefreshCw, FiEdit, FiCheck, FiLoader, FiExternalLink } from 'react-icons/fi';
+import { FiCopy, FiRefreshCw, FiEdit, FiCheck, FiLoader, FiExternalLink, FiBook, FiFileText, FiSearch } from 'react-icons/fi';
 import ImageViewer from './ImageViewer';
 import Tooltip from './Tooltip';
 import ReactMarkdown from 'react-markdown';
@@ -16,14 +19,13 @@ import { getFileIcon } from '../utils/fileIcons';
 import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
-import SearchBlock from './SearchBlock';
 import AnalysisBlock from './AnalysisBlock';
-import '../css/AnalysisBlock.css';
 import { useNotification } from '../contexts/NotificationContext';
 import GeolocationBlock from './GeolocationBlock';
 import GeolocationRequestBlock from './GeolocationRequestBlock';
 import GoogleMapsBlock from './GoogleMapsBlock';
 import StreamingText from './StreamingText';
+import { useSidePanel } from '../contexts/SidePanelContext';
 
 interface CodeComponentProps {
   node?: any;
@@ -40,22 +42,14 @@ const generateThumbnailFromBlob = async (blob: Blob): Promise<string> => {
       const img = new Image();
       const url = URL.createObjectURL(blob);
       img.onload = () => {
-        const maxWidth = 300; // Larger than input thumbnail, good for chat
+        const maxWidth = 300;
         const scale = maxWidth / img.width;
-        
-        // If already small enough, just return original object URL
-        if (scale >= 1) {
-            resolve(url);
-            return;
-        }
-
+        if (scale >= 1) { resolve(url); return; }
         const canvas = document.createElement('canvas');
         canvas.width = maxWidth;
         canvas.height = img.height * scale;
         const ctx = canvas.getContext('2d');
         ctx?.drawImage(img, 0, 0, canvas.width, canvas.height);
-        
-        // Clean up original URL if we made a new one
         URL.revokeObjectURL(url);
         resolve(canvas.toDataURL(blob.type));
       };
@@ -64,10 +58,7 @@ const generateThumbnailFromBlob = async (blob: Blob): Promise<string> => {
 };
 
 const useTheme = () => {
-    const [theme, setTheme] = useState(
-        () => document.documentElement.getAttribute('data-theme') || 'dark'
-    );
-
+    const [theme, setTheme] = useState(() => document.documentElement.getAttribute('data-theme') || 'dark');
     useEffect(() => {
         const observer = new MutationObserver(mutations => {
             for (const mutation of mutations) {
@@ -85,17 +76,14 @@ const useTheme = () => {
 
 async function copyTextToClipboard(text: string): Promise<boolean> {
   if (navigator.clipboard?.writeText) {
-    try { await navigator.clipboard.writeText(text); return true; }
-    catch { }
+    try { await navigator.clipboard.writeText(text); return true; } catch { }
   }
   const textArea = document.createElement("textarea");
   textArea.value = text;
   textArea.style.position = "fixed"; textArea.style.top = "-9999px";
   document.body.appendChild(textArea);
   textArea.focus(); textArea.select();
-  try { return document.execCommand("copy"); }
-  catch { return false; }
-  finally { document.body.removeChild(textArea); }
+  try { return document.execCommand("copy"); } catch { return false; } finally { document.body.removeChild(textArea); }
 }
 
 const CustomCode = ({ node, inline, className, children, style, ...props }: CodeComponentProps) => {
@@ -109,7 +97,7 @@ const CustomCode = ({ node, inline, className, children, style, ...props }: Code
     if (await copyTextToClipboard(codeString)) {
       setIsCopied(true);
       setTimeout(() => setIsCopied(false), 2000);
-    } else { alert("Failed to copy."); }
+    }
   };
 
   return !inline && match ? (
@@ -129,7 +117,7 @@ const CustomCode = ({ node, inline, className, children, style, ...props }: Code
 const Paragraph: Components['p'] = ({ node, ...props }) => {
     const child = node?.children[0];
     const childClassName = (child?.type === 'element' && child.properties?.className?.toString()) || '';
-    if (node?.children.length === 1 && child?.type === 'element' && (child?.tagName === 'pre' || childClassName.includes('tool-block-container') || childClassName.includes('inline-thinking-container') || childClassName.includes('markdown-image-wrapper') || childClassName.includes('geolocation-request-container'))) {
+    if (node?.children.length === 1 && child?.type === 'element' && (child?.tagName === 'pre' || childClassName.includes('tool-block-container') || childClassName.includes('inline-thinking-container') || childClassName.includes('markdown-image-wrapper') || childClassName.includes('geolocation-request-container') || childClassName.includes('search-indicator'))) {
         return <>{props.children}</>;
     }
     return <p {...props} />;
@@ -141,13 +129,11 @@ const LocalAttachmentImage = memo(({ src, fileName, onView }: { src: string, fil
 
     useEffect(() => {
         let active = true;
-        // Fetch the blob from the local URL (it's likely a blob: url)
         fetch(src).then(r => r.blob()).then(blob => {
             return generateThumbnailFromBlob(blob);
         }).then(thumb => {
             if (active) setThumbSrc(thumb);
         }).catch(() => {
-            // Fallback to original if processing fails
             if (active) setThumbSrc(src);
         });
         return () => { active = false; };
@@ -180,8 +166,6 @@ const AuthenticatedImage = memo(({ chatId, attachment, onView }: { chatId: strin
                 if (isMounted) { 
                     const full = URL.createObjectURL(blob);
                     setFullUrl(full);
-                    
-                    // Generate thumbnail asynchronously
                     const thumb = await generateThumbnailFromBlob(blob);
                     if (isMounted) setThumbUrl(thumb);
                 }
@@ -190,11 +174,8 @@ const AuthenticatedImage = memo(({ chatId, attachment, onView }: { chatId: strin
             
         return () => { 
             isMounted = false; 
-            // We can't easily revoke the internal URLs of generateThumbnail here without complex tracking,
-            // but browsers handle Data URLs fine. We should revoke the fullUrl though.
             if (fullUrl) URL.revokeObjectURL(fullUrl); 
         };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [apiEndpoint, attachment.fileName]);
 
     if (hasError) return <div className="attachment-image-wrapper error"><span>Error Loading Image</span></div>;
@@ -226,29 +207,47 @@ const linkButtonStyle: React.CSSProperties = {
     textDecoration: 'none'
 };
 
-type AssistantTurnProps = Omit<ChatMessageProps, 'message' | 'index' | 'isEditing' | 'onStartEdit' | 'onSaveEdit' | 'onCancelEdit'> & { 
+// --- Helper Functions for Search Result Parsing ---
+const parseSearchMarkdown = (content: string) => {
+  if (!content) return [];
+  const sources = [];
+  const regex = /\*\*(.*?)\*\*\n\*Source: (.*?)\*\n\n> (.*?)(?=\n\n---|\n*$)/gs;
+  let match;
+  while ((match = regex.exec(content)) !== null) {
+    sources.push({
+      title: match[1].trim(),
+      url: match[2].trim(),
+      snippet: match[3].trim()
+    });
+  }
+  return sources;
+};
+
+const cleanSearchQuery = (rawContent: string) => {
+    if (!rawContent) return '';
+    try {
+        const parsed = JSON.parse(rawContent);
+        if (parsed.query) return parsed.query;
+    } catch (e) {
+        return rawContent.replace(/^"|"$/g, '');
+    }
+    return rawContent;
+};
+
+type AssistantTurnProps = { 
+  messages: Message[];
+  chatId: string | null;
   startIndex: number;
+  isStreaming: boolean;
+  isThinking: boolean;
+  onRegenerate: () => void;
+  onCopy: (content: string) => void;
   onView: (src: string) => void; 
 };
 
 const AssistantTurn = memo(({ messages, chatId, startIndex, isStreaming, isThinking, onRegenerate, onCopy, onView }: AssistantTurnProps) => {
-    const firstMessageOfTurn = messages[startIndex];
-    if (firstMessageOfTurn?.isWaiting) {
-        return (
-            <div className="chat-message-wrapper assistant">
-                <div className="chat-message-container">
-                    <div className="message-content-wrapper">
-                        <div className="waiting-indicator">
-                            <div className="dot"></div>
-                            <div className="dot"></div>
-                            <div className="dot"></div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        );
-    }
-
+    const { openPanel } = useSidePanel();
+    
     const ImageRenderer: Components['img'] = ({ src, alt }) => {
         if (!src) return null;
         return (
@@ -261,7 +260,7 @@ const AssistantTurn = memo(({ messages, chatId, startIndex, isStreaming, isThink
     const LinkRenderer: Components['a'] = ({ href, children }) => {
         if (!href) return <>{children}</>;
         
-        // 1. Check for Images
+        // Handle Images
         const isImage = href.match(/\.(jpeg|jpg|gif|png|bmp|webp)($|\?)/i);
         if (isImage) {
             return (
@@ -271,67 +270,59 @@ const AssistantTurn = memo(({ messages, chatId, startIndex, isStreaming, isThink
             );
         }
 
-        // 2. Raw URL vs Named Link Logic
-        const childText = String(children);
-        const isRawUrl = childText === href || 
-                         childText === href + '/' ||
-                         (childText.startsWith('http') && href.includes(childText));
+        // Handle Text Links
+        const linkText = String(children);
+        const isRawUrl = linkText.startsWith('http') || linkText.startsWith('www.') || linkText.length > 30;
 
-        return (
-            <span className="link-container" style={{ alignItems: 'center', display: 'inline-flex', verticalAlign: 'middle' }}>
-                {!isRawUrl && (
-                    <a href={href} target="_blank" rel="noopener noreferrer" style={{ color: 'inherit', textDecoration: 'underline' }}>
-                        {children}
-                    </a>
-                )}
+        // If it's a raw long URL, replace text with just the button
+        if (isRawUrl) {
+            return (
                 <Tooltip text={href}>
                     <a 
                         href={href} 
                         target="_blank" 
-                        rel="noopener noreferrer"
-                        style={linkButtonStyle}
-                        onClick={(e) => e.stopPropagation()}
-                        className="chat-link-button"
-                        aria-label={`Open link: ${href}`}
+                        rel="noopener noreferrer" 
+                        className="chat-link-icon-only"
+                        aria-label="Open Link"
                     >
-                        <FiExternalLink size={14} />
+                        <FiExternalLink size={16} />
+                    </a>
+                </Tooltip>
+            );
+        }
+
+        // For named links like [Click Here](url), keep text + small icon
+        return (
+            <span className="link-container">
+                <a href={href} target="_blank" rel="noopener noreferrer" className="chat-link-text">
+                    {children}
+                </a>
+                <Tooltip text={href}>
+                    <a href={href} target="_blank" rel="noopener noreferrer" style={linkButtonStyle} className="chat-link-button">
+                        <FiExternalLink size={12} />
                     </a>
                 </Tooltip>
             </span>
         );
     };
-
-    const { turnParts, fullContent, lastMessageInTurnIndex } = useMemo(() => {
+    
+    const { turnParts, fullContent, lastMessageInTurnIndex, accumulatedSources } = useMemo(() => {
         const parts: React.ReactNode[] = [];
         const textParts: string[] = [];
         let lastIndex = startIndex;
         const processedToolIds = new Set<string>();
         let currentTextBuffer = '';
-
-        const processMarkdownContent = (content: string, isCurrentlyStreaming: boolean = false) => {
-            if (!isCurrentlyStreaming) return content;
-            
-            const lines = content.split('\n');
-            const lastLineIndex = lines.length - 1;
-
-            if (lastLineIndex >= 0) {
-                const lastLineTrimmed = lines[lastLineIndex].trim();
-                if (lastLineTrimmed === '---' || lastLineTrimmed === '===') {
-                    lines[lastLineIndex] = lines[lastLineIndex] + '\u200B';
-                }
-            }
-            return lines.join('\n');
-        };
+        const sources: any[] = [];
 
         const flushTextBuffer = (key: string) => {
             if (currentTextBuffer.trim()) {
-                const processedContent = processMarkdownContent(currentTextBuffer, isStreaming);
-                const isCurrentlyStreaming = isStreaming && key.includes('final');
-
+                const isLastGlobalMessage = lastIndex === messages.length - 1;
+                const isCurrentlyStreaming = isStreaming && isLastGlobalMessage && key.includes('final');
+                
                 parts.push(
                     <StreamingText
                         key={key}
-                        content={processedContent}
+                        content={currentTextBuffer}
                         isStreaming={isCurrentlyStreaming}
                         components={{ code: CustomCode, p: Paragraph, img: ImageRenderer, a: LinkRenderer }}
                     />
@@ -342,78 +333,73 @@ const AssistantTurn = memo(({ messages, chatId, startIndex, isStreaming, isThink
 
         for (let i = startIndex; i < messages.length; i++) {
             const currentMessage = messages[i];
-
-            if (currentMessage.role === 'user') {
-                lastIndex = i - 1;
-                break;
-            }
+            if (currentMessage.role === 'user') { lastIndex = i - 1; break; }
 
             if (currentMessage.role === 'assistant') {
-                if (currentMessage.thinking !== undefined) {
+                if (currentMessage.thinking) {
                     flushTextBuffer(`text-before-thinking-${i}`);
-                    const isCurrentlyStreamingThinking = isThinking && i === messages.length - 1;
-                    parts.push(<InlineThinking key={`thinking-${i}`} content={currentMessage.thinking || ''} isStreaming={isCurrentlyStreamingThinking} />);
+                    parts.push(<InlineThinking key={`thinking-${i}`} content={currentMessage.thinking} isStreaming={isThinking && i === messages.length - 1} />);
                 }
                 if (currentMessage.content) {
-                    textParts.push(currentMessage.content);
                     currentTextBuffer += currentMessage.content;
+                    textParts.push(currentMessage.content);
                 }
-            } else if (currentMessage.role === 'tool_code' && currentMessage.tool_id && !processedToolIds.has(currentMessage.tool_id)) {
-                flushTextBuffer(`text-before-tool-code-${i}`);
-                const toolOutputMessage = messages.find(m => m.role === 'tool_code_result' && m.tool_id === currentMessage.tool_id);
-                parts.push(<CodeAnalysisBlock key={`code-${currentMessage.tool_id}`} chatId={chatId} toolCodeMessage={currentMessage} toolOutputMessage={toolOutputMessage} onView={onView} />);
-                processedToolIds.add(currentMessage.tool_id);
-            } else if (currentMessage.role === 'tool_search' && currentMessage.tool_id && !processedToolIds.has(currentMessage.tool_id)) {
-                flushTextBuffer(`text-before-tool-search-${i}`);
-                const toolOutputMessage = messages.find(m => m.role === 'tool_search_result' && m.tool_id === currentMessage.tool_id);
-                const isGeolocationMap = toolOutputMessage?.content?.includes('[LOCATION]');
-                if (isGeolocationMap) {
-                    parts.push(<GeolocationBlock key={`geo-${currentMessage.tool_id}`} toolMessage={currentMessage} outputMessage={toolOutputMessage} />);
-                } else {
-                    parts.push(<SearchBlock key={`search-${currentMessage.tool_id}`} toolSearchMessage={currentMessage} toolOutputMessage={toolOutputMessage} />);
-                }
-                processedToolIds.add(currentMessage.tool_id);
-            } else if (currentMessage.role === 'tool_doc_extract' && currentMessage.tool_id && !processedToolIds.has(currentMessage.tool_id)) {
-                flushTextBuffer(`text-before-tool-extract-${i}`);
-                const toolOutputMessage = messages.find(m => m.role === 'tool_doc_extract_result' && m.tool_id === currentMessage.tool_id);
-                parts.push(<AnalysisBlock key={`extract-${currentMessage.tool_id}`} toolMessage={currentMessage} outputMessage={toolOutputMessage} />);
-                processedToolIds.add(currentMessage.tool_id);
-            } else if (currentMessage.role === 'tool_geolocation' && currentMessage.tool_id && !processedToolIds.has(currentMessage.tool_id)) {
-                flushTextBuffer(`text-before-tool-geo-request-${i}`);
-                const hasResult = messages.some(m => m.role === 'tool_geolocation_result' && m.tool_id === currentMessage.tool_id);
-                if (!hasResult) {
-                    parts.push(<GeolocationRequestBlock key={`geo-req-${currentMessage.tool_id}`} toolMessage={currentMessage} />);
-                }
-                processedToolIds.add(currentMessage.tool_id);
-            } else if (currentMessage.role === 'tool_integration' && currentMessage.tool_id && !processedToolIds.has(currentMessage.tool_id)) {
-              flushTextBuffer(`text-before-tool-integration-${i}`);
-              const toolOutputMessage = messages.find(m => m.role === 'tool_integration_result' && m.tool_id === currentMessage.tool_id);
-              
-              // Check if this is a Google Maps integration with route data
-              if (toolOutputMessage?.integrationData?.type === 'google_maps_route') {
-                parts.push(<GoogleMapsBlock key={`maps-${currentMessage.tool_id}`} integrationData={toolOutputMessage.integrationData} />);
-              }
-              
-              processedToolIds.add(currentMessage.tool_id);
-            } else if (currentMessage.role === 'tool_integration_result' && currentMessage.tool_id && !processedToolIds.has(currentMessage.tool_id)) {
-              flushTextBuffer(`text-before-tool-integration-result-${i}`);
-              // Check if this message has integrationData with Google Maps route data
-              if (currentMessage.integrationData && currentMessage.integrationData.type === 'google_maps_route') {
-                parts.push(<GoogleMapsBlock key={`maps-${currentMessage.tool_id}`} integrationData={currentMessage.integrationData} />);
-              }
-              processedToolIds.add(currentMessage.tool_id);
-            }
+            } else if (currentMessage.tool_id && !processedToolIds.has(currentMessage.tool_id)) {
+                const toolType = currentMessage.role;
+                const resultRole = toolType + '_result' as Message['role'];
+                const outputMessage = messages.find(m => m.role === resultRole && m.tool_id === currentMessage.tool_id);
+                const state = currentMessage.state || (outputMessage ? 'completed' : 'writing');
 
+                if (toolType === 'tool_code') {
+                    flushTextBuffer(`text-before-code-${i}`);
+                    parts.push(<CodeAnalysisBlock key={`code-${currentMessage.tool_id}`} chatId={chatId} toolCodeMessage={currentMessage} toolOutputMessage={outputMessage} onView={onView} />);
+                } else if (toolType === 'tool_search') {
+                    const queryText = cleanSearchQuery(currentMessage.content || '');
+                    
+                    flushTextBuffer(`text-before-search-${i}`);
+                    parts.push(
+                        <div key={`search-indicator-${currentMessage.tool_id}`} className="search-indicator">
+                            <div className="search-icon-wrapper"><FiSearch size={14} /></div>
+                            <span className="search-text">
+                                {state === 'writing' || state === 'searching' ? 'Searching for ' : 'Searched for '} 
+                                "{queryText}"
+                            </span>
+                        </div>
+                    );
+
+                    if (outputMessage && !outputMessage.content?.includes('[LOCATION]')) {
+                        const newSources = parseSearchMarkdown(outputMessage.content || '');
+                        if(newSources.length > 0) sources.push(...newSources);
+                    } else if (outputMessage && outputMessage.content?.includes('[LOCATION]')) {
+                        flushTextBuffer(`text-before-geo-${i}`);
+                        parts.push(<GeolocationBlock key={`geo-${currentMessage.tool_id}`} toolMessage={currentMessage} outputMessage={outputMessage} />);
+                    }
+                } else if (toolType === 'tool_doc_extract') {
+                    flushTextBuffer(`text-before-extract-${i}`);
+                    parts.push(<AnalysisBlock key={`extract-${currentMessage.tool_id}`} toolMessage={currentMessage} outputMessage={outputMessage} />);
+                } else if (toolType === 'tool_geolocation') {
+                    flushTextBuffer(`text-before-geo-req-${i}`);
+                    if (!messages.some(m => m.role === 'tool_geolocation_result' && m.tool_id === currentMessage.tool_id)) {
+                        parts.push(<GeolocationRequestBlock key={`geo-req-${currentMessage.tool_id}`} toolMessage={currentMessage} />);
+                    }
+                } else if (toolType === 'tool_integration' || toolType === 'tool_integration_result') {
+                    flushTextBuffer(`text-before-int-${i}`);
+                    const data = outputMessage?.integrationData || (currentMessage.role === 'tool_integration_result' ? currentMessage.integrationData : null);
+                    if (data?.type === 'google_maps_route') {
+                        parts.push(<GoogleMapsBlock key={`maps-${currentMessage.tool_id}`} integrationData={data} />);
+                    }
+                }
+                processedToolIds.add(currentMessage.tool_id);
+            }
             lastIndex = i;
         }
-
         flushTextBuffer('text-final');
-
-        return { turnParts: parts, fullContent: textParts.join('\n\n'), lastMessageInTurnIndex: lastIndex };
-    }, [messages, chatId, startIndex, isStreaming, onView]);
-
+        
+        return { turnParts: parts, fullContent: textParts.join('\n\n'), lastMessageInTurnIndex: lastIndex, accumulatedSources: sources };
+    }, [messages, chatId, startIndex, isStreaming, onView, isThinking]);
 
     const isStreamingInThisTurn = isStreaming && (messages.length - 1 <= lastMessageInTurnIndex);
+    const showSources = accumulatedSources.length > 0 && !isStreamingInThisTurn;
 
     return (
         <div className={`chat-message-wrapper assistant ${isStreamingInThisTurn ? 'is-streaming' : ''}`}>
@@ -422,12 +408,31 @@ const AssistantTurn = memo(({ messages, chatId, startIndex, isStreaming, isThink
                     <div className={`message-content ${isStreamingInThisTurn ? 'is-streaming' : 'streaming-complete'}`}>
                         {turnParts}
                         {isStreamingInThisTurn && <span className="streaming-cursor"></span>}
-                        {turnParts.length === 0 && !isStreamingInThisTurn && '\u00A0'}
                     </div>
-                    {fullContent && !isStreamingInThisTurn && (
+                    
+                    {/* FOOTER ACTIONS ROW */}
+                    {!isStreamingInThisTurn && (fullContent || showSources) && (
                         <div className="message-actions">
-                            <Tooltip text="Regenerate"><button className="action-button" onClick={onRegenerate}><FiRefreshCw size={16} /></button></Tooltip>
-                            <Tooltip text="Copy"><button className="action-button" onClick={() => onCopy(fullContent)}><FiCopy size={16} /></button></Tooltip>
+                            {/* Standard Actions First */}
+                            <div className="action-buttons-group" style={{ display: 'flex', gap: '0.5rem' }}>
+                                <Tooltip text="Regenerate"><button className="action-button" onClick={onRegenerate}><FiRefreshCw size={16} /></button></Tooltip>
+                                <Tooltip text="Copy"><button className="action-button" onClick={() => onCopy(fullContent)}><FiCopy size={16} /></button></Tooltip>
+                            </div>
+
+                            {showSources && (
+                                <button className="sources-trigger" onClick={() => openPanel('sources', { sources: accumulatedSources })}>
+                                    {accumulatedSources.slice(0, 3).map((s: any, i: number) => (
+                                        <img 
+                                            key={i} 
+                                            className="source-favicon-stack"
+                                            src={`https://www.google.com/s2/favicons?domain=${new URL(s.url).hostname}&sz=32`} 
+                                            alt=""
+                                            onError={(e) => (e.target as HTMLImageElement).style.display = 'none'}
+                                        />
+                                    ))}
+                                    <span className="sources-count">{accumulatedSources.length} Sources</span>
+                                </button>
+                            )}
                         </div>
                     )}
                 </div>
@@ -435,6 +440,7 @@ const AssistantTurn = memo(({ messages, chatId, startIndex, isStreaming, isThink
         </div>
     );
 });
+
 
 interface ChatMessageProps {
   message: Message;
@@ -461,14 +467,14 @@ const ChatMessage = ({ message, messages, chatId, index, isEditing, isStreaming,
 
   const handleDownloadAttachment = async (e: React.MouseEvent<HTMLAnchorElement>, attachment: Attachment) => {
     e.preventDefault();
-    if (downloadingId) return; // Prevent multiple concurrent downloads
+    if (downloadingId) return; 
 
     if (!chatId || !attachment._id) {
       showNotification('Cannot download file: Missing identifiers.', 'error');
       return;
     }
 
-    setDownloadingId(attachment._id); // Set downloading state for this attachment
+    setDownloadingId(attachment._id); 
 
     try {
       const response = await api(`/files/view/${chatId}/${attachment._id}`);
@@ -492,217 +498,79 @@ const ChatMessage = ({ message, messages, chatId, index, isEditing, isStreaming,
     } catch (error) {
       showNotification(error instanceof Error ? error.message : 'Could not download file.', 'error');
     } finally {
-      setDownloadingId(null); // Reset downloading state
+      setDownloadingId(null); 
     }
   };
 
   useEffect(() => {
-    if (isEditing) {
-      setEditedContent(message.content || '');
-    }
+    if (isEditing) setEditedContent(message.content || '');
   }, [isEditing, message.content]);
 
   useEffect(() => {
     if (isEditing && editTextAreaRef.current) {
-      const textarea = editTextAreaRef.current;
-      textarea.focus();
-      textarea.setSelectionRange(textarea.value.length, textarea.value.length);
-      
-      setTimeout(() => {
-        textarea.style.height = 'auto';
-        const newHeight = Math.min(textarea.scrollHeight, 400); // Max 400px
-        textarea.style.height = `${newHeight}px`;
-      }, 0);
+      const ta = editTextAreaRef.current;
+      ta.focus(); ta.setSelectionRange(ta.value.length, ta.value.length);
+      setTimeout(() => { ta.style.height = 'auto'; ta.style.height = `${Math.min(ta.scrollHeight, 400)}px`; }, 0);
     }
   }, [isEditing]);
 
   const handleOpenViewer = useCallback((src: string) => { setViewerSrc(src); setIsViewerOpen(true); }, []);
 
-  const handleEditContentChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    setEditedContent(e.target.value);
-    const textarea = e.target;
-    textarea.style.height = 'auto';
-    const newHeight = Math.min(textarea.scrollHeight, 400); // Max 400px
-    textarea.style.height = `${newHeight}px`;
-  };
-
-  const handleEditKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === 'Escape') {
-      onCancelEdit();
-    }
-  };
-
-  const ImageRenderer: Components['img'] = ({ src, alt }) => {
-    if (!src) return null;
-    return (
-        <a href={src} onClick={(e) => { e.preventDefault(); handleOpenViewer(src); }} className="markdown-image-wrapper">
-            <img src={src} alt={alt || 'image from message'} />
-        </a>
-    );
-  };
-
-  const LinkRenderer: Components['a'] = ({ href, children }) => {
-    if (!href) return <>{children}</>;
-    
-    // 1. Check for Images
-    const isImage = href.match(/\.(jpeg|jpg|gif|png|bmp|webp)($|\?)/i);
-    if (isImage) {
-        return (
-            <a href={href} onClick={(e) => { e.preventDefault(); handleOpenViewer(href); }} className="markdown-image-wrapper">
-                <img src={href} alt={String(children) || 'generated image'} />
-            </a>
-        );
-    }
-
-    // 2. Raw URL vs Named Link Logic
-    const childText = String(children);
-    const isRawUrl = childText === href || 
-                     childText === href + '/' ||
-                     (childText.startsWith('http') && href.includes(childText));
-
-    return (
-        <span className="link-container" style={{ alignItems: 'center', display: 'inline-flex', verticalAlign: 'middle' }}>
-            {!isRawUrl && (
-                <a href={href} target="_blank" rel="noopener noreferrer" style={{ color: 'inherit', textDecoration: 'underline' }}>
-                    {children}
-                </a>
-            )}
-            <Tooltip text={href}>
-                <a 
-                    href={href} 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                    style={linkButtonStyle}
-                    onClick={(e) => e.stopPropagation()}
-                    className="chat-link-button"
-                    aria-label={`Open link: ${href}`}
-                >
-                    <FiExternalLink size={14} />
-                </a>
-            </Tooltip>
-        </span>
-    );
-  };
-
   const renderAttachments = (attachments: Attachment[]) => (
     <div className="message-attachments">
-    {attachments.map((att, idx) => {
-      const key = att._id || att.gcsObjectName || `att-${idx}`;
-      const isImage = att.mimeType.startsWith('image/');
-      const hasId = Boolean(chatId && att._id);
-      
-      const directUrl = (att as any).url || 
-                        (att as any).content || 
-                        (att as any).preview || 
-                        (att as any).previewUrl || 
-                        (att as any).data ||
-                        (att as any).base64;
-
-      if (isImage) {
-        // --- OPTIMIZATION: Use LocalAttachmentImage for optimistic updates ---
-        if (directUrl) {
-            return (
-                <LocalAttachmentImage 
-                    key={key} 
-                    src={directUrl} 
-                    fileName={att.fileName} 
-                    onView={handleOpenViewer} 
-                />
-            );
-        }
-
-        if (!hasId) {
-          return (
-            <div key={key} className="attachment-image-wrapper unavailable">
-              <span>Image unavailable</span>
-            </div>
-          );
-        }
-        return <AuthenticatedImage key={key} chatId={chatId!} attachment={att} onView={handleOpenViewer} />;
-      }
-      
-      // For non-image files
-      const isDownloading = downloadingId === att._id;
-      const isDisabled = !hasId;
-      
-      return (
-        <a 
-          key={key} 
-          href={hasId ? `${API_BASE_URL}/api/files/view/${chatId}/${att._id}` : '#'}
-          onClick={(e) => {
-            if (!hasId) {
-              e.preventDefault();
-              return;
+        {attachments.map((att, idx) => {
+            const isImage = att.mimeType.startsWith('image/');
+            const url = (att as any).url || `/api/files/view/${chatId}/${att._id}`;
+            if(isImage) {
+                 if((att as any).url) return <LocalAttachmentImage key={idx} src={url} fileName={att.fileName} onView={handleOpenViewer} />;
+                 return <AuthenticatedImage key={idx} chatId={chatId!} attachment={att} onView={handleOpenViewer} />;
             }
-            handleDownloadAttachment(e, att);
-          }}
-          className={`attachment-file-link ${isDownloading ? 'downloading' : ''} ${isDisabled ? 'disabled' : ''}`}
-          aria-label={isDownloading ? `Downloading ${att.fileName}` : (isDisabled ? `${att.fileName} (unavailable)` : `Download ${att.fileName}`)}
-        >
-          <span className="attachment-file-icon">
-            {isDownloading ? <FiLoader className="spinner-icon" /> : getFileIcon(att.mimeType)}
-          </span>
-          <span className="attachment-file-name">
-            {isDownloading ? 'Downloading...' : att.fileName}
-          </span>
-        </a>
-      );
-    })}
+            return (
+                <a key={idx} href={url} onClick={(e) => { if(!Boolean(chatId && att._id)) { e.preventDefault(); return; } handleDownloadAttachment(e, att); }} className={`attachment-file-link ${downloadingId === att._id ? 'downloading' : ''}`}>
+                    <span className="attachment-file-icon">{downloadingId === att._id ? <FiLoader className="spinner-icon" /> : getFileIcon(att.mimeType)}</span>
+                    <span className="attachment-file-name">{downloadingId === att._id ? 'Downloading...' : att.fileName}</span>
+                </a>
+            );
+        })}
     </div>
   );
 
-  const renderMessageContent = () => {
-    if (message.role === 'user') {
-      return (
+  if (message.role === 'user') {
+    return (
         <div className={`chat-message-wrapper user ${isEditing ? 'editing' : ''}`}>
           <div className="chat-message-container">
             <div className="user-message-bubble">
               {!isEditing ? (
                 <div className="message-content">
                   {message.attachments && message.attachments.length > 0 && renderAttachments(message.attachments)}
-                  {message.content && <ReactMarkdown remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[rehypeKatex]} components={{ code: CustomCode, p: Paragraph, img: ImageRenderer, a: LinkRenderer }}>{message.content}</ReactMarkdown>}
-                  {!message.content && !message.attachments?.length && '\u00A0'}
+                  {message.content && <ReactMarkdown remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[rehypeKatex]} components={{ code: CustomCode, p: Paragraph }}>{message.content}</ReactMarkdown>}
                 </div>
               ) : (
                 <div className="message-editor-content">
-                    <textarea 
-                      ref={editTextAreaRef}
-                      value={editedContent} 
-                      onChange={handleEditContentChange} 
-                      onKeyDown={handleEditKeyDown}
-                      rows={1} 
-                    />
+                    <textarea ref={editTextAreaRef} value={editedContent} onChange={(e) => setEditedContent(e.target.value)} rows={1} />
                     <div className="editor-actions">
                         <button className="editor-button cancel" onClick={onCancelEdit}>Cancel</button>
-                        <button className="editor-button save" onClick={() => onSaveEdit(index, editedContent)}>Save & Submit</button>
+                        <button className="editor-button save" onClick={() => onSaveEdit(index, editedContent)}>Save</button>
                     </div>
                 </div>
               )}
             </div>
-            {!isEditing && message.content && (
-              <div className="message-actions">
-                <Tooltip text="Edit"><button className="action-button" onClick={() => onStartEdit(index)}><FiEdit size={16} /></button></Tooltip>
-              </div>
-            )}
+            {!isEditing && <div className="message-actions"><Tooltip text="Edit"><button className="action-button" onClick={() => onStartEdit(index)}><FiEdit size={16} /></button></Tooltip></div>}
           </div>
         </div>
-      );
-    }
-    
-    const isStartOfTurn = index === 0 || messages[index - 1]?.role === 'user';
-    if (isStartOfTurn) {
-      return <AssistantTurn chatId={chatId} messages={messages} startIndex={index} isStreaming={isStreaming} isThinking={isThinking} {...rest} onView={handleOpenViewer} />;
-    }
-    
-    return null;
-  };
+    );
+  }
 
-  return (
-    <>
-      {renderMessageContent()}
-      <ImageViewer isOpen={isViewerOpen} src={viewerSrc} alt={viewerSrc || ''} onClose={() => setIsViewerOpen(false)} />
-    </>
-  );
+  const isStartOfTurn = index === 0 || messages[index - 1]?.role === 'user';
+  if (isStartOfTurn) {
+    return (
+      <>
+        <AssistantTurn chatId={chatId} messages={messages} startIndex={index} isStreaming={isStreaming} isThinking={isThinking} {...rest} onView={handleOpenViewer} />
+        <ImageViewer isOpen={isViewerOpen} src={viewerSrc} alt={viewerSrc || ''} onClose={() => setIsViewerOpen(false)} />
+      </>
+    );
+  }
+  return null;
 };
 
 export default memo(ChatMessage);

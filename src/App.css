@@ -12,7 +12,8 @@
   --assistant-message-bg: #f4f4f5;
   --tooltip-bg-color: #111827;
   --tooltip-text-color: #ffffff;
-  --code-block-header: #171717;
+  --code-block-header: #e7e7e7;
+  --code-block-text: #2e2e2e;
   --code-text: #ffffff;
   /* Overlay scrim for modals/overlays in light theme */
   --overlay-scrim: rgba(0, 0, 0, 0.35);
@@ -29,6 +30,8 @@
   --assistant-message-bg: #2f2f2f;
   --tooltip-bg-color: hsl(0, 0%, 15%);
   --tooltip-text-color: #e5e5e5;
+  --code-block-header: #000000;
+  --code-block-text: #d0d0d0;
   /* Darker scrim in dark theme */
   --overlay-scrim: rgba(0, 0, 0, 0.55);
 }
