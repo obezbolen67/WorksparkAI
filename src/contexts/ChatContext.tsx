@@ -646,7 +646,6 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
         | { error: string }
     ) => {
       if (isStreaming) {
-        
         return;
       }
 
@@ -660,11 +659,11 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
       }
       
 
-      // --- START OF FIX ---
-      // Get the most up-to-date messages from the ref, which is always current.
+      // Use messagesRef to get the most up-to-date messages (including user message and tool request)
       const currentMessages = messagesRef.current;
+      
+      // Only filter out waiting placeholders (which shouldn't exist at this point normally, but good safety)
       const cleanMessages = currentMessages.filter((m) => !m.isWaiting);
-      // --- END OF FIX ---
 
       const originalToolMsg = cleanMessages.find(
         (m) => m.tool_id === tool_id && m.role === 'tool_geolocation'
@@ -687,9 +686,9 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
           : m
       );
 
+      // The array we send to the backend must contain the full history context, 
+      // including the user message that started this turn.
       const historyForBackend = [...messagesForUI, resultMessage];
-
-      
 
       setMessages([...messagesForUI, { role: 'assistant', content: '', isWaiting: true }]);
       await streamAndSaveResponse(chatId, historyForBackend, { isContinuation: true });

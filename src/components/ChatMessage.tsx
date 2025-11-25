@@ -1,12 +1,12 @@
 // src/components/ChatMessage.tsx
 import { useState, useEffect, memo, useMemo, useRef, useCallback } from 'react';
 import type { Message, Attachment } from '../types';
-import api, { API_BASE_URL } from '../utils/api';
+import api from '../utils/api';
 import '../css/ChatMessage.css';
 import '../css/AnalysisBlock.css';
 import '../css/SearchBlock.css';
 import React from 'react';
-import { FiCopy, FiRefreshCw, FiEdit, FiCheck, FiLoader, FiExternalLink, FiBook, FiFileText, FiSearch } from 'react-icons/fi';
+import { FiCopy, FiRefreshCw, FiEdit, FiCheck, FiLoader, FiExternalLink, FiSearch } from 'react-icons/fi';
 import ImageViewer from './ImageViewer';
 import Tooltip from './Tooltip';
 import ReactMarkdown from 'react-markdown';
@@ -379,9 +379,12 @@ const AssistantTurn = memo(({ messages, chatId, startIndex, isStreaming, isThink
                     parts.push(<AnalysisBlock key={`extract-${currentMessage.tool_id}`} toolMessage={currentMessage} outputMessage={outputMessage} />);
                 } else if (toolType === 'tool_geolocation') {
                     flushTextBuffer(`text-before-geo-req-${i}`);
-                    if (!messages.some(m => m.role === 'tool_geolocation_result' && m.tool_id === currentMessage.tool_id)) {
+                    // --- START OF FIX: Logic to hide request block if result exists ---
+                    const hasResult = messages.some(m => m.role === 'tool_geolocation_result' && m.tool_id === currentMessage.tool_id);
+                    if (!hasResult) {
                         parts.push(<GeolocationRequestBlock key={`geo-req-${currentMessage.tool_id}`} toolMessage={currentMessage} />);
                     }
+                    // --- END OF FIX ---
                 } else if (toolType === 'tool_integration' || toolType === 'tool_integration_result') {
                     flushTextBuffer(`text-before-int-${i}`);
                     const data = outputMessage?.integrationData || (currentMessage.role === 'tool_integration_result' ? currentMessage.integrationData : null);

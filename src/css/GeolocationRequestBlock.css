@@ -1,95 +1,121 @@
 /* src/css/GeolocationRequestBlock.css */
 
-.geolocation-request-container {
-  background-color: var(--button-hover-bg);
-  border: 1px solid var(--border-color);
-  border-left: 4px solid #3b82f6; /* Blue accent line */
-  border-radius: 12px;
-  margin: 1rem 0;
-  overflow: hidden;
-}
-
-[data-theme="light"] .geolocation-request-container {
-  border-left-color: #2563eb;
-}
-
-.geolocation-request-header {
+.geolocation-wrapper {
   display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  padding: 0.75rem 1rem;
-  font-weight: 500;
+  flex-direction: column;
+  width: 100%;
+  margin: 8px 0;
+  gap: 10px;
 }
 
-.geolocation-request-header .icon {
-  color: #3b82f6;
+/* --- Content Card --- */
+.geo-content-card {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 14px;
+    border-radius: 16px;
+    background-color: var(--main-bg-color);
+    border: 1px solid var(--border-color);
+    align-self: flex-start;
+    max-width: 90%;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
 }
 
-[data-theme="light"] .geolocation-request-header .icon {
-  color: #2563eb;
+.geo-icon-circle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background-color: rgba(59, 130, 246, 0.1); 
+    color: #3b82f6;
+    flex-shrink: 0;
 }
 
-.geolocation-request-body {
-  padding: 0 1rem 1.25rem 1rem;
-  text-align: center;
+.geo-text-content {
+    display: flex;
+    flex-direction: column;
 }
 
-.geolocation-request-body p {
-  font-size: 0.9rem;
-  color: var(--secondary-text-color);
-  margin: 0 0 1rem 0;
+.geo-text {
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: var(--primary-text-color);
+    line-height: 1.3;
 }
 
-.request-actions {
-  display: flex;
-  justify-content: center;
-  gap: 0.75rem;
+/* --- Actions Row --- */
+.geo-actions-row {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 12px;
+    padding-left: 2px;
+    width: 100%;
 }
 
-.request-button {
-  border: none;
-  padding: 0.5rem 1.5rem;
-  border-radius: 9999px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s ease-in-out;
-  font-size: 0.875rem;
+/* --- Pill Buttons --- */
+.geo-square-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 70px; 
+    height: 40px;
+    border-radius: 16px;
+    border: none;
+    cursor: pointer;
+    transition: transform 0.2s ease, background-color 0.2s ease, color 0.2s ease;
+    flex-shrink: 0;
 }
 
-.deny-button {
-  background-color: var(--button-hover-bg);
-  color: var(--primary-text-color);
-  border: 1px solid var(--border-color);
-}
-.deny-button:hover {
-  background-color: var(--main-bg-color);
-  border-color: var(--secondary-text-color);
+/* LIGHT THEME BASE */
+.geo-square-btn {
+    background-color: #18181b;
+    color: #ffffff;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.15);
 }
 
-.allow-button {
-  background-color: #16a34a; /* Green */
-  color: white;
-}
-.allow-button:hover {
-  background-color: #15803d;
+.geo-square-btn:active {
+    transform: scale(0.95);
 }
 
-.request-error {
-  color: #ef4444;
-  font-size: 0.85rem !important;
-  margin-top: 0.75rem !important;
+/* Hover Effects */
+.geo-square-btn.deny:hover {
+    background-color: #27272a;
+    color: #f87171;
 }
 
-.request-pending {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  color: var(--secondary-text-color);
-  font-size: 0.9rem;
-  padding: 0.5rem 0;
+.geo-square-btn.allow:hover {
+    background-color: #22c55e;
+    color: white;
 }
 
-.request-pending .spinner-icon {
-  animation: spin 1s linear infinite;
+/* --- DARK THEME ADJUSTMENTS --- */
+[data-theme="dark"] .geo-content-card {
+    background-color: var(--button-hover-bg);
+    border-color: transparent;
+}
+
+[data-theme="dark"] .geo-icon-circle {
+    background-color: rgba(59, 130, 246, 0.2);
+    color: #60a5fa;
+}
+
+/* DARK THEME BUTTONS */
+[data-theme="dark"] .geo-square-btn {
+    background-color: #ffffff;
+    color: #000000;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.4);
+}
+
+[data-theme="dark"] .geo-square-btn.deny:hover {
+    background-color: #e5e5e5;
+    color: #ef4444;
+}
+
+[data-theme="dark"] .geo-square-btn.allow:hover {
+    background-color: #22c55e;
+    color: #ffffff;
 }
