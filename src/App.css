@@ -78,12 +78,19 @@ body:has(.sidebar.is-collapsed) {
   background-color: var(--main-bg-color);
   overflow: hidden;
   box-sizing: border-box;
+  
+  /* NEW: Add padding for the safe area (notch) since status bar is hidden */
+  padding-top: env(safe-area-inset-top); 
+  padding-bottom: env(safe-area-inset-bottom);
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
 }
 
 /* Responsive */
 @media (max-width: 768px) {
   .app-container {
-    padding-top: 56px;
+    /* Ensure header isn't cut off */
+    padding-top: max(56px, env(safe-area-inset-top)); 
     height: 100vh;
   }
   :root { --sidebar-width: 0px; }

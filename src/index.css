@@ -3,7 +3,7 @@
 /* Remove mobile tap highlight (blue rectangles) */
 * {
   -webkit-tap-highlight-color: transparent;
-  -webkit-touch-callout: none; /* Prevents the "Open Image/Link" popup on long press */
+  -webkit-touch-callout: none; /* Prevents context menu on long press */
 }
 
 /* 
@@ -17,12 +17,10 @@ body {
   -moz-osx-font-smoothing: grayscale;
   transition: background-color 0.3s ease, color 0.3s ease;
   
-  /* DISABLE SELECTION BY DEFAULT */
-  -webkit-user-select: none;
-  user-select: none;
+  -webkit-user-select: none; /* Safari */
+  user-select: none; /* Standard */
   
-  /* Fix for the "White Bar" on overscroll */
-  overscroll-behavior-y: none; 
+  overscroll-behavior-y: none; /* Prevents "pull to refresh" effect */
 }
 
 /* 2. Re-enable selection ONLY for message content and inputs */
@@ -34,7 +32,6 @@ textarea,
 [contenteditable] {
   -webkit-user-select: text;
   user-select: text;
-  /* Allow the native context menu only here for copying */
   -webkit-touch-callout: default; 
 }
 
