@@ -206,6 +206,9 @@ const Sidebar = ({ onOpenSettings, isMobileOpen, onClose, isCollapsed, onToggleC
                 <span className="button-text">Notifications</span>
               </button>
             </li>
+
+            <li className="sidebar-divider"></li>
+            
           </ul>
         </nav>
 
