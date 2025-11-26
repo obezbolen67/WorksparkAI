@@ -1,50 +1,72 @@
-/* src/css/App.css */
+/* src/App.css */
 :root {
-  /* Default to light theme */
-  --sidebar-width: 260px; /* Default desktop sidebar width for global overlays */
-  --sidebar-bg-color: #f4f4f5;
+  /* --- GLOBAL ACCENT: PURPLE --- */
+  --accent-primary: #8b5cf6; /* Violet 500 */
+  --accent-hover: #7c3aed;   /* Violet 600 */
+  --accent-bg: rgba(139, 92, 246, 0.1);
+  --accent-bg-hover: rgba(139, 92, 246, 0.2);
+  --accent-text: #8b5cf6;
+  
+  /* --- LAYOUT & COLORS (LIGHT) --- */
+  --sidebar-width: 260px;
+  --sidebar-bg-color: #f9fafb; /* Slightly lighter gray for freshness */
   --main-bg-color: #ffffff;
   --input-bg-color: #ffffff;
   --primary-text-color: #111827;
   --secondary-text-color: #6b7280;
   --border-color: #e5e7eb;
-  --button-hover-bg: #f4f4f5;
-  --assistant-message-bg: #f4f4f5;
-  --tooltip-bg-color: #111827;
+  --button-hover-bg: #f3f4f6;
+  --assistant-message-bg: #f9fafb;
+  
+  /* --- COMPONENT SPECIFIC --- */
+  --tooltip-bg-color: #1f2937;
   --tooltip-text-color: #ffffff;
-  --code-block-header: #e7e7e7;
-  --code-block-text: #2e2e2e;
-  --code-text: #ffffff;
-  /* Overlay scrim for modals/overlays in light theme */
-  --overlay-scrim: rgba(0, 0, 0, 0.35);
+  --code-block-header: #f3f4f6;
+  --code-block-text: #374151;
+  --code-text: #1f2937;
+  --overlay-scrim: rgba(0, 0, 0, 0.4);
+
+  /* --- ANIMATIONS --- */
+  --ease-spring: cubic-bezier(0.4, 0, 0.2, 1); /* Unified motion curve */
+  --anim-duration: 0.3s;
 }
 
 [data-theme="dark"] {
-  --sidebar-bg-color: #171717;
-  --main-bg-color: #212121;
-  --input-bg-color: #212121;
-  --primary-text-color: #e5e5e5;
-  --secondary-text-color: #a0a0a0;
-  --border-color: hsl(0, 0%, 22%);
-  --button-hover-bg: #2f2f2f;
-  --assistant-message-bg: #2f2f2f;
-  --tooltip-bg-color: hsl(0, 0%, 15%);
-  --tooltip-text-color: #e5e5e5;
-  --code-block-header: #000000;
-  --code-block-text: #d0d0d0;
-  /* Darker scrim in dark theme */
-  --overlay-scrim: rgba(0, 0, 0, 0.55);
-}
+  /* --- GLOBAL ACCENT: PURPLE (Dark Mode Adjusted) --- */
+  --accent-primary: #a78bfa; /* Violet 400 - Brighter for dark bg */
+  --accent-hover: #c4b5fd;   /* Violet 300 */
+  --accent-bg: rgba(139, 92, 246, 0.15);
+  --accent-bg-hover: rgba(139, 92, 246, 0.25);
+  --accent-text: #a78bfa;
 
+  /* --- LAYOUT & COLORS (DARK) --- */
+  --sidebar-bg-color: #18181b; /* Zinc 900 */
+  --main-bg-color: #27272a;    /* Zinc 800 */
+  --input-bg-color: #27272a;
+  --primary-text-color: #f4f4f5;
+  --secondary-text-color: #a1a1aa;
+  --border-color: #3f3f46;
+  --button-hover-bg: #3f3f46;
+  --assistant-message-bg: #27272a;
+  
+  /* --- COMPONENT SPECIFIC --- */
+  --tooltip-bg-color: #18181b;
+  --tooltip-text-color: #f4f4f5;
+  --code-block-header: #18181b;
+  --code-block-text: #d4d4d8;
+  --overlay-scrim: rgba(0, 0, 0, 0.7);
+}
 
 body {
   margin: 0;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   background-color: var(--main-bg-color);
   color: var(--primary-text-color);
+  -webkit-font-smoothing: antialiased;
+  transition: background-color var(--anim-duration) var(--ease-spring), color var(--anim-duration) var(--ease-spring);
 }
 
-/* When the sidebar is collapsed on desktop, shrink the global sidebar width */
+/* Collapse logic */
 body:has(.sidebar.is-collapsed) {
   --sidebar-width: 80px;
 }
@@ -54,41 +76,34 @@ body:has(.sidebar.is-collapsed) {
   height: 100vh;
   width: 100vw;
   background-color: var(--main-bg-color);
-  overflow: hidden; /* Prevent body scroll */
+  overflow: hidden;
   box-sizing: border-box;
 }
 
-
-/* --- UPDATED: Responsive styles for the main container --- */
+/* Responsive */
 @media (max-width: 768px) {
-  /* On mobile, the flex container itself doesn't need to do much,
-     as the sidebar is now position:fixed and out of the flow. */
   .app-container {
-    padding-top: 56px; /* Space for ONLY the fixed mobile header by default */
-    height: 100vh; /* Use full viewport height */
-    box-sizing: border-box;
+    padding-top: 56px;
+    height: 100vh;
   }
-  /* On mobile, overlays should cover the full width, so sidebar width is 0 */
   :root { --sidebar-width: 0px; }
 }
 
-/* --- NEW: Full-screen loading background --- */
+/* --- Loading Screens --- */
 .initial-loading-screen {
   position: fixed;
   inset: 0;
   background-color: var(--main-bg-color);
-  z-index: 9999; /* Ensure it's on top */
+  z-index: 9999;
   display: flex;
   justify-content: center;
   align-items: center;
 }
 
-
-/* --- UPDATED: New bouncing loader animation --- */
 @keyframes bouncing-loader {
   to {
-    opacity: 0.1;
-    transform: translateY(-1rem);
+    opacity: 0.3;
+    transform: translateY(-0.5rem);
   }
 }
 
@@ -99,17 +114,12 @@ body:has(.sidebar.is-collapsed) {
 }
 
 .bouncing-loader > div {
-  width: 1rem;
-  height: 1rem;
-  background: var(--primary-text-color);
+  width: 0.75rem;
+  height: 0.75rem;
+  background: var(--accent-primary); /* Use accent color */
   border-radius: 50%;
   animation: bouncing-loader 0.6s infinite alternate;
 }
 
-.bouncing-loader > div:nth-child(2) {
-  animation-delay: 0.2s;
-}
-
-.bouncing-loader > div:nth-child(3) {
-  animation-delay: 0.4s;
-}
+.bouncing-loader > div:nth-child(2) { animation-delay: 0.2s; }
+.bouncing-loader > div:nth-child(3) { animation-delay: 0.4s; }

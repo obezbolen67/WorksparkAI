@@ -7,6 +7,7 @@ import type { Message, FileOutput } from '../types';
 import '../css/CodeAnalysisBlock.css';
 import { useNotification } from '../contexts/NotificationContext';
 import { useSettings } from '../contexts/SettingsContext';
+import { getToolDisplayName } from '../utils/toolLabels';
 
 interface CodeAnalysisBlockProps {
   chatId: string | null;
@@ -27,7 +28,7 @@ const CodeAnalysisBlock = ({ toolCodeMessage, toolOutputMessage, onView }: CodeA
   const output = toolOutputMessage?.content || '';
   const fileOutputs = toolOutputMessage?.fileOutputs || [];
 
-  const isPending = state === 'writing' || state === 'executing';
+  const isPending = state === 'writing' || state === 'executing' || state === 'ready_to_execute';
 
   const syntaxTheme = theme === 'light' ? oneLight : vscDarkPlus;
 
@@ -39,7 +40,7 @@ const CodeAnalysisBlock = ({ toolCodeMessage, toolOutputMessage, onView }: CodeA
   };
 
   const handleDownload = async (e: React.MouseEvent, fileOutput: FileOutput) => {
-    e.stopPropagation(); // Prevent accordion toggle
+    e.stopPropagation();
     try {
       const link = document.createElement('a');
       link.href = fileOutput.url;
@@ -55,15 +56,17 @@ const CodeAnalysisBlock = ({ toolCodeMessage, toolOutputMessage, onView }: CodeA
   };
 
   const handlePreviewClick = (e: React.MouseEvent, url: string) => {
-    e.stopPropagation(); // Prevent accordion toggle
+    e.stopPropagation();
     onView(url);
   };
 
   const label = useMemo(() => {
-    if (isPending) return 'Analyzing...';
-    if (state === 'error') return 'Analysis Failed';
-    return 'Analyzed';
-  }, [state, isPending]);
+    const name = getToolDisplayName('tool_code');
+    if (state === 'writing' || state === 'ready_to_execute') return `Calling ${name}...`;
+    if (state === 'executing') return `Running ${name}...`;
+    if (state === 'error') return `${name} Failed`;
+    return name;
+  }, [state]);
 
   return (
     <div className={`code-analysis-container ${state} ${isExpanded ? 'expanded' : ''}`}>
@@ -76,7 +79,7 @@ const CodeAnalysisBlock = ({ toolCodeMessage, toolOutputMessage, onView }: CodeA
           <FiChevronDown className="chevron-icon" />
         </div>
 
-        {/* --- NEW: File Preview Strip (Visible when collapsed) --- */}
+        {/* File Preview Strip */}
         {!isExpanded && fileOutputs.length > 0 && (
           <div className="analysis-file-preview">
             {fileOutputs.map((f, i) => (
@@ -135,7 +138,6 @@ const CodeAnalysisBlock = ({ toolCodeMessage, toolOutputMessage, onView }: CodeA
               <div className="console-header">Output</div>
               {output && <pre className={`console-text ${hasError ? 'error' : ''}`}>{output}</pre>}
               
-              {/* Full File List in Expanded View */}
               {fileOutputs.length > 0 && (
                 <div className="console-files">
                   {fileOutputs.map((f, i) => (

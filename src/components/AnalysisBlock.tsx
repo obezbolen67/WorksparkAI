@@ -3,6 +3,7 @@ import { useState, useMemo, memo } from 'react';
 import { FiChevronDown, FiCheck, FiFileText, FiAlertTriangle } from 'react-icons/fi';
 import type { Message } from '../types';
 import '../css/AnalysisBlock.css';
+import { getToolDisplayName } from '../utils/toolLabels';
 
 interface AnalysisBlockProps {
   toolMessage: Message;
@@ -15,21 +16,23 @@ const AnalysisBlock = memo(({ toolMessage, outputMessage }: AnalysisBlockProps) 
   const state = toolMessage.state || (outputMessage ? 'completed' : 'writing');
   const hasError = state === 'error';
   const filename = toolMessage.content || 'document';
+  const name = getToolDisplayName('tool_doc_extract');
 
   const { statusText, labelClass } = useMemo(() => {
     switch (state) {
-      case 'analyzing':
       case 'writing':
       case 'ready_to_execute':
-        return { statusText: 'Reading document...', labelClass: 'animate-shine' };
+        return { statusText: `Calling ${name}...`, labelClass: 'animate-shine' };
+      case 'analyzing':
+        return { statusText: `Reading document...`, labelClass: 'animate-shine' };
       case 'error':
-        return { statusText: 'Failed to read document', labelClass: 'error' };
+        return { statusText: `Failed to read document`, labelClass: 'error' };
       case 'completed':
         return { statusText: 'Document Read', labelClass: 'completed' };
       default:
-        return { statusText: 'Analysis', labelClass: '' };
+        return { statusText: name, labelClass: '' };
     }
-  }, [state]);
+  }, [state, name]);
 
   return (
     <div className={`analysis-container ${state} ${isExpanded ? 'expanded' : ''}`}>
@@ -43,7 +46,7 @@ const AnalysisBlock = memo(({ toolMessage, outputMessage }: AnalysisBlockProps) 
         </div>
       </div>
 
-      {/* Expanded Content: Just the file card, no raw text results */}
+      {/* Expanded Content */}
       {isExpanded && (
         <div className="analysis-content">
           <div className="analysis-file-card">

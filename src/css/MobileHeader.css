@@ -1,38 +1,49 @@
 /* src/css/MobileHeader.css */
+
 .mobile-header {
-  display: none; /* Hidden by default, shown in media query */
+  /* CRITICAL: Hidden by default on Desktop */
+  display: none;
+  
   position: fixed;
-  top: 0; /* Default position when no banner is present */
+  top: 0;
   left: 0;
   right: 0;
   height: 56px;
-  background-color: var(--main-bg-color);
+  background-color: rgba(255, 255, 255, 0.85); /* Light mode frost */
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   border-bottom: 1px solid var(--border-color);
-  padding: 0 1rem;
+  padding: 0 12px;
   align-items: center;
   justify-content: space-between;
   z-index: 500;
-  transition: top 0.3s ease-in-out;
+  transition: top 0.3s var(--ease-spring);
+}
+
+[data-theme="dark"] .mobile-header {
+  background-color: rgba(39, 39, 42, 0.85); /* Dark mode frost */
 }
 
 .mobile-header-button {
-  background: none;
+  background: transparent;
   border: none;
   color: var(--primary-text-color);
-  padding: 8px;
+  width: 40px;
+  height: 40px;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
   transition: background-color 0.2s;
-  flex-shrink: 0;
 }
 
 .mobile-header-button:hover {
   background-color: var(--button-hover-bg);
+  color: var(--accent-primary); /* Purple accent on hover */
 }
 
+/* Only show on mobile devices */
 @media (max-width: 768px) {
   .mobile-header {
     display: flex;

@@ -8,13 +8,13 @@
   background-color: transparent;
   border: none;
   transition: none;
-  width: 100%; /* Ensure full width */
+  width: 100%;
 }
 
 /* --- Header Styling --- */
 .analysis-header {
   display: flex;
-  flex-direction: column; /* Change to column to stack title and preview */
+  flex-direction: column;
   align-items: flex-start;
   padding: 6px 0;
   background-color: transparent;
@@ -42,6 +42,17 @@
   font-size: 0.95rem;
   color: var(--primary-text-color);
   font-weight: 500;
+}
+
+/* --- PENDING ANIMATION --- */
+.spinner-icon {
+  animation: spin 1s linear infinite;
+  flex-shrink: 0;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
 
 .analysis-label {

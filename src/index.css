@@ -1,24 +1,9 @@
 /* src/index.css */
-/* * {
-  outline: 1px solid red;
-} */
 
 /* Remove mobile tap highlight (blue rectangles) */
 * {
   -webkit-tap-highlight-color: transparent;
-  -webkit-touch-callout: none;
-  -webkit-user-select: none;
-  -moz-user-select: none;
-  -ms-user-select: none;
-  user-select: none;
-}
-
-/* Allow text selection where needed */
-input, textarea, [contenteditable] {
-  -webkit-user-select: text;
-  -moz-user-select: text;
-  -ms-user-select: text;
-  user-select: text;
+  /* Removed user-select: none to allow text selection */
 }
 
 /* Basic reset and font setup */
@@ -32,7 +17,6 @@ body {
 
 /* 
   Remove default button styling to let components handle it.
-  This prevents conflicts with your custom .sidebar-button styles.
 */
 button {
   border: none;
@@ -59,4 +43,12 @@ ul, ol {
   list-style: none;
   padding: 0;
   margin: 0;
+}
+
+/* Explicitly allow selection on inputs and text areas (just in case) */
+input, textarea, [contenteditable] {
+  -webkit-user-select: text;
+  -moz-user-select: text;
+  -ms-user-select: text;
+  user-select: text;
 }

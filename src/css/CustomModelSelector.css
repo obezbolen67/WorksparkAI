@@ -1,7 +1,8 @@
+/* src/css/CustomModelSelector.css */
 .custom-model-selector {
   position: relative;
   width: 100%;
-  flex-grow: 1; /* Allows it to take up available space */
+  flex-grow: 1;
 }
 
 .custom-model-selector-button {
@@ -10,11 +11,11 @@
   align-items: center;
   justify-content: space-between;
   padding: 0.75rem 1rem;
-  background-color: var(--main-bg-color);
+  background-color: var(--input-bg-color);
   border: 1px solid var(--border-color);
   border-radius: 8px;
   color: var(--primary-text-color);
-  font-size: 1rem;
+  font-size: 0.95rem;
   text-align: left;
   cursor: pointer;
   transition: border-color 0.2s, box-shadow 0.2s;
@@ -23,14 +24,14 @@
 .custom-model-selector-button:not(:disabled):hover,
 .custom-model-selector-button:not(:disabled):focus-visible {
   outline: none;
-  border-color: #19c37d;
-  box-shadow: 0 0 0 2px hsla(145, 63%, 42%, 0.3);
+  border-color: var(--accent-primary);
+  box-shadow: 0 0 0 3px var(--accent-bg);
 }
 
 .custom-model-selector-button:disabled {
-  background-color: var(--input-bg-color);
-  cursor: not-allowed;
   opacity: 0.6;
+  cursor: not-allowed;
+  background-color: var(--button-hover-bg);
 }
 
 .selected-model-name {
@@ -51,27 +52,24 @@
 
 .custom-model-selector-dropdown {
   position: absolute;
-  top: calc(100% + 4px);
+  top: calc(100% + 6px);
   left: 0;
   right: 0;
-  max-height: 250px;
+  max-height: 260px;
   overflow-y: auto;
   background-color: var(--sidebar-bg-color);
   border: 1px solid var(--border-color);
   border-radius: 8px;
-  padding: 0.5rem;
+  padding: 6px;
   z-index: 1010;
-  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
   opacity: 0;
-  transform: translateY(-10px);
-  animation: dropdown-fade-in 0.2s ease forwards;
+  animation: dropdown-fade-in 0.15s ease-out forwards;
 }
 
 @keyframes dropdown-fade-in {
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 .model-dropdown-item {
@@ -79,11 +77,13 @@
   align-items: center;
   justify-content: space-between;
   gap: 0.75rem;
-  padding: 0.75rem;
+  padding: 0.6rem 0.75rem;
   border-radius: 6px;
   cursor: pointer;
   transition: background-color 0.2s;
   font-weight: 500;
+  font-size: 0.9rem;
+  color: var(--primary-text-color);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -94,16 +94,18 @@
 }
 
 .model-dropdown-item.selected {
-  background-color: var(--button-hover-bg);
-  font-weight: 600;
+  background-color: var(--accent-bg);
+  color: var(--accent-primary);
 }
 
 .checkmark-icon {
-  color: var(--primary-text-color);
+  color: var(--accent-primary);
   flex-shrink: 0;
 }
 
 .model-dropdown-item.empty {
-    color: var(--secondary-text-color);
-    cursor: default;
+  color: var(--secondary-text-color);
+  cursor: default;
+  font-style: italic;
+  justify-content: center;
 }

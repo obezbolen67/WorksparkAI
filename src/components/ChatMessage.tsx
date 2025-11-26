@@ -379,12 +379,10 @@ const AssistantTurn = memo(({ messages, chatId, startIndex, isStreaming, isThink
                     parts.push(<AnalysisBlock key={`extract-${currentMessage.tool_id}`} toolMessage={currentMessage} outputMessage={outputMessage} />);
                 } else if (toolType === 'tool_geolocation') {
                     flushTextBuffer(`text-before-geo-req-${i}`);
-                    // --- START OF FIX: Logic to hide request block if result exists ---
                     const hasResult = messages.some(m => m.role === 'tool_geolocation_result' && m.tool_id === currentMessage.tool_id);
                     if (!hasResult) {
                         parts.push(<GeolocationRequestBlock key={`geo-req-${currentMessage.tool_id}`} toolMessage={currentMessage} />);
                     }
-                    // --- END OF FIX ---
                 } else if (toolType === 'tool_integration' || toolType === 'tool_integration_result') {
                     flushTextBuffer(`text-before-int-${i}`);
                     const data = outputMessage?.integrationData || (currentMessage.role === 'tool_integration_result' ? currentMessage.integrationData : null);
@@ -410,7 +408,16 @@ const AssistantTurn = memo(({ messages, chatId, startIndex, isStreaming, isThink
                 <div className="message-content-wrapper">
                     <div className={`message-content ${isStreamingInThisTurn ? 'is-streaming' : 'streaming-complete'}`}>
                         {turnParts}
-                        {isStreamingInThisTurn && <span className="streaming-cursor"></span>}
+                        
+                        {/* Show 3 dots if streaming but no content yet */}
+                        {isStreamingInThisTurn && turnParts.length === 0 && (
+                            <div className="typing-indicator">
+                                <span></span><span></span><span></span>
+                            </div>
+                        )}
+                        
+                        {/* Show cursor if content exists and still streaming */}
+                        {isStreamingInThisTurn && turnParts.length > 0 && <span className="streaming-cursor"></span>}
                     </div>
                     
                     {/* FOOTER ACTIONS ROW */}
@@ -542,22 +549,32 @@ const ChatMessage = ({ message, messages, chatId, index, isEditing, isStreaming,
     return (
         <div className={`chat-message-wrapper user ${isEditing ? 'editing' : ''}`}>
           <div className="chat-message-container">
-            <div className="user-message-bubble">
-              {!isEditing ? (
-                <div className="message-content">
-                  {message.attachments && message.attachments.length > 0 && renderAttachments(message.attachments)}
-                  {message.content && <ReactMarkdown remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[rehypeKatex]} components={{ code: CustomCode, p: Paragraph }}>{message.content}</ReactMarkdown>}
+            
+            {/* --- Attachments displayed OUTSIDE and ABOVE the text bubble for User --- */}
+            {!isEditing && message.attachments && message.attachments.length > 0 && (
+                <div className="message-attachments-outside">
+                    {renderAttachments(message.attachments)}
                 </div>
-              ) : (
-                <div className="message-editor-content">
-                    <textarea ref={editTextAreaRef} value={editedContent} onChange={(e) => setEditedContent(e.target.value)} rows={1} />
-                    <div className="editor-actions">
-                        <button className="editor-button cancel" onClick={onCancelEdit}>Cancel</button>
-                        <button className="editor-button save" onClick={() => onSaveEdit(index, editedContent)}>Save</button>
-                    </div>
-                </div>
-              )}
-            </div>
+            )}
+
+            {(message.content || isEditing) && (
+              <div className="user-message-bubble">
+                {!isEditing ? (
+                  <div className="message-content">
+                    {/* Note: Attachments are now rendered above, not inside */}
+                    {message.content && <ReactMarkdown remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[rehypeKatex]} components={{ code: CustomCode, p: Paragraph }}>{message.content}</ReactMarkdown>}
+                  </div>
+                ) : (
+                  <div className="message-editor-content">
+                      <textarea ref={editTextAreaRef} value={editedContent} onChange={(e) => setEditedContent(e.target.value)} rows={1} />
+                      <div className="editor-actions">
+                          <button className="editor-button cancel" onClick={onCancelEdit}>Cancel</button>
+                          <button className="editor-button save" onClick={() => onSaveEdit(index, editedContent)}>Save</button>
+                      </div>
+                  </div>
+                )}
+              </div>
+            )}
             {!isEditing && <div className="message-actions"><Tooltip text="Edit"><button className="action-button" onClick={() => onStartEdit(index)}><FiEdit size={16} /></button></Tooltip></div>}
           </div>
         </div>

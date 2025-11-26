@@ -46,7 +46,6 @@ const ImageViewer = ({ src, alt, isOpen, onClose }: ImageViewerProps) => {
 
   if (!isOpen) return null;
 
-  // --- START OF THE FIX ---
   const handleDownload = async () => {
     if (!src) return;
     try {
@@ -69,27 +68,35 @@ const ImageViewer = ({ src, alt, isOpen, onClose }: ImageViewerProps) => {
       showNotification('Could not download the image.', 'error');
     }
   };
-  // --- END OF THE FIX ---
 
   return (
     <div className={`image-viewer-overlay ${isClosing ? 'closing' : ''}`} onClick={handleClose}>
-      <div className={`image-viewer-content ${isClosing ? 'closing' : ''}`} onClick={(e) => e.stopPropagation()}>
-        <img src={src || ''} alt={alt} />
+      
+      {/* Image Content Wrapper - Transparent, passes clicks through */}
+      <div className={`image-viewer-content ${isClosing ? 'closing' : ''}`}>
+        <img 
+          src={src || ''} 
+          alt={alt} 
+          onClick={(e) => e.stopPropagation()} /* Only block clicks on the image itself */
+        />
       </div>
-      <div className="image-viewer-actions">
+
+      {/* Actions Bar - Bottom */}
+      <div className="image-viewer-actions" onClick={(e) => e.stopPropagation()}>
         <Tooltip text="Download Image">
           <button className="viewer-action-button" onClick={handleDownload} disabled={!src}>
-            <FiDownload size={20} />
+            <FiDownload size={18} />
             <span>Download</span>
           </button>
         </Tooltip>
         <Tooltip text="Close (Esc)">
-          <button className="viewer-action-button" onClick={handleClose}>
-            <FiX size={20} />
+          <button className="viewer-action-button close" onClick={handleClose}>
+            <FiX size={18} />
             <span>Close</span>
           </button>
         </Tooltip>
       </div>
+
     </div>
   );
 };

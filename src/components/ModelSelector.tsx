@@ -11,7 +11,11 @@ const ModelSelector = () => {
   const quickAccessModelIds = user?.quickAccessModels || [];
   const quickAccessModels = models.filter(m => quickAccessModelIds.includes(m.id));
 
-  const handleSelectModel = async (modelId: string) => {
+  const handleSelectModel = async (modelId: string, e: React.MouseEvent) => {
+    // Prevent event bubbling and default behavior to ensure the action captures
+    e.preventDefault();
+    e.stopPropagation();
+    
     if (modelId !== selectedModel) {
       await updateSettings({ selectedModel: modelId });
     }
@@ -24,9 +28,12 @@ const ModelSelector = () => {
         setIsOpen(false);
       }
     };
-    document.addEventListener('mousedown', handleClickOutside);
+    
+    if (isOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
+  }, [isOpen]);
 
   if (loading) {
     return <div className="model-selector-placeholder" />;
@@ -41,13 +48,16 @@ const ModelSelector = () => {
 
   return (
     <div className="model-selector" ref={selectorRef}>
-      {/* --- START OF THE FIX --- */}
-      <button className="model-selector-button" onClick={() => setIsOpen(!isOpen)}>
+      <button 
+        className="model-selector-button" 
+        onClick={() => setIsOpen(!isOpen)}
+        aria-haspopup="true"
+        aria-expanded={isOpen}
+      >
         <span>Workspark AI</span>
         <span className="beta-tag">Beta</span>
         <FiChevronDown size={16} className={isOpen ? 'open' : ''} />
       </button>
-      {/* --- END OF THE FIX --- */}
 
       {isOpen && (
         <div className="model-selector-dropdown">
@@ -58,7 +68,10 @@ const ModelSelector = () => {
                 <div 
                   key={model.id}
                   className={`model-item ${selectedModel === model.id ? 'selected' : ''}`}
-                  onClick={() => handleSelectModel(model.id)}
+                  // Use onMouseDown to trigger before blur/focusout events
+                  onMouseDown={(e) => handleSelectModel(model.id, e)}
+                  role="button"
+                  tabIndex={0}
                 >
                   <Icon size={20} className="model-item-icon" />
                   <div className="model-item-details">

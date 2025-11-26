@@ -1,8 +1,10 @@
+// src/components/SearchBlock.tsx
 import { useState, useMemo, memo } from 'react';
 import { FiChevronDown, FiXCircle, FiLoader, FiSearch, FiExternalLink } from 'react-icons/fi';
 import ReactMarkdown from 'react-markdown';
 import type { Message } from '../types';
 import '../css/SearchBlock.css';
+import { getToolDisplayName } from '../utils/toolLabels';
 
 interface SearchBlockProps {
   toolSearchMessage: Message;
@@ -20,20 +22,44 @@ const SearchBlock = memo(({ toolSearchMessage, toolOutputMessage }: SearchBlockP
   const state = toolSearchMessage.state || (toolOutputMessage ? 'completed' : 'writing');
 
   const hasError = state === 'error';
+  const name = getToolDisplayName('tool_search');
 
-  const { statusText, StatusIcon } = useMemo(() => {
+  const { statusText, StatusIcon, labelClass } = useMemo(() => {
     switch (state) {
+      case 'writing':
+      case 'ready_to_execute':
+        return { 
+          statusText: `Calling ${name}...`, 
+          StatusIcon: <FiLoader className="spinner-icon" />,
+          labelClass: 'animate-shine'
+        };
       case 'searching':
-        return { statusText: 'Searching the web...', StatusIcon: <FiLoader className="spinner-icon" /> };
+        return { 
+          statusText: `${name} in progress...`, 
+          StatusIcon: <FiLoader className="spinner-icon" />,
+          labelClass: 'animate-shine'
+        };
       case 'error':
-        return { statusText: 'Search Error', StatusIcon: <FiXCircle /> };
+        return { 
+          statusText: `${name} Failed`, 
+          StatusIcon: <FiXCircle />,
+          labelClass: 'error'
+        };
       case 'completed':
       case 'searched':
-        return { statusText: 'Web Search', StatusIcon: <FiSearch /> };
-      default: // writing, ready_to_execute
-        return { statusText: 'Preparing search...', StatusIcon: <FiLoader className="spinner-icon" /> };
+        return { 
+          statusText: name, 
+          StatusIcon: <FiSearch />,
+          labelClass: 'completed' 
+        };
+      default:
+        return { 
+          statusText: `Calling ${name}...`, 
+          StatusIcon: <FiLoader className="spinner-icon" />,
+          labelClass: 'animate-shine'
+        };
     }
-  }, [state]);
+  }, [state, name]);
 
   const output = toolOutputMessage?.content || '';
   const isOutputError = hasError || (state === 'completed' && output.toLowerCase().startsWith('error:'));
@@ -43,7 +69,7 @@ const SearchBlock = memo(({ toolSearchMessage, toolOutputMessage }: SearchBlockP
     let textContent = output;
 
     if (output && output.includes('[IMAGE_ITEM]')) {
-      textContent = ''; // Clear text content if we find image items to prevent it from being rendered by mistake
+      textContent = '';
       const imageRegex = /\[IMAGE_ITEM\](.*?)\[\/IMAGE_ITEM\]/g;
       const attrRegex = /(\w+)="(.*?)"/g;
 
@@ -70,12 +96,11 @@ const SearchBlock = memo(({ toolSearchMessage, toolOutputMessage }: SearchBlockP
       <button className="tool-block-header" onClick={() => setIsExpanded(!isExpanded)}>
         <div className="status">
           <div className="status-icon-wrapper">{StatusIcon}</div>
-          <span>{statusText}</span>
+          <span className={`analysis-label ${labelClass}`}>{statusText}</span>
         </div>
         <FiChevronDown className={`chevron-icon ${isExpanded ? 'expanded' : ''}`} />
       </button>
       
-      {/* --- Collapsed Image Preview --- */}
       {!isExpanded && parsedContent.images.length > 0 && (
         <div className="tool-block-preview">
           <div className="search-image-gallery-preview">
@@ -88,7 +113,6 @@ const SearchBlock = memo(({ toolSearchMessage, toolOutputMessage }: SearchBlockP
         </div>
       )}
 
-      {/* --- Expanded Content --- */}
       <div className={`tool-block-content ${isExpanded ? 'expanded' : ''}`}>
         <div className="search-section">
           <div className="section-title">Query</div>

@@ -4,7 +4,7 @@ import { NavLink, useNavigate } from 'react-router-dom';
 import '../css/Sidebar.css';
 import { FiEdit, FiSettings, FiLogOut, FiEdit2, FiTrash, FiX, FiTrash2, FiStar, FiBell } from 'react-icons/fi';
 import { HiOutlineDotsHorizontal } from 'react-icons/hi';
-import { TbLayoutSidebarLeftCollapse } from 'react-icons/tb';
+import { TbLayoutSidebarLeftCollapse, TbLayoutSidebarRightExpand } from 'react-icons/tb';
 import { useSettings } from '../contexts/SettingsContext';
 import { useChat } from '../contexts/ChatContext';
 import ConfirmationModal from './ConfirmationModal';
@@ -163,36 +163,47 @@ const Sidebar = ({ onOpenSettings, isMobileOpen, onClose, isCollapsed, onToggleC
             <span className="sidebar-logo-text">Workspark AI</span>
           </NavLink>
           
-          <button className="sidebar-button collapse-button" onClick={onToggleCollapse}>
-            <TbLayoutSidebarLeftCollapse size={20} />
+          <button 
+            className="collapse-button" 
+            onClick={onToggleCollapse}
+            aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+          >
+            {isCollapsed ? (
+              <div className="collapse-icon-swap">
+                <img src="/worksparkai.svg" alt="Logo" className="swap-logo" />
+                <TbLayoutSidebarRightExpand className="swap-icon" size={20} />
+              </div>
+            ) : (
+              <TbLayoutSidebarLeftCollapse size={20} />
+            )}
           </button>
           
-          <button className="sidebar-button mobile-close-button" onClick={onClose} aria-label="Close menu">
+          <button className="mobile-close-button" onClick={onClose} aria-label="Close menu">
             <FiX size={24} />
           </button>
         </div>
 
         <nav className="sidebar-nav">
           <ul>
-            {/* 1. New Chat Button (Moved to top) */}
+            {/* 1. New Chat Button */}
             <li>
               <button className="sidebar-button new-chat-button" onClick={handleNewChat}>
-                <FiEdit size={20} />
-                <span>New Chat</span>
+                <FiEdit size={20} className="button-icon" />
+                <span className="button-text">New Chat</span>
               </button>
             </li>
 
             {/* 2. Visible Divider */}
             <li className="sidebar-divider"></li>
 
-            {/* 3. Notifications Button (Moved below divider) */}
+            {/* 3. Notifications Button */}
             <li>
               <button 
                 className="sidebar-button nav-button notifications-btn" 
                 onClick={handleNotificationsClick}
               >
-                <FiBell size={20} />
-                <span>Notifications</span>
+                <FiBell size={20} className="button-icon" />
+                <span className="button-text">Notifications</span>
               </button>
             </li>
           </ul>
@@ -200,7 +211,7 @@ const Sidebar = ({ onOpenSettings, isMobileOpen, onClose, isCollapsed, onToggleC
 
         <div className="sidebar-conversations">
           <div className="convos-header">
-            <span>Chats</span>
+            <span className="header-text">Chats</span>
           </div>
           {isLoadingChatList ? (
             <div className="convo-list-loading">
@@ -246,11 +257,11 @@ const Sidebar = ({ onOpenSettings, isMobileOpen, onClose, isCollapsed, onToggleC
         </div>
 
         <div className="sidebar-footer">
-          {user?.subscriptionStatus !== 'active' && !isCollapsed && isBannerVisible && (
+          {user?.subscriptionStatus !== 'active' && isBannerVisible && (
             <div className="upgrade-banner-wrapper">
               <div className="upgrade-banner" onClick={() => navigate('/app/pricing')}>
-                <FiStar />
-                <span>Upgrade to Pro</span>
+                <FiStar size={16} />
+                <span className="banner-text">Upgrade to Pro</span>
               </div>
               <button 
                 className="dismiss-banner-btn" 

@@ -18,7 +18,9 @@ const CustomModelSelector: FC<CustomModelSelectorProps> = ({ models, selectedMod
   const [isOpen, setIsOpen] = useState(false);
   const selectorRef = useRef<HTMLDivElement>(null);
 
-  const handleSelect = (modelId: string) => {
+  const handleSelect = (modelId: string, e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
     onSelect(modelId);
     setIsOpen(false);
   };
@@ -29,9 +31,12 @@ const CustomModelSelector: FC<CustomModelSelectorProps> = ({ models, selectedMod
         setIsOpen(false);
       }
     };
-    document.addEventListener('mousedown', handleClickOutside);
+    
+    if (isOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
+  }, [isOpen]);
 
   const currentModelName = models.find(m => m.id === selectedModel)?.id || selectedModel || placeholderText || 'Select a model';
 
@@ -41,6 +46,7 @@ const CustomModelSelector: FC<CustomModelSelectorProps> = ({ models, selectedMod
         className="custom-model-selector-button" 
         onClick={() => setIsOpen(!isOpen)}
         disabled={disabled}
+        type="button"
       >
         <span className="selected-model-name">{currentModelName}</span>
         <FiChevronDown size={20} className={`chevron-icon ${isOpen ? 'open' : ''}`} />
@@ -53,7 +59,9 @@ const CustomModelSelector: FC<CustomModelSelectorProps> = ({ models, selectedMod
               <div 
                 key={model.id}
                 className={`model-dropdown-item ${selectedModel === model.id ? 'selected' : ''}`}
-                onClick={() => handleSelect(model.id)}
+                onMouseDown={(e) => handleSelect(model.id, e)}
+                role="option"
+                aria-selected={selectedModel === model.id}
               >
                 <span>{model.id}</span>
                 {selectedModel === model.id && <FiCheck size={16} className="checkmark-icon" />}

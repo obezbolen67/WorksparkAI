@@ -7,16 +7,7 @@
   width: 100%;
   overflow: hidden;
   background-color: var(--main-bg-color);
-  /* 
-    --- Animation & Layout Variables ---
-    These variables control the "empty chat" layout and animation.
-  */
-  /* Controls how high the input is in an empty chat. 45vh is slightly above center. */
-  --empty-chat-input-position-bottom: 45vh; 
-  /* Controls the speed of the layout transition */
-  --chat-layout-transition-duration: 0.6s;
-  /* Controls the easing of the layout transition */
-  --chat-layout-transition-timing: cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
 }
 
 .chat-view-header {
@@ -29,220 +20,161 @@
 
 .chat-view {
   flex-grow: 1;
-  position: relative; /* This is the anchor for the absolute-positioned input area */
+  position: relative;
   overflow: hidden;
   display: flex;
   flex-direction: column;
 }
 
-/* --- UPDATED: Making the fade less prominent --- */
-.chat-view::after {
-  content: '';
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  /* Reduced height to make the fade area smaller */
-  height: 100px; 
-  /* Adjusted gradient to make the solid part smaller and the fade more subtle */
-  background: linear-gradient(to top, var(--main-bg-color) 20%, transparent 100%);
-  pointer-events: none; /* Allows clicks and scrolling to pass through */
-  z-index: 4; /* Position it just below the input area */
-}
-
-
-.loading-overlay {
-  position: absolute;
-  inset: 0;
-  /* --- THIS IS THE FIX --- */
-  /* The background color is now transparent, removing the black tint. */
-  background-color: transparent;
-  backdrop-filter: blur(4px);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  z-index: 10;
-  opacity: 0;
-  animation: fadeIn 0.3s ease forwards;
-}
-
+/* --- Main Content Area --- */
 .chat-content {
   width: 100%;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  flex-grow: 1; /* The scrollable area should take up all available space. */
-  /* Add padding to prevent the last message from being hidden by the input area */
-  padding-bottom: 150px; /* A generous value to clear the input area */
+  flex-grow: 1;
+  /* Padding bottom must match input area height to prevent overlap */
+  padding-bottom: 160px; 
   box-sizing: border-box;
-
-  /* --- NEW: Custom Scrollbar Styles --- */
-
-  /* For Firefox */
+  
+  /* Smooth scrollbar */
   scrollbar-width: thin;
-  scrollbar-color: var(--border-color) var(--main-bg-color);
-
+  scrollbar-color: var(--border-color) transparent;
 }
 
-/* For Webkit-based browsers (Chrome, Safari, Edge) */
 .chat-content::-webkit-scrollbar {
-  width: 10px;
+  width: 6px;
 }
-
 .chat-content::-webkit-scrollbar-track {
-  background: var(--main-bg-color);
+  background: transparent;
 }
-
 .chat-content::-webkit-scrollbar-thumb {
   background-color: var(--border-color);
-  border-radius: 20px;
-  border: 2px solid var(--main-bg-color); /* Creates padding around thumb */
+  border-radius: 3px;
 }
-
 .chat-content::-webkit-scrollbar-thumb:hover {
   background-color: var(--secondary-text-color);
 }
 
-.chat-content::-webkit-scrollbar-corner {
-  background: transparent;
-}
-
-
 .chat-messages-list {
   padding: 1rem 0;
+  max-width: 100%;
 }
 
-/* --- UPDATED: Styles for the "empty chat" message --- */
+/* --- Empty State --- */
 .empty-chat-container {
   text-align: center;
-  margin-bottom: 1.5rem; /* The fixed gap between the text and the input box */
+  margin-bottom: 2rem;
 }
 
-/* --- NEW: Hide the "empty chat" message when there are messages --- */
 .chat-view-container:not(.is-empty) .empty-chat-container {
   display: none;
 }
 
 .empty-chat-container h1 {
-  font-size: 1.8rem;
-  font-weight: 400;
+  font-size: 2rem;
+  font-weight: 600;
   color: var(--primary-text-color);
   margin: 0;
-  opacity: 0;
-  transform: translateY(15px);
-  transition: opacity 0.5s cubic-bezier(0.4, 0, 0.2, 1), transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+  letter-spacing: -0.02em;
 }
 
-.chat-view-container.is-ready.is-empty .empty-chat-container h1 {
-  opacity: 1;
-  transform: translateY(0);
-  transition-delay: 0.1s;
-}
-
-/* --- UPDATED: The chat input area is now a flex container --- */
+/* --- Input Area Wrapper (The Glow Container) --- */
 .chat-input-area {
   position: absolute;
   left: 0;
   right: 0;
-  bottom: 0; /* Aligned to the bottom of its relative parent (.chat-view) */
-  
-  /* Flexbox properties to stack the h1 and the ChatInput component */
+  bottom: 0;
   display: flex;
   flex-direction: column;
-  align-items: center; /* Centers the ChatInput component horizontally */
-  
+  align-items: center;
   width: 100%;
-  max-width: 800px;
-  padding: 1rem 0 2rem 0;
-  box-sizing: border-box;
-  margin: 0 auto;
-  z-index: 5;
-
-  opacity: 0;
-  transform: translateY(0); /* Default position is at the bottom */
   
-  transition: opacity 0.5s cubic-bezier(0.4, 0, 0.2, 1),
-              transform var(--chat-layout-transition-duration) var(--chat-layout-transition-timing);
+  /* Padding for the input box itself */
+  padding: 2rem 0 2.5rem 0; 
+  margin: 0 auto;
+  z-index: 10;
+
+  /* --- RESTORED GLOW EFFECT --- */
+  /* A gradient from transparent at the top to solid background at the bottom */
+  background: linear-gradient(to top, var(--main-bg-color) 75%, rgba(var(--main-bg-rgb), 0.8) 90%, transparent 100%);
+  /* Fallback if RGB vars aren't set, using standard colors */
+  background: linear-gradient(to top, var(--main-bg-color) 60%, transparent 100%);
+  
+  /* Ensure clicks pass through the transparent part if needed, though usually input covers it */
+  pointer-events: auto; 
 }
 
-.chat-view-container.is-ready .chat-input-area {
-  opacity: 1;
-  transition-delay: 0.2s, 0s; /* Delay opacity animation, but not transform */
-}
-
-/* When the chat is empty, translate the entire input area upwards */
+/* Center input vertically when empty */
 .chat-view-container.is-empty .chat-input-area {
-  transform: translateY(calc(-1 * var(--empty-chat-input-position-bottom)));
+  top: 0;
+  bottom: 0;
+  justify-content: center;
+  background: none; /* Remove gradient in center mode */
+  padding: 0;
 }
 
+/* --- Scroll to Bottom Button --- */
 .scroll-to-bottom {
   position: absolute;
-  bottom: 100%; /* Position above the input area */
+  bottom: 100%;
   left: 50%;
-  z-index: 10;
-  margin-bottom: 0.75rem; /* Space between button and input box */
+  transform: translateX(-50%);
+  margin-bottom: 0.5rem; /* Tighter spacing */
   
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 38px;
-  height: 38px;
+  width: 36px;
+  height: 36px;
   
-  background-color: var(--main-bg-color); 
+  background-color: var(--button-hover-bg);
   border: 1px solid var(--border-color);
-  color: var(--primary-text-color);
+  color: var(--secondary-text-color);
   border-radius: 50%;
   cursor: pointer;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
-  
-  opacity: 0;
-  transform: translateX(-50%) translateY(10px);
-  animation: fadeInBottomButton 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
-  transition: background-color 0.2s ease, transform 0.2s ease;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  transition: all 0.2s var(--ease-spring);
+  z-index: 20;
 }
 
 .scroll-to-bottom:hover {
-  background-color: var(--border-color);
-  transform: translateX(-50%) translateY(-2px);
+  background-color: var(--accent-bg);
+  color: var(--accent-primary);
+  border-color: var(--accent-primary);
+  transform: translateX(-50%) translateY(-3px);
 }
 
-.scroll-to-bottom svg {
-  width: 22px;
-  height: 22px;
+/* --- Loading Overlay --- */
+.loading-overlay {
+  position: absolute;
+  inset: 0;
+  background-color: rgba(255, 255, 255, 0.5);
+  backdrop-filter: blur(2px);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 20;
 }
 
-@keyframes fadeInBottomButton {
-  to {
-    opacity: 1;
-    transform: translateX(-50%) translateY(0);
-  }
+[data-theme="dark"] .loading-overlay {
+  background-color: rgba(0, 0, 0, 0.5);
 }
 
 @media (max-width: 768px) {
-  .chat-view-header {
-    display: none;
-  }
+  .chat-view-header { display: none; }
   
-  /* --- On mobile, use a solid bar instead of a gradient --- */
-  .chat-view::after {
-      display: none;
-  }
-
+  /* Mobile: Sticky bottom, solid background */
   .chat-view-container:not(.is-empty) .chat-input-area {
     position: fixed;
-    background-color: var(--main-bg-color);
+    bottom: 0;
+    background: var(--main-bg-color); /* Solid background on mobile */
     border-top: 1px solid var(--border-color);
-    padding: 0.5rem 1rem max(1rem, env(safe-area-inset-bottom));
-    max-width: none;
-    transform: translateY(0) !important;
+    padding: 0.75rem 1rem max(1rem, env(safe-area-inset-bottom));
+    max-width: 100%;
   }
   
   .chat-content {
     padding-bottom: 100px;
-  }
-  
-  .chat-input-area {
-    max-width: none;
-    padding: 0.5rem 1rem 1rem 1rem;
   }
 }

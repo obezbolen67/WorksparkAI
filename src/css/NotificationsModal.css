@@ -1,58 +1,59 @@
-/* FexoApp/src/css/NotificationsModal.css */
+/* src/css/NotificationsModal.css */
 
+/* Overlay matches other modals */
 .notifications-modal-overlay {
   position: fixed;
   inset: 0;
-  background-color: rgba(0, 0, 0, 0.5);
+  background-color: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
   display: flex;
   justify-content: center;
   align-items: center;
-  z-index: 1200; /* Above sidebar */
+  z-index: 1200;
   opacity: 0;
-  animation: fadeIn 0.2s ease-out forwards;
-  backdrop-filter: blur(2px);
+  animation: fadeIn 0.3s ease forwards;
 }
 
 .notifications-modal-content {
   width: 90%;
   max-width: 800px;
-  height: 80vh;
+  height: 650px;
+  max-height: 90vh;
   background-color: var(--sidebar-bg-color);
   border: 1px solid var(--border-color);
   border-radius: 16px;
-  box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+  box-shadow: 0 20px 50px -12px rgba(0,0,0,0.5);
   display: flex;
   overflow: hidden;
   transform: scale(0.95);
   opacity: 0;
-  animation: scaleIn 0.2s 0.05s ease-out forwards;
+  animation: scaleIn 0.3s 0.1s var(--ease-spring) forwards;
 }
 
-/* Sidebar inside modal */
+/* Sidebar */
 .notif-sidebar {
-  width: 200px;
+  width: 220px;
   background-color: var(--main-bg-color);
   border-right: 1px solid var(--border-color);
   display: flex;
   flex-direction: column;
-  padding: 1rem;
+  padding: 1.5rem 1rem;
   flex-shrink: 0;
 }
 
 .notif-header {
   margin-bottom: 1.5rem;
-  padding-bottom: 1rem;
-  border-bottom: 1px solid var(--border-color);
+  padding-left: 0.5rem;
 }
 
 .notif-header h2 {
   margin: 0;
-  font-size: 1.1rem;
-  font-weight: 600;
+  font-size: 1.2rem;
+  font-weight: 700;
   color: var(--primary-text-color);
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
 }
 
 .notif-tabs {
@@ -64,13 +65,16 @@
 .notif-tab-btn {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
   padding: 10px 12px;
-  border-radius: 8px;
+  border: none;
+  background: transparent;
+  border-radius: 10px;
   color: var(--secondary-text-color);
-  font-size: 0.9rem;
+  font-size: 0.95rem;
   font-weight: 500;
   transition: all 0.2s;
+  cursor: pointer;
   text-align: left;
 }
 
@@ -80,8 +84,8 @@
 }
 
 .notif-tab-btn.active {
-  background-color: var(--button-hover-bg);
-  color: #19c37d; /* Green accent */
+  background-color: var(--accent-bg);
+  color: var(--accent-primary);
   font-weight: 600;
 }
 
@@ -90,42 +94,54 @@
   background-color: var(--border-color);
   color: var(--primary-text-color);
   font-size: 0.75rem;
-  padding: 2px 6px;
-  border-radius: 10px;
+  padding: 2px 8px;
+  border-radius: 12px;
+  min-width: 20px;
+  text-align: center;
 }
 
 .notif-tab-btn.active .notif-count-badge {
-  background-color: #19c37d;
+  background-color: var(--accent-primary);
   color: white;
 }
 
-/* Main Content Area */
+/* Main Area */
 .notif-main {
   flex: 1;
   display: flex;
   flex-direction: column;
   background-color: var(--sidebar-bg-color);
   position: relative;
+  min-width: 0;
 }
 
 .notif-main-header {
-  padding: 1rem 1.5rem;
+  padding: 1.25rem 2rem;
   border-bottom: 1px solid var(--border-color);
   display: flex;
   justify-content: space-between;
   align-items: center;
+  background-color: var(--sidebar-bg-color);
+  flex-shrink: 0;
 }
 
 .notif-main-header h3 {
   margin: 0;
   font-size: 1.1rem;
+  font-weight: 600;
   color: var(--primary-text-color);
 }
 
 .close-modal-btn {
   color: var(--secondary-text-color);
-  padding: 6px;
+  background: transparent;
+  border: none;
+  padding: 8px;
   border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   transition: background-color 0.2s;
 }
 
@@ -134,16 +150,16 @@
   color: var(--primary-text-color);
 }
 
+/* List Area */
 .notif-list {
   flex: 1;
   overflow-y: auto;
-  padding: 1.5rem;
+  padding: 2rem;
   display: flex;
   flex-direction: column;
   gap: 1rem;
 }
 
-/* Empty State */
 .notif-empty {
   display: flex;
   flex-direction: column;
@@ -152,11 +168,13 @@
   height: 100%;
   color: var(--secondary-text-color);
   gap: 1rem;
+  opacity: 0.8;
 }
 
 .notif-empty svg {
   width: 48px;
   height: 48px;
+  color: var(--accent-primary); /* Purple Icon */
   opacity: 0.5;
 }
 
@@ -165,7 +183,7 @@
   background-color: var(--main-bg-color);
   border: 1px solid var(--border-color);
   border-radius: 12px;
-  padding: 1rem;
+  padding: 1.25rem;
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
@@ -174,18 +192,24 @@
 }
 
 .task-card:hover {
-  border-color: var(--secondary-text-color);
+  border-color: var(--accent-primary);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.05);
   transform: translateY(-1px);
 }
 
+.task-info {
+  flex: 1;
+}
+
 .task-info h4 {
-  margin: 0 0 0.25rem 0;
+  margin: 0 0 0.4rem 0;
   color: var(--primary-text-color);
   font-size: 1rem;
+  font-weight: 600;
 }
 
 .task-desc {
-  margin: 0 0 0.75rem 0;
+  margin: 0 0 0.8rem 0;
   color: var(--secondary-text-color);
   font-size: 0.9rem;
   line-height: 1.4;
@@ -202,22 +226,36 @@
 .task-time {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 6px;
   background-color: var(--button-hover-bg);
-  padding: 2px 8px;
-  border-radius: 4px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-weight: 500;
+}
+
+.status-completed {
+  color: #10b981; /* Green text */
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 4px;
 }
 
 .task-actions {
   display: flex;
-  gap: 0.5rem;
 }
 
 .task-action-btn {
-  padding: 6px;
-  border-radius: 6px;
+  padding: 8px;
+  border: none;
+  background: transparent;
+  border-radius: 8px;
   color: var(--secondary-text-color);
+  cursor: pointer;
   transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .task-action-btn:hover {
@@ -230,16 +268,14 @@
   background-color: rgba(239, 68, 68, 0.1);
 }
 
-.status-completed {
-  color: #10b981; /* Green text */
-  font-weight: 500;
-}
-
 @media (max-width: 768px) {
   .notifications-modal-content {
     flex-direction: column;
-    height: 90vh;
+    width: 100%;
+    height: 100%;
+    border-radius: 0;
   }
+  
   .notif-sidebar {
     width: 100%;
     flex-direction: row;
@@ -249,15 +285,20 @@
     border-right: none;
     border-bottom: 1px solid var(--border-color);
   }
-  .notif-header {
-    margin: 0;
-    padding: 0;
-    border: none;
-    margin-right: 1rem;
-  }
-  .notif-header h2 span { display: none; } /* Hide text on mobile */
+  
+  .notif-header h2 span { display: none; }
+  
   .notif-tabs {
     flex-direction: row;
     flex: 1;
+  }
+  
+  .notif-tab-btn {
+    white-space: nowrap;
+    padding: 8px 12px;
+  }
+  
+  .notif-list {
+    padding: 1.5rem;
   }
 }

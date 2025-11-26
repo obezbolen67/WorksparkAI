@@ -118,7 +118,7 @@ const SettingsModal = ({ isOpen, onClose }: SettingsModalProps) => {
   }, [maxOutputTokens, isEditingMaxOutput]);
 
   useEffect(() => {
-    if (user) {
+    if (isOpen && user) {
       setSelectedProvider(user.selectedProvider || 'default');
       setApiKeys(user.apiKeys || []);
       setBaseUrl(user.baseUrl || '');
@@ -131,7 +131,8 @@ const SettingsModal = ({ isOpen, onClose }: SettingsModalProps) => {
       setVoiceId(user.voiceSettings?.voiceId || voiceId);
       setVoiceName(user.voiceSettings?.voiceName || voiceName);
     }
-  }, [user]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen]); 
 
   useEffect(() => {
     if (isOpen) {
