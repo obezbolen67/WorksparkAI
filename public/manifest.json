@@ -1,16 +1,16 @@
 {
-  "name": "Workspark AI",
   "short_name": "Workspark",
-  "start_url": "/",
-  "display": "standalone",
-  "background_color": "#ffffff",
-  "theme_color": "#ffffff",
-  "gcm_sender_id": "103953800507",
+  "name": "Workspark AI",
   "icons": [
     {
-      "src": "/worksparkai.svg",
-      "sizes": "any",
+      "src": "worksparkai.svg",
+      "sizes": "192x192 512x512",
       "type": "image/svg+xml"
     }
-  ]
+  ],
+  "start_url": ".",
+  "display": "standalone",
+  "theme_color": "#18181b",
+  "background_color": "#18181b",
+  "orientation": "portrait"
 }

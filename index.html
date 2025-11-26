@@ -4,7 +4,19 @@
     <meta charset="UTF-8" />
     <link rel="manifest" href="/manifest.json" /> 
     <link rel="icon" type="image/svg+xml" href="/worksparkai.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    
+    <!-- PREVENT ZOOMING ON MOBILE INPUTS -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    
+    <!-- CHANGE STATUS BAR COLOR (The "White Thing") -->
+    <!-- For Chrome/Android -->
+    <meta name="theme-color" content="#18181b" media="(prefers-color-scheme: dark)">
+    <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
+    
+    <!-- For iOS Safari -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+
     <title>Workspark AI</title>
   </head>
   <body>
