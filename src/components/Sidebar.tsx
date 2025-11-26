@@ -1,14 +1,15 @@
-// 📁 src/components/Sidebar.tsx
+// FexoApp/src/components/Sidebar.tsx
 import { useState, useRef, useEffect } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import '../css/Sidebar.css';
-import { FiEdit, FiSettings, FiLogOut, FiEdit2, FiTrash, FiX, FiTrash2, FiStar } from 'react-icons/fi';
+import { FiEdit, FiSettings, FiLogOut, FiEdit2, FiTrash, FiX, FiTrash2, FiStar, FiBell } from 'react-icons/fi';
 import { HiOutlineDotsHorizontal } from 'react-icons/hi';
 import { TbLayoutSidebarLeftCollapse } from 'react-icons/tb';
 import { useSettings } from '../contexts/SettingsContext';
 import { useChat } from '../contexts/ChatContext';
 import ConfirmationModal from './ConfirmationModal';
 import RenameModal from './RenameModal';
+import NotificationsModal from './NotificationsModal'; // Import the new modal
 import Tooltip from './Tooltip';
 
 import '../css/ConfirmationModal.css';
@@ -36,9 +37,12 @@ const Sidebar = ({ onOpenSettings, isMobileOpen, onClose, isCollapsed, onToggleC
   const [isDeleteModalOpen, setDeleteModalOpen] = useState(false);
   const [isClearAllModalOpen, setClearAllModalOpen] = useState(false);
   const [isRenameModalOpen, setRenameModalOpen] = useState(false);
+  
+  // State for Notifications Modal
+  const [isNotificationsModalOpen, setIsNotificationsModalOpen] = useState(false);
+
   const [activeChat, setActiveChat] = useState<{ id: string; title: string } | null>(null);
 
-  // --- START OF THE FIX ---
   const [isBannerVisible, setIsBannerVisible] = useState(
     localStorage.getItem('fexo-upgrade-banner-hidden') !== 'true'
   );
@@ -49,7 +53,6 @@ const Sidebar = ({ onOpenSettings, isMobileOpen, onClose, isCollapsed, onToggleC
     localStorage.setItem('fexo-upgrade-banner-hidden', 'true');
     setIsBannerVisible(false);
   };
-  // --- END OF THE FIX ---
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -162,6 +165,20 @@ const Sidebar = ({ onOpenSettings, isMobileOpen, onClose, isCollapsed, onToggleC
 
         <nav className="sidebar-nav">
           <ul>
+            {/* NEW Notifications Button */}
+            <li>
+              <button 
+                className="sidebar-button nav-button notifications-btn" 
+                onClick={() => { setIsNotificationsModalOpen(true); onClose(); }}
+              >
+                <FiBell size={20} />
+                <span>Notifications</span>
+              </button>
+            </li>
+
+            {/* Divider */}
+            <li className="sidebar-divider"></li>
+
             <li>
               <button className="sidebar-button new-chat-button" onClick={handleNewChat}>
                 <FiEdit size={20} />
@@ -225,7 +242,6 @@ const Sidebar = ({ onOpenSettings, isMobileOpen, onClose, isCollapsed, onToggleC
                 <FiStar />
                 <span>Upgrade to Pro</span>
               </div>
-              {/* --- START OF THE FIX: Tooltip removed --- */}
               <button 
                 className="dismiss-banner-btn" 
                 onClick={handleDismissBanner} 
@@ -233,7 +249,6 @@ const Sidebar = ({ onOpenSettings, isMobileOpen, onClose, isCollapsed, onToggleC
               >
                 <FiX size={14} />
               </button>
-              {/* --- END OF THE FIX --- */}
             </div>
           )}
           <div className="user-profile-wrapper" ref={userMenuRef}>
@@ -285,6 +300,12 @@ const Sidebar = ({ onOpenSettings, isMobileOpen, onClose, isCollapsed, onToggleC
         message="Are you sure you want to delete all of your chats? This action is permanent and cannot be undone."
         confirmText="Delete All"
         isDestructive={true}
+      />
+
+      {/* --- Notifications Modal --- */}
+      <NotificationsModal 
+        isOpen={isNotificationsModalOpen} 
+        onClose={() => setIsNotificationsModalOpen(false)} 
       />
 
       {activeChat && (

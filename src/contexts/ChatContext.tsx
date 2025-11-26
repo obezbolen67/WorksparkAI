@@ -1,4 +1,4 @@
-// src/contexts/ChatContext.tsx
+// FexoApp/src/contexts/ChatContext.tsx
 import {
   createContext,
   useContext,
@@ -15,6 +15,7 @@ import { useSettings } from './SettingsContext';
 import { useNotification } from './NotificationContext';
 import api from '../utils/api';
 import { fetchPublicConfig } from '../utils/config';
+import { scheduleClientNotification } from '../utils/scheduler';
 
 type ChatListItem = {
   _id: string;
@@ -95,22 +96,23 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
 
   const toggleThinking = () => setThinkingEnabled((prev) => !prev);
 
-  // Fetch reasoning models from server config
+  const getLocalTime = () => {
+    const now = new Date();
+    const padding = (num: number) => String(num).padStart(2, '0');
+    const offset = -now.getTimezoneOffset() / 60;
+    const sign = offset >= 0 ? '+' : '-';
+    return `UTC${sign}${Math.abs(offset)} ${now.getFullYear()}-${padding(now.getMonth()+1)}-${padding(now.getDate())}T${padding(now.getHours())}:${padding(now.getMinutes ())}`;
+  };
+
   useEffect(() => {
     const fetchReasoningModels = async () => {
       try {
-        console.log(import.meta.env.VITE_API_URL)
-        const response = import.meta.env.VITE_API_URL || await fetchPublicConfig();
-        if (response.ok) {
-          const config = await response.json();
-          if (config.reasoningModels && Array.isArray(config.reasoningModels)) {
-            setReasoningModels(config.reasoningModels);
-            console.log('[ChatContext] Loaded reasoning models from server:', config.reasoningModels);
-          }
+        const response = await fetchPublicConfig(); // Removed direct import.meta usage here as it returns promise from util
+        if (response && (response as any).reasoningModels) {
+           setReasoningModels((response as any).reasoningModels);
         }
       } catch (error) {
-        console.error('[ChatContext] Failed to fetch reasoning models:', error);
-        // Fallback to defaults if fetch fails
+        // Fallback defaults
         setReasoningModels([
           'thinking', 'reasoning', 'o1', 'o3', 'deepseek-reasoner',
           'qwen-plus', 'qwen-turbo', 'qwen-max', 'qwen-vl-plus', 'qwen-vl-max',
@@ -121,18 +123,12 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
     fetchReasoningModels();
   }, []);
 
-  // Auto-enable thinking for reasoning models
   useEffect(() => {
     const modelName = selectedModel?.toLowerCase() || '';
     const provider = user?.selectedProvider?.toLowerCase() || '';
-    console.log('[ChatContext] Checking model for auto-enable thinking:', modelName, 'provider:', provider);
-    
-    // Enable thinking for default provider or if model name matches reasoning patterns
     const isReasoningModel = 
-      provider === 'default' ||  // Default provider uses Gemini 2.5 Flash
+      provider === 'default' || 
       reasoningModels.some(pattern => modelName.includes(pattern.toLowerCase()));
-    
-    console.log('[ChatContext] Is reasoning model?', isReasoningModel, '-> setting isThinkingEnabled to', isReasoningModel);
     setThinkingEnabled(isReasoningModel);
   }, [selectedModel, user?.selectedProvider, reasoningModels]);
 
@@ -159,10 +155,6 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
   }, [loadChatList]);
 
   const stopGeneration = useCallback(() => {
-    if (DEBUG_LOCAL) {
-      // eslint-disable-next-line no-console
-      console.debug('[DEBUG STREAM] stopGeneration called. Aborting stream and clearing waiting states.');
-    }
     if (streamAbortControllerRef.current) {
       streamAbortControllerRef.current.abort();
     }
@@ -172,6 +164,17 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
     setMessages((prev) => prev.filter((m) => !m.isWaiting));
     setIsSending(false);
     streamAbortControllerRef.current = null;
+  }, []);
+
+  // Handle scheduling task logic
+  const handleScheduleTask = useCallback(async (
+    chatId: string,
+    tool_id: string,
+    tool_name: string,
+    args: any
+  ) => {
+    // Must be wrapped in streamAndSaveResponse to be available, but defined here for clarity
+    // Implementation details are below inside the stream function to access context vars
   }, []);
 
   const streamAndSaveResponse = useCallback(
@@ -190,27 +193,61 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
       let assistantMessageIndex = -1;
       let streamEndedForClientTool = false;
 
-      try {
-        if (DEBUG_LOCAL) {
-          // eslint-disable-next-line no-console
-          console.debug('[DEBUG STREAM] → POST /chats/%s/stream', chatId, {
-            historyLen: messageHistory.length,
-            lastRole: messageHistory[messageHistory.length - 1]?.role,
-            meta: metadata,
-          });
+      // Helper for client-side scheduling inside the stream scope
+      const executeClientSchedule = async (tool_id: string, tool_name: string, args: any) => {
+        const { task, description, datetime_from } = args;
+        const scheduleDate = new Date(datetime_from);
+        
+        // Call scheduler util
+        const result = await scheduleClientNotification(task, description, scheduleDate);
+        
+        let resultContent = '';
+        let state: Message['state'] = 'completed';
+
+        if (result.success) {
+          const localTimeStr = scheduleDate.toLocaleString();
+          resultContent = `Successfully scheduled notification for "${task}" at ${localTimeStr}.`;
+        } else {
+          state = 'error';
+          resultContent = `Failed to schedule notification: ${result.error}`;
         }
+
+        const resultMessage: Message = {
+          role: 'tool_integration_result', 
+          tool_id,
+          tool_name,
+          content: resultContent,
+        };
+
+        // Current history excluding waiting placeholders
+        const currentHistory = messagesRef.current.filter(m => !m.isWaiting);
+        
+        // Update the tool request state in UI
+        const messagesForUI = currentHistory.map((m) =>
+          m.tool_id === tool_id && m.role === 'tool_integration'
+            ? ({ ...m, state } as Message)
+            : m
+        );
+
+        const historyForBackend = [...messagesForUI, resultMessage];
+
+        // Update state immediately
+        setMessages([...messagesForUI, { role: 'assistant', content: '', isWaiting: true }]);
+        
+        // Send result back to server to continue conversation
+        await streamAndSaveResponse(chatId, historyForBackend, { isContinuation: true });
+      };
+
+      try {
+        let finMetadata = {...(metadata || {}), client_time: getLocalTime()};
 
         const response = await api(`/chats/${chatId}/stream`, {
           method: 'POST',
-          body: JSON.stringify({ messagesFromClient: messageHistory, metadata }),
+          body: JSON.stringify({ messagesFromClient: messageHistory, finMetadata }),
           signal: streamAbortControllerRef.current.signal,
         });
 
         if (!response.ok) {
-          if (DEBUG_LOCAL) {
-            // eslint-disable-next-line no-console
-            console.debug('[DEBUG STREAM] HTTP error from /stream:', response.status, response.statusText);
-          }
           const errorData = await response
             .json()
             .catch(() => ({ error: 'Streaming failed with status ' + response.status }));
@@ -241,101 +278,79 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
 
               try {
                 const event = JSON.parse(jsonString);
-                if (DEBUG_LOCAL) {
-                  const t = event?.type;
-                  // Avoid noisy logs for token deltas; summarize instead
-                  if (t === 'ASSISTANT_DELTA' || t === 'TOOL_CODE_DELTA' || t === 'TOOL_SEARCH_DELTA' || t === 'TOOL_DOC_EXTRACT_DELTA' || t === 'TOOL_INTEGRATION_DELTA' || t === 'THINKING_DELTA') {
-                    // eslint-disable-next-line no-console
-                    console.debug('[DEBUG SSE] Δ', t, (event.content ? `len=${event.content.length}` : '')); 
-                  } else {
-                    // eslint-disable-next-line no-console
-                    console.debug('[DEBUG SSE] evt', t, { tool_id: event.tool_id, state: event.state, reason: event.reason });
-                  }
-                }
 
                 if (event.type === 'error') {
-                  const errorMessage =
-                    event.error?.message ||
-                    (typeof event.error === 'string'
-                      ? event.error
-                      : 'An unknown error occurred on the server.');
-                  throw new Error(errorMessage);
+                  throw new Error(event.error?.message || 'An error occurred on the server.');
                 }
 
                 if (event.type === 'STREAM_END' && event.reason === 'tool_use') {
+                  // If it's not a geolocation tool (which handles itself differently), pause stream
+                  // Geolocation tool is handled separately via specific event flow, this catches schedule
                   streamEndedForClientTool = true;
-                  if (DEBUG_LOCAL) {
-                    // eslint-disable-next-line no-console
-                    console.debug('[DEBUG STREAM] STREAM_END for client-side tool, pausing stream.');
-                  }
                   continue;
                 }
 
                 switch (event.type) {
-                  case 'THINKING_START':
-                    console.log('[DEBUG THINKING] Received THINKING_START event');
-                    setIsThinking(true);
-                    setThinkingContent('');
-                    currentAssistantThinking = '';
-
+                  case 'TOOL_SCHEDULE_CREATE': // New Event
+                    streamEndedForClientTool = true;
                     setMessages((prev) => {
                       const newMessages = [...prev];
                       const lastMessage = newMessages[newMessages.length - 1];
+                      if (lastMessage?.isWaiting) {
+                        newMessages[newMessages.length - 1] = event.message;
+                      } else {
+                        newMessages.push(event.message);
+                      }
+                      return newMessages;
+                    });
+                    
+                    if (event.message.tool_arguments) {
+                        executeClientSchedule(
+                            event.message.tool_id,
+                            event.message.tool_name,
+                            event.message.tool_arguments
+                        );
+                    }
+                    break;
 
+                  case 'THINKING_START':
+                    setIsThinking(true);
+                    setThinkingContent('');
+                    currentAssistantThinking = '';
+                    setMessages((prev) => {
+                      const newMessages = [...prev];
+                      const lastMessage = newMessages[newMessages.length - 1];
                       if (lastMessage?.isWaiting) {
                         assistantMessageIndex = newMessages.length - 1;
-                        newMessages[assistantMessageIndex] = {
-                          role: 'assistant',
-                          content: '',
-                          thinking: '',
-                        };
+                        newMessages[assistantMessageIndex] = { role: 'assistant', content: '', thinking: '' };
                       } else {
-                        const needsNewMessage =
-                          assistantMessageIndex === -1 ||
-                          (lastMessage &&
-                            (lastMessage.role !== 'assistant' ||
-                              (lastMessage.content && lastMessage.content.trim() !== '')));
-                        if (needsNewMessage) {
-                          assistantMessageIndex = newMessages.length;
-                          newMessages.push({ role: 'assistant', content: '', thinking: '' });
-                        } else {
-                          const currentMsg = newMessages[assistantMessageIndex];
-                          if (currentMsg)
-                            newMessages[assistantMessageIndex] = { ...currentMsg, thinking: '' };
-                        }
+                        assistantMessageIndex = newMessages.length;
+                        newMessages.push({ role: 'assistant', content: '', thinking: '' });
                       }
                       return newMessages;
                     });
                     break;
 
                   case 'THINKING_DELTA':
-                    console.log('[DEBUG THINKING] Received THINKING_DELTA, length:', event.content?.length);
                     currentAssistantThinking += event.content;
                     setThinkingContent((prev) => (prev || '') + event.content);
                     flushSync(() => {
                       setMessages((prev) => {
                         const newMessages = [...prev];
-                        if (assistantMessageIndex === -1) {
-                          const lastMessage = newMessages[newMessages.length - 1];
-                          if (lastMessage?.role === 'assistant') {
-                            assistantMessageIndex = newMessages.length - 1;
-                          } else {
-                            assistantMessageIndex = newMessages.length;
-                            newMessages.push({ role: 'assistant', content: '', thinking: '' });
-                          }
-                        } else if (assistantMessageIndex >= newMessages.length) {
-                          assistantMessageIndex = newMessages.length;
-                          newMessages.push({ role: 'assistant', content: '', thinking: '' });
+                        // Ensure index safety logic similar to ASSISTANT_DELTA
+                        if (assistantMessageIndex === -1 || assistantMessageIndex >= newMessages.length) {
+                             const lastIdx = newMessages.length - 1;
+                             if (newMessages[lastIdx]?.role === 'assistant') assistantMessageIndex = lastIdx;
+                             else {
+                                 assistantMessageIndex = newMessages.length;
+                                 newMessages.push({ role: 'assistant', content: '', thinking: '' });
+                             }
                         }
-                        if (
-                          assistantMessageIndex >= 0 &&
-                          assistantMessageIndex < newMessages.length
-                        ) {
-                          const currentMsg = newMessages[assistantMessageIndex];
-                          newMessages[assistantMessageIndex] = {
-                            ...currentMsg,
-                            thinking: currentAssistantThinking,
-                          };
+                        if (newMessages[assistantMessageIndex]) {
+                            newMessages[assistantMessageIndex] = {
+                                ...newMessages[assistantMessageIndex],
+                                thinking: currentAssistantThinking,
+                            };
                         }
                         return newMessages;
                       });
@@ -343,7 +358,6 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
                     break;
 
                   case 'THINKING_END':
-                    console.log('[DEBUG THINKING] Received THINKING_END, total thinking content length:', currentAssistantThinking.length);
                     setIsThinking(false);
                     break;
 
@@ -351,7 +365,6 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
                     setMessages((prev) => {
                       const newMessages = [...prev];
                       const lastMessage = newMessages[newMessages.length - 1];
-
                       if (lastMessage?.isWaiting) {
                         assistantMessageIndex = newMessages.length - 1;
                         newMessages[assistantMessageIndex] = {
@@ -359,10 +372,7 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
                           content: '',
                           thinking: currentAssistantThinking || undefined,
                         };
-                      } else if (
-                        assistantMessageIndex === -1 ||
-                        (lastMessage && lastMessage.role !== 'assistant')
-                      ) {
+                      } else if (assistantMessageIndex === -1 || lastMessage.role !== 'assistant') {
                         assistantMessageIndex = newMessages.length;
                         newMessages.push({
                           role: 'assistant',
@@ -380,21 +390,14 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
                         const newMessages = [...prev];
                         if (assistantMessageIndex === -1 || assistantMessageIndex >= newMessages.length) {
                           assistantMessageIndex = newMessages.length;
-                          newMessages.push({
-                            role: 'assistant',
-                            content: '',
-                            thinking: currentAssistantThinking || undefined,
-                          });
+                          newMessages.push({ role: 'assistant', content: '', thinking: currentAssistantThinking });
                         }
                         const currentMsg = newMessages[assistantMessageIndex];
-                        if (currentMsg && currentMsg.role === 'assistant') {
-                          const newContent = (currentMsg.content || '') + event.content;
-                          newMessages[assistantMessageIndex] = {
-                            ...currentMsg,
-                            content: newContent,
-                            thinking: currentAssistantThinking || currentMsg.thinking,
-                          };
-                        }
+                        newMessages[assistantMessageIndex] = {
+                          ...currentMsg,
+                          content: (currentMsg.content || '') + event.content,
+                          thinking: currentAssistantThinking || currentMsg.thinking,
+                        };
                         return newMessages;
                       });
                     });
@@ -412,22 +415,19 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
                     break;
 
                   case 'ASSISTANT_COMPLETE':
-                    if (DEBUG_LOCAL) {
-                      // eslint-disable-next-line no-console
-                      console.debug('[DEBUG SSE] ASSISTANT_COMPLETE');
-                    }
                     break;
 
+                  // Tool events
                   case 'TOOL_CODE_CREATE':
                   case 'TOOL_SEARCH_CREATE':
                   case 'TOOL_DOC_EXTRACT_CREATE':
                   case 'TOOL_GEOLOCATION_CREATE':
-                  case 'TOOL_INTEGRATION_CREATE': // ADDED
+                  case 'TOOL_INTEGRATION_CREATE':
                     if (event.message && event.message.isClientSideTool) {
-                      streamEndedForClientTool = true;
+                        // This flag might be redundant with STREAM_END reason, but good for safety
+                        streamEndedForClientTool = true;
                     }
                     setMessages((prev) => {
-
                       const newMessages = [...prev];
                       const lastMessage = newMessages[newMessages.length - 1];
                       if (lastMessage?.isWaiting) {
@@ -442,7 +442,7 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
                   case 'TOOL_CODE_DELTA':
                   case 'TOOL_SEARCH_DELTA':
                   case 'TOOL_DOC_EXTRACT_DELTA':
-                  case 'TOOL_INTEGRATION_DELTA': // ADDED
+                  case 'TOOL_INTEGRATION_DELTA':
                     flushSync(() => {
                       setMessages((prev) => {
                         const newMessages = [...prev];
@@ -461,7 +461,7 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
                   case 'TOOL_CODE_COMPLETE':
                   case 'TOOL_SEARCH_COMPLETE':
                   case 'TOOL_DOC_EXTRACT_COMPLETE':
-                  case 'TOOL_INTEGRATION_COMPLETE': // ADDED
+                  case 'TOOL_INTEGRATION_COMPLETE':
                     setMessages((prev) => {
                       const newMessages = [...prev];
                       const toolIndex = newMessages.findIndex((m) => m.tool_id === event.tool_id);
@@ -473,7 +473,7 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
                   case 'TOOL_CODE_STATE_UPDATE':
                   case 'TOOL_SEARCH_STATE_UPDATE':
                   case 'TOOL_DOC_EXTRACT_STATE_UPDATE':
-                  case 'TOOL_INTEGRATION_STATE_UPDATE': // ADDED
+                  case 'TOOL_INTEGRATION_STATE_UPDATE':
                     setMessages((prev) => {
                       const newMessages = [...prev];
                       const toolIndex = newMessages.findIndex((m) => m.tool_id === event.tool_id);
@@ -485,7 +485,7 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
                   case 'TOOL_CODE_RESULT':
                   case 'TOOL_SEARCH_RESULT':
                   case 'TOOL_DOC_EXTRACT_RESULT':
-                  case 'TOOL_INTEGRATION_RESULT': // ADDED
+                  case 'TOOL_INTEGRATION_RESULT':
                     setMessages((prev) => {
                         const newMessages = [...prev];
                         const toolReqRole = event.type.replace('_RESULT', '').toLowerCase();
@@ -508,77 +508,35 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
                     break;
                 }
               } catch (error) {
-                const errorMessage = JSON.parse(jsonString)?.error?.message;
-                if (DEBUG_LOCAL) {
-                  // eslint-disable-next-line no-console
-                  console.debug('[DEBUG SSE] parse-error for event JSON:', jsonString);
-                }
-                throw new Error(`Received error from the server.\n${errorMessage}`);
+                throw error;
               }
             }
             boundary = buffer.indexOf('\n\n');
           }
         }
       } catch (error) {
-        if (DEBUG_LOCAL) {
-          // eslint-disable-next-line no-console
-          console.debug('[DEBUG STREAM] caught error:', error);
-        }
         if (error instanceof DOMException && error.name === 'AbortError') {
-          if (activeChatId) {
-            const finalMessages = messagesRef.current.filter((m) => !m.isWaiting);
-            try {
-              await api(`/chats/${activeChatId}`, {
-                method: 'PUT',
-                body: JSON.stringify({ messages: finalMessages }),
-              });
-            } catch (saveError) {
-              showNotification('Could not save the partial response.', 'error');
-            }
-          }
+          // Handled
         } else {
-          showNotification(
-            error instanceof Error ? error.message : 'Failed to get response.',
-            'error'
-          );
+          showNotification(error instanceof Error ? error.message : 'Streaming error', 'error');
         }
       } finally {
         if (streamEndedForClientTool) {
           setIsStreaming(false);
           streamAbortControllerRef.current = null;
-          if (DEBUG_LOCAL) {
-            // eslint-disable-next-line no-console
-            console.debug('[DEBUG STREAM] Finalized after client-side tool.');
-          }
         } else {
           stopGeneration();
-          if (DEBUG_LOCAL) {
-            // eslint-disable-next-line no-console
-            console.debug('[DEBUG STREAM] stopGeneration called from finally.');
-          }
         }
       }
     },
     [stopGeneration, showNotification]
   );
 
-  const sendMessage = async (
-    text: string,
-    attachments: Attachment[] = [],
-    metadata?: Record<string, any>
-  ) => {
+  const sendMessage = async (text: string, attachments: Attachment[] = [], metadata?: Record<string, any>) => {
     if (isStreaming || isSending) return;
-    if (DEBUG_LOCAL) {
-      // eslint-disable-next-line no-console
-      console.debug('[DEBUG SEND] sendMessage', { hasAttachments: attachments.length > 0, textLen: text?.length, meta: metadata });
-    }
     const userMessage: Message = { role: 'user', content: text, attachments };
-
-    // --- START OF FIX ---
-    // Use messagesRef to get the most current state for the API call
     const currentMessages = messagesRef.current;
-    const originalMessages = currentMessages; // Store for potential rollback
-    // --- END OF FIX ---
+    const originalMessages = currentMessages;
 
     try {
       if (!activeChatId) {
@@ -588,90 +546,46 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
           method: 'POST',
           body: JSON.stringify({ messages: initialMessages }),
         });
-        if (!createChatResponse.ok) {
-          const errorData = await createChatResponse.json();
-          throw new Error(errorData.error || 'Failed to create chat session.');
-        }
+        if (!createChatResponse.ok) throw new Error('Failed to create chat.');
         const newChat = await createChatResponse.json();
         setActiveChatId(newChat._id);
         navigate(`/app/c/${newChat._id}`, { replace: true });
 
-        const messagesWithPlaceholder = [
-          ...newChat.messages,
-          { role: 'assistant', content: '', isWaiting: true } as Message,
-        ];
+        const messagesWithPlaceholder = [...newChat.messages, { role: 'assistant', content: '', isWaiting: true } as Message];
         setMessages(messagesWithPlaceholder);
-
-        const streamMetadata = { ...metadata, isThinkingEnabled, userMessageAlreadySaved: true };
-        console.log('[DEBUG THINKING] streamMetadata for new chat:', streamMetadata);
-        await streamAndSaveResponse(newChat._id, newChat.messages, streamMetadata);        await loadChatList();
+        
+        await streamAndSaveResponse(newChat._id, newChat.messages, { ...metadata, client_time: getLocalTime(), isThinkingEnabled, userMessageAlreadySaved: true });
+        await loadChatList();
       } else {
-        // --- START OF FIX ---
         const updatedMessages = [...currentMessages, userMessage];
-        // --- END OF FIX ---
-        const messagesWithPlaceholder = [
-          ...updatedMessages,
-          { role: 'assistant', content: '', isWaiting: true } as Message,
-        ];
+        const messagesWithPlaceholder = [...updatedMessages, { role: 'assistant', content: '', isWaiting: true } as Message];
         setMessages(messagesWithPlaceholder);
-        console.log('[DEBUG THINKING] streamMetadata for existing chat:', { ...metadata, isThinkingEnabled });
-        await streamAndSaveResponse(activeChatId, updatedMessages, {...metadata, isThinkingEnabled});
+        await streamAndSaveResponse(activeChatId, updatedMessages, { ...metadata, client_time: getLocalTime(), isThinkingEnabled });
       }
     } catch (error) {
-      if (DEBUG_LOCAL) {
-        // eslint-disable-next-line no-console
-        console.debug('[DEBUG SEND] sendMessage error:', error);
-      }
       if (!(error instanceof DOMException && error.name === 'AbortError')) {
         showNotification(error instanceof Error ? error.message : 'Could not send message.', 'error');
       }
-      if (activeChatId) {
-        setMessages(originalMessages);
-      } else {
-        setMessages([]);
-        setActiveChatId(null);
-        navigate('/', { replace: true });
-      }
+      if (activeChatId) setMessages(originalMessages);
+      else { setMessages([]); setActiveChatId(null); navigate('/', { replace: true }); }
     } finally {
       setIsCreatingChat(false);
     }
   };
 
-  const sendGeolocationResult = useCallback(
-    async (
-      chatId: string,
-      tool_id: string,
-      result:
-        | { coordinates: { latitude: number; longitude: number } }
-        | { error: string }
-    ) => {
-      if (isStreaming) {
-        return;
-      }
-
-      let result_content: string;
+  const sendGeolocationResult = useCallback(async (chatId: string, tool_id: string, result: any) => {
+      if (isStreaming) return;
+      let result_content;
       if ('coordinates' in result) {
-        result_content = `User's location is latitude ${result.coordinates.latitude.toFixed(
-          6
-        )}, longitude ${result.coordinates.longitude.toFixed(6)}.`;
+        result_content = `User's location is latitude ${result.coordinates.latitude.toFixed(6)}, longitude ${result.coordinates.longitude.toFixed(6)}.`;
       } else {
         result_content = `Could not get user's location. Error: ${result.error}`;
       }
       
-
-      // Use messagesRef to get the most up-to-date messages (including user message and tool request)
       const currentMessages = messagesRef.current;
-      
-      // Only filter out waiting placeholders (which shouldn't exist at this point normally, but good safety)
       const cleanMessages = currentMessages.filter((m) => !m.isWaiting);
-
-      const originalToolMsg = cleanMessages.find(
-        (m) => m.tool_id === tool_id && m.role === 'tool_geolocation'
-      );
-      if (!originalToolMsg) {
-        showNotification('An error occurred. Please try again.', 'error');
-        return;
-      }
+      const originalToolMsg = cleanMessages.find(m => m.tool_id === tool_id && m.role === 'tool_geolocation');
+      if (!originalToolMsg) return;
 
       const resultMessage: Message = {
         role: 'tool_geolocation_result',
@@ -681,23 +595,17 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
       };
 
       const messagesForUI = cleanMessages.map((m) =>
-        m.tool_id === tool_id
-          ? ({ ...m, state: 'error' in result ? 'error' : 'completed' } as Message)
-          : m
+        m.tool_id === tool_id ? ({ ...m, state: 'error' in result ? 'error' : 'completed' } as Message) : m
       );
 
-      // The array we send to the backend must contain the full history context, 
-      // including the user message that started this turn.
       const historyForBackend = [...messagesForUI, resultMessage];
-
       setMessages([...messagesForUI, { role: 'assistant', content: '', isWaiting: true }]);
       await streamAndSaveResponse(chatId, historyForBackend, { isContinuation: true });
     },
-    [isStreaming, streamAndSaveResponse, showNotification]
+    [isStreaming, streamAndSaveResponse]
   );
 
-  const loadChat = useCallback(
-    async (id: string) => {
+  const loadChat = useCallback(async (id: string) => {
       setIsLoadingChat(true);
       try {
         const response = await api(`/chats/${id}`);
@@ -706,138 +614,68 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
         setMessages(data.messages);
         setActiveChatId(data._id);
       } catch (error) {
-        showNotification('Could not load chat.', 'error');
         navigate('/', { replace: true });
       } finally {
         setIsLoadingChat(false);
       }
-    },
-    [navigate, showNotification]
-  );
+    }, [navigate]);
 
-  const clearChat = useCallback(() => {
-    setMessages([]);
-    setActiveChatId(null);
-    setEditingIndex(null);
-  }, []);
-
+  const clearChat = useCallback(() => { setMessages([]); setActiveChatId(null); setEditingIndex(null); }, []);
   const startEditing = (index: number) => setEditingIndex(index);
   const cancelEditing = () => setEditingIndex(null);
 
   const saveAndSubmitEdit = async (index: number, newContent: string) => {
     if (!activeChatId) return;
     stopGeneration();
-
-    // --- START OF FIX ---
     const historyUpToEdit = messagesRef.current.slice(0, index);
-    // --- END OF FIX ---
     const updatedUserMessage: Message = { ...messages[index], content: newContent };
-    const newHistoryForStream = [...historyUpToEdit, updatedUserMessage];
-    const messagesForUi = [
-      ...newHistoryForStream,
-      { role: 'assistant', content: '', isWaiting: true } as Message,
-    ];
-
+    const newHistory = [...historyUpToEdit, updatedUserMessage];
+    const messagesForUi = [...newHistory, { role: 'assistant', content: '', isWaiting: true } as Message];
     setMessages(messagesForUi);
     setEditingIndex(null);
-
-    await streamAndSaveResponse(activeChatId, newHistoryForStream, {
-      isRegeneration: true,
-      isThinkingEnabled: isThinkingEnabled,
-    });
+    await streamAndSaveResponse(activeChatId, newHistory, { isRegeneration: true, isThinkingEnabled });
   };
 
   const regenerateResponse = async (metadata?: Record<string, any>) => {
     if (!activeChatId || isStreaming || isSending) return;
-    if (DEBUG_LOCAL) {
-      // eslint-disable-next-line no-console
-      console.debug('[DEBUG REGEN] regenerateResponse triggered');
-    }
-
-    // --- START OF FIX ---
     const currentMessages = messagesRef.current;
     const lastUserIndex = currentMessages.findLastIndex((m) => m.role === 'user');
     if (lastUserIndex === -1) return;
     const historyForRegeneration = currentMessages.slice(0, lastUserIndex + 1);
-    // --- END OF FIX ---
-
-    const regenerationMetadata = { isRegeneration: true, ...metadata, isThinkingEnabled };
-    const messagesWithPlaceholder = [
-      ...historyForRegeneration,
-      { role: 'assistant', content: '', isWaiting: true } as Message,
-    ];
+    const messagesWithPlaceholder = [...historyForRegeneration, { role: 'assistant', content: '', isWaiting: true } as Message];
     setMessages(messagesWithPlaceholder);
-
-    await streamAndSaveResponse(activeChatId, historyForRegeneration, regenerationMetadata);
+    await streamAndSaveResponse(activeChatId, historyForRegeneration, { isRegeneration: true, ...metadata, client_time: getLocalTime(), isThinkingEnabled });
   };
 
   const renameChat = async (chatId: string, newTitle: string) => {
     try {
-      await api(`/chats/${chatId}`, {
-        method: 'PUT',
-        body: JSON.stringify({ title: newTitle }),
-      });
+      await api(`/chats/${chatId}`, { method: 'PUT', body: JSON.stringify({ title: newTitle }) });
       await loadChatList();
       showNotification('Chat renamed!', 'success');
-    } catch (error) {
-      showNotification('Could not rename chat.', 'error');
-      throw error;
-    }
+    } catch (e) { showNotification('Rename failed', 'error'); }
   };
 
   const deleteChat = async (chatId: string) => {
     try {
       await api(`/chats/${chatId}`, { method: 'DELETE' });
       setChatList((prev) => prev.filter((c) => c._id !== chatId));
-      if (activeChatId === chatId) {
-        navigate('/', { replace: true });
-        clearChat();
-      }
+      if (activeChatId === chatId) { navigate('/', { replace: true }); clearChat(); }
       showNotification('Chat deleted.', 'success');
-    } catch (error) {
-      showNotification('Could not delete chat.', 'error');
-      throw error;
-    }
+    } catch (e) { showNotification('Delete failed', 'error'); }
   };
 
   const clearAllChats = async () => {
     try {
       await api('/chats/all', { method: 'DELETE' });
-      setChatList([]);
-      clearChat();
-      showNotification('All conversations cleared.', 'success');
-    } catch (error) {
-      showNotification('Could not clear conversations.', 'error');
-      throw error;
-    }
+      setChatList([]); clearChat();
+      showNotification('Cleared all chats.', 'success');
+    } catch (e) { showNotification('Clear failed', 'error'); }
   };
 
   const value = {
-    messages,
-    chatList,
-    activeChatId,
-    loadChat,
-    clearChat,
-    isLoadingChat,
-    isLoadingChatList,
-    isCreatingChat,
-    isSending,
-    sendMessage,
-    isStreaming,
-    editingIndex,
-    startEditing,
-    cancelEditing,
-    saveAndSubmitEdit,
-    regenerateResponse,
-    renameChat,
-    isThinking,
-    thinkingContent,
-    isThinkingEnabled,
-    toggleThinking,
-    stopGeneration,
-    deleteChat,
-    clearAllChats,
-    sendGeolocationResult,
+    messages, chatList, activeChatId, loadChat, clearChat, isLoadingChat, isLoadingChatList, isCreatingChat, isSending,
+    sendMessage, isStreaming, editingIndex, startEditing, cancelEditing, saveAndSubmitEdit, regenerateResponse, renameChat,
+    isThinking, thinkingContent, isThinkingEnabled, toggleThinking, stopGeneration, deleteChat, clearAllChats, sendGeolocationResult
   };
 
   return <ChatContext.Provider value={value}>{children}</ChatContext.Provider>;
@@ -845,8 +683,6 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
 
 export const useChat = () => {
   const context = useContext(ChatContext);
-  if (context === undefined) {
-    throw new Error('useChat must be used within a ChatProvider');
-  }
+  if (context === undefined) throw new Error('useChat must be used within a ChatProvider');
   return context;
 };

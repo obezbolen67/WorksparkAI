@@ -1,5 +1,3 @@
-/* src/css/Sidebar.css */
-
 .sidebar {
   width: 260px;
   background-color: var(--sidebar-bg-color);
@@ -9,7 +7,7 @@
   padding: 0;
   border-right: 1px solid var(--border-color);
   transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  flex-shrink: 0; /* Prevent sidebar from shrinking */
+  flex-shrink: 0; 
 }
 
 .sidebar.is-collapsed {
@@ -27,17 +25,15 @@
   padding: 0.75rem 1rem;
   min-height: 56px;
   box-sizing: border-box;
-  /* --- START OF THE FIX: Add positioning context --- */
   position: relative;
   transition: justify-content 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  /* --- END OF THE FIX --- */
 }
 
 .sidebar-logo-link {
   display: flex;
   align-items: center;
   gap: 10px;
-  min-width: 0; /* Prevent pushing other items in flex container */
+  min-width: 0; 
 }
 
 .sidebar-logo {
@@ -59,7 +55,6 @@
   transition: opacity 0.2s ease, width 0.3s cubic-bezier(0.4, 0, 0.2, 1), margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* --- START OF THE FIX: Styles for the collapsed hover interaction --- */
 .sidebar.is-collapsed .sidebar-top {
   justify-content: center;
   padding: 0.75rem 0;
@@ -98,8 +93,6 @@
   opacity: 1;
   pointer-events: auto;
 }
-/* --- END OF THE FIX --- */
-
 
 .sidebar-button {
   background: none;
@@ -159,23 +152,9 @@
   justify-content: center;
 }
 
-.sidebar-nav {
-  padding: 0 1rem 1rem 1rem;
-  border-bottom: 1px solid var(--border-color);
-}
-
-.sidebar-nav ul {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem; /* Space between nav items */
-}
-
 .sidebar-conversations {
   flex-grow: 1;
-  padding: 1rem 0.5rem; /* Adjusted padding */
+  padding: 1rem 0.5rem; 
   overflow-y: auto;
   transition: opacity 0.2s ease 0.1s;
 }
@@ -227,7 +206,7 @@
 
 .convo-list-item-skeleton {
   width: 100%;
-  height: 35px; /* Approximate height of a NavLink */
+  height: 35px; 
   border-radius: 6px;
   background-color: var(--button-hover-bg);
   position: relative;
@@ -264,14 +243,14 @@
   margin: 0;
   display: flex;
   flex-direction: column;
-  gap: 2px; /* Subtle space between items */
+  gap: 2px; 
   opacity: 0;
   animation: fadeInList 0.4s 0.1s ease forwards;
 }
 
 .convo-list li {
   position: relative;
-  border-radius: 6px; /* Apply radius to the li for hover effect */
+  border-radius: 6px; 
   transition: background-color 0.2s;
   display: flex;
   align-items: center;
@@ -291,7 +270,7 @@
   overflow: hidden;
   text-overflow: ellipsis;
   flex-grow: 1;
-  min-width: 0; /* Critical for text-overflow in flex */
+  min-width: 0; 
 }
 
 .chat-item-menu-trigger {
@@ -326,7 +305,7 @@
 
 .chat-item-actions-menu {
   position: absolute;
-  top: 40px; /* Position below the item */
+  top: 40px; 
   right: 8px;
   width: 160px;
   z-index: 20;
@@ -387,20 +366,20 @@
 
 .sidebar-footer {
   padding: 1rem;
-  margin-top: auto; /* Pushes footer to the bottom */
+  margin-top: auto; 
   border-top: 1px solid var(--border-color);
 }
 
 .user-profile-wrapper {
-  position: relative; /* Anchor for the absolute menu */
+  position: relative; 
 }
 
 .user-profile-menu {
   position: absolute;
-  bottom: calc(100% + 8px); /* Position above the profile bar with 8px gap */
+  bottom: calc(100% + 8px); 
   left: 0;
-  width: 228px; /* UPDATED: Set a fixed width that won't collapse. (260px sidebar - 32px padding) */
-  background-color: var(--sidebar-bg-color); /* Slightly lighter than sidebar bg */
+  width: 228px; 
+  background-color: var(--sidebar-bg-color); 
   border-radius: 12px;
   border: 1px solid var(--border-color);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
@@ -539,7 +518,6 @@
   color: var(--secondary-text-color);
 }
 
-/* --- START OF THE FIX --- */
 .upgrade-banner-wrapper {
   position: relative;
   margin-bottom: 1rem;
@@ -604,12 +582,8 @@
   color: var(--primary-text-color);
   transform: translate(40%, -40%) scale(1.1);
 }
-/* --- END OF THE FIX --- */
 
-
-/* --- RESPONSIVE STYLES --- */
 @media (max-width: 768px) {
-  /* On mobile, sidebar doesn't affect layout (it's fixed and hidden) */
   .app-container {
     --sidebar-width: 0;
   }
@@ -619,7 +593,7 @@
     top: 0;
     left: 0;
     height: 100%;
-    z-index: 1100; /* Above overlay */
+    z-index: 1100; 
     transform: translateX(-100%);
     transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     border-right: 1px solid var(--border-color);
