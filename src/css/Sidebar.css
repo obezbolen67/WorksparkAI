@@ -1,3 +1,4 @@
+/* src/css/Sidebar.css */
 .sidebar {
   width: 260px;
   background-color: var(--sidebar-bg-color);
@@ -94,6 +95,18 @@
   pointer-events: auto;
 }
 
+.sidebar-nav {
+  padding: 0.5rem 0;
+}
+
+/* --- VISIBLE DIVIDER --- */
+.sidebar-divider {
+  height: 1px;
+  background-color: var(--border-color);
+  margin: 8px 12px;
+  list-style: none;
+}
+
 .sidebar-button {
   background: none;
   border: none;
@@ -103,7 +116,8 @@
   padding: 10px 12px;
   border-radius: 8px;
   cursor: pointer;
-  width: 100%;
+  width: calc(100% - 16px); /* Account for margin */
+  margin: 0 8px; /* Center buttons horizontally */
   text-align: left;
   transition: background-color 0.2s, padding 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   font-size: 0.9rem;
@@ -119,6 +133,11 @@
   transition: opacity 0.2s ease, width 0.3s cubic-bezier(0.4, 0, 0.2, 1), margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   white-space: nowrap;
   overflow: hidden;
+}
+
+.sidebar.is-collapsed .sidebar-button {
+  justify-content: center;
+  padding: 10px;
 }
 
 .sidebar.is-collapsed .sidebar-button span {
@@ -144,8 +163,14 @@
   transform: rotate(180deg);
 }
 
+/* Specific styles for the NEW CHAT button */
 .new-chat-button {
-  border: 1px solid var(--border-color);
+  background-color: var(--button-hover-bg);
+  font-weight: 600;
+}
+
+.new-chat-button:hover {
+  background-color: var(--border-color); /* Slightly darker hover for prominence */
 }
 
 .sidebar.is-collapsed .new-chat-button {

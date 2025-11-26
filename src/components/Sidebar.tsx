@@ -1,4 +1,4 @@
-// FexoApp/src/components/Sidebar.tsx
+// src/components/Sidebar.tsx
 import { useState, useRef, useEffect } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import '../css/Sidebar.css';
@@ -9,8 +9,9 @@ import { useSettings } from '../contexts/SettingsContext';
 import { useChat } from '../contexts/ChatContext';
 import ConfirmationModal from './ConfirmationModal';
 import RenameModal from './RenameModal';
-import NotificationsModal from './NotificationsModal'; // Import the new modal
+import NotificationsModal from './NotificationsModal';
 import Tooltip from './Tooltip';
+import { requestNotificationPermission } from '../utils/scheduler';
 
 import '../css/ConfirmationModal.css';
 import '../css/RenameModal.css';
@@ -52,6 +53,14 @@ const Sidebar = ({ onOpenSettings, isMobileOpen, onClose, isCollapsed, onToggleC
     e.stopPropagation();
     localStorage.setItem('fexo-upgrade-banner-hidden', 'true');
     setIsBannerVisible(false);
+  };
+
+  const handleNotificationsClick = async () => {
+    // Request permission immediately on click
+    await requestNotificationPermission();
+    // Then open modal
+    setIsNotificationsModalOpen(true);
+    onClose(); // close mobile sidebar
   };
 
   useEffect(() => {
@@ -165,24 +174,25 @@ const Sidebar = ({ onOpenSettings, isMobileOpen, onClose, isCollapsed, onToggleC
 
         <nav className="sidebar-nav">
           <ul>
-            {/* NEW Notifications Button */}
-            <li>
-              <button 
-                className="sidebar-button nav-button notifications-btn" 
-                onClick={() => { setIsNotificationsModalOpen(true); onClose(); }}
-              >
-                <FiBell size={20} />
-                <span>Notifications</span>
-              </button>
-            </li>
-
-            {/* Divider */}
-            <li className="sidebar-divider"></li>
-
+            {/* 1. New Chat Button (Moved to top) */}
             <li>
               <button className="sidebar-button new-chat-button" onClick={handleNewChat}>
                 <FiEdit size={20} />
                 <span>New Chat</span>
+              </button>
+            </li>
+
+            {/* 2. Visible Divider */}
+            <li className="sidebar-divider"></li>
+
+            {/* 3. Notifications Button (Moved below divider) */}
+            <li>
+              <button 
+                className="sidebar-button nav-button notifications-btn" 
+                onClick={handleNotificationsClick}
+              >
+                <FiBell size={20} />
+                <span>Notifications</span>
               </button>
             </li>
           </ul>
@@ -302,7 +312,6 @@ const Sidebar = ({ onOpenSettings, isMobileOpen, onClose, isCollapsed, onToggleC
         isDestructive={true}
       />
 
-      {/* --- Notifications Modal --- */}
       <NotificationsModal 
         isOpen={isNotificationsModalOpen} 
         onClose={() => setIsNotificationsModalOpen(false)} 

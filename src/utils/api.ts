@@ -3,9 +3,6 @@
 export const API_BASE_URL = import.meta.env.VITE_API_URL || 
   (import.meta.env.DEV ? 'http://localhost:3001' : 'https://worksparkaiserver-215678188656.europe-west1.run.app');
 
-const DEBUG_LOCAL = import.meta.env.VITE_API_URL === 'http://localhost:3001';
-
-
 /**
  * A wrapper around the native `fetch` function that automatically adds
  * the 'Content-Type' and 'x-auth-token' headers for authenticated JSON requests.
@@ -33,22 +30,21 @@ export const api = async (endpoint: string, options: RequestInit = {}): Promise<
     headers,
   };
 
-  if (DEBUG_LOCAL) {
-    // Safe log: do not print bodies for large payloads
-    const method = (config.method || 'GET').toString().toUpperCase();
-    const hasBody = !!config.body;
-    // eslint-disable-next-line no-console
-    console.debug('[DEBUG API] →', method, `/api${endpoint}`, { hasBody, headers: Object.fromEntries(headers) });
+  // Log the request details (will be auto-suppressed in PROD via main.tsx)
+  const method = (config.method || 'GET').toString().toUpperCase();
+  const hasBody = !!config.body;
+  
+  // Use console.debug for verbose API logs
+  console.debug('[API Request] →', method, `/api${endpoint}`, { hasBody, headers: Object.fromEntries(headers) });
+
+  try {
+    const resp = await fetch(`${API_BASE_URL}/api${endpoint}`, config);
+    console.debug('[API Response] ←', resp.status, resp.statusText, `/api${endpoint}`);
+    return resp;
+  } catch (error) {
+    console.error('[API Error]', method, endpoint, error);
+    throw error;
   }
-
-  const resp = await fetch(`${API_BASE_URL}/api${endpoint}`, config);
-
-  if (DEBUG_LOCAL) {
-    // eslint-disable-next-line no-console
-    console.debug('[DEBUG API] ←', resp.status, resp.statusText, `/api${endpoint}`);
-  }
-
-  return resp;
 };
 
 /**
@@ -66,6 +62,8 @@ export const uploadFile = async (file: File): Promise<any> => {
     headers.set('x-auth-token', token);
   }
 
+  console.debug('[API Upload] → POST /api/files/upload', file.name);
+
   const response = await fetch(`${API_BASE_URL}/api/files/upload`, {
     method: 'POST',
     headers: headers, // NOTE: Do NOT set Content-Type, the browser does it for FormData
@@ -77,6 +75,7 @@ export const uploadFile = async (file: File): Promise<any> => {
     throw new Error(errorData.error || 'Failed to upload file');
   }
 
+  console.debug('[API Upload] ← Success', file.name);
   return response.json();
 };
 

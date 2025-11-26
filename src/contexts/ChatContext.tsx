@@ -1,4 +1,4 @@
-// FexoApp/src/contexts/ChatContext.tsx
+// src/contexts/ChatContext.tsx
 import {
   createContext,
   useContext,
@@ -68,7 +68,6 @@ interface ChatContextType {
 const ChatContext = createContext<ChatContextType | undefined>(undefined);
 
 export const ChatProvider = ({ children }: { children: ReactNode }) => {
-  const DEBUG_LOCAL = import.meta.env.VITE_API_URL === 'http://localhost:3001';
   const navigate = useNavigate();
   const { token, selectedModel, user } = useSettings();
   const { showNotification } = useNotification();
@@ -101,13 +100,13 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
     const padding = (num: number) => String(num).padStart(2, '0');
     const offset = -now.getTimezoneOffset() / 60;
     const sign = offset >= 0 ? '+' : '-';
-    return `UTC${sign}${Math.abs(offset)} ${now.getFullYear()}-${padding(now.getMonth()+1)}-${padding(now.getDate())}T${padding(now.getHours())}:${padding(now.getMinutes ())}`;
+    return `UTC${sign}${Math.abs(offset)} ${now.getFullYear()}-${padding(now.getMonth()+1)}-${padding(now.getDate())}T${padding(now.getHours())}:${padding(now.getMinutes())}`;
   };
 
   useEffect(() => {
     const fetchReasoningModels = async () => {
       try {
-        const response = await fetchPublicConfig(); // Removed direct import.meta usage here as it returns promise from util
+        const response = await fetchPublicConfig();
         if (response && (response as any).reasoningModels) {
            setReasoningModels((response as any).reasoningModels);
         }
@@ -166,17 +165,6 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
     streamAbortControllerRef.current = null;
   }, []);
 
-  // Handle scheduling task logic
-  const handleScheduleTask = useCallback(async (
-    chatId: string,
-    tool_id: string,
-    tool_name: string,
-    args: any
-  ) => {
-    // Must be wrapped in streamAndSaveResponse to be available, but defined here for clarity
-    // Implementation details are below inside the stream function to access context vars
-  }, []);
-
   const streamAndSaveResponse = useCallback(
     async (
       chatId: string,
@@ -198,7 +186,6 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
         const { task, description, datetime_from } = args;
         const scheduleDate = new Date(datetime_from);
         
-        // Call scheduler util
         const result = await scheduleClientNotification(task, description, scheduleDate);
         
         let resultContent = '';
@@ -209,7 +196,10 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
           resultContent = `Successfully scheduled notification for "${task}" at ${localTimeStr}.`;
         } else {
           state = 'error';
-          resultContent = `Failed to schedule notification: ${result.error}`;
+          resultContent = `Error: ${result.error}`;
+          if (result.error?.includes('Permission needed')) {
+             resultContent += " [SYSTEM NOTE: Please tell the user to click the 'Notifications' bell icon in the sidebar to enable permissions first.]";
+          }
         }
 
         const resultMessage: Message = {
@@ -219,22 +209,14 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
           content: resultContent,
         };
 
-        // Current history excluding waiting placeholders
         const currentHistory = messagesRef.current.filter(m => !m.isWaiting);
-        
-        // Update the tool request state in UI
         const messagesForUI = currentHistory.map((m) =>
           m.tool_id === tool_id && m.role === 'tool_integration'
             ? ({ ...m, state } as Message)
             : m
         );
-
         const historyForBackend = [...messagesForUI, resultMessage];
-
-        // Update state immediately
         setMessages([...messagesForUI, { role: 'assistant', content: '', isWaiting: true }]);
-        
-        // Send result back to server to continue conversation
         await streamAndSaveResponse(chatId, historyForBackend, { isContinuation: true });
       };
 
@@ -284,14 +266,12 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
                 }
 
                 if (event.type === 'STREAM_END' && event.reason === 'tool_use') {
-                  // If it's not a geolocation tool (which handles itself differently), pause stream
-                  // Geolocation tool is handled separately via specific event flow, this catches schedule
                   streamEndedForClientTool = true;
                   continue;
                 }
 
                 switch (event.type) {
-                  case 'TOOL_SCHEDULE_CREATE': // New Event
+                  case 'TOOL_SCHEDULE_CREATE':
                     streamEndedForClientTool = true;
                     setMessages((prev) => {
                       const newMessages = [...prev];
@@ -337,7 +317,6 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
                     flushSync(() => {
                       setMessages((prev) => {
                         const newMessages = [...prev];
-                        // Ensure index safety logic similar to ASSISTANT_DELTA
                         if (assistantMessageIndex === -1 || assistantMessageIndex >= newMessages.length) {
                              const lastIdx = newMessages.length - 1;
                              if (newMessages[lastIdx]?.role === 'assistant') assistantMessageIndex = lastIdx;
@@ -417,14 +396,12 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
                   case 'ASSISTANT_COMPLETE':
                     break;
 
-                  // Tool events
                   case 'TOOL_CODE_CREATE':
                   case 'TOOL_SEARCH_CREATE':
                   case 'TOOL_DOC_EXTRACT_CREATE':
                   case 'TOOL_GEOLOCATION_CREATE':
                   case 'TOOL_INTEGRATION_CREATE':
                     if (event.message && event.message.isClientSideTool) {
-                        // This flag might be redundant with STREAM_END reason, but good for safety
                         streamEndedForClientTool = true;
                     }
                     setMessages((prev) => {
@@ -516,7 +493,7 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
         }
       } catch (error) {
         if (error instanceof DOMException && error.name === 'AbortError') {
-          // Handled
+          // Handled via abort controller logic
         } else {
           showNotification(error instanceof Error ? error.message : 'Streaming error', 'error');
         }

@@ -5,24 +5,36 @@ self.addEventListener('install', (event) => {
 });
 
 self.addEventListener('activate', (event) => {
-  event.waitUntil(self.clients.claim());
+  return self.clients.claim();
 });
 
-// Handle server-sent Push Notifications
+// 1. Handle Incoming Push (Background)
 self.addEventListener('push', (event) => {
-  const data = event.data ? event.data.json() : {};
-  
-  const title = data.title || 'Workspark AI Notification';
+  console.log('[Service Worker] Push Received');
+
+  if (!event.data) return;
+
+  // DevTools sends text, Server sends JSON. Handle both.
+  let data = {};
+  try {
+    data = event.data.json();
+  } catch (e) {
+    // Fallback for DevTools "Test Push" message
+    data = { title: 'Workspark AI', body: event.data.text() };
+  }
+
+  const title = data.title || 'Workspark AI';
   const options = {
-    body: data.body || 'You have a new task.',
-    icon: '/worksparkai.svg', // Ensure this file exists in public/
+    body: data.body || 'New notification',
+    icon: '/worksparkai.svg', // Make sure this icon exists in public/
     badge: '/worksparkai.svg',
+    vibrate: [100, 50, 100],
     data: {
-      url: '/', // Open the app root
+      url: '/app',
       taskId: data.taskId
     },
-    // 'requireInteraction' keeps it visible until user clicks on Desktop
-    requireInteraction: true 
+    tag: data.taskId || 'general', // Prevents duplicate notifications
+    renotify: true
   };
 
   event.waitUntil(
@@ -30,21 +42,21 @@ self.addEventListener('push', (event) => {
   );
 });
 
+// 2. Handle Click (Open App)
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
-  
+  const urlToOpen = event.notification.data?.url || '/app';
+
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
-      // Focus existing window if open
+      // Focus existing tab if open
       for (const client of clientList) {
-        if (client.url && 'focus' in client) {
+        if (client.url.includes(urlToOpen) && 'focus' in client) {
           return client.focus();
         }
       }
-      // Otherwise open new window
-      if (clients.openWindow) {
-        return clients.openWindow('/');
-      }
+      // Otherwise open new
+      if (clients.openWindow) return clients.openWindow(urlToOpen);
     })
   );
 });

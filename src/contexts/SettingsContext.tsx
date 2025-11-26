@@ -1,4 +1,4 @@
-// Fexo/src/contexts/SettingsContext.tsx
+// src/contexts/SettingsContext.tsx
 import { createContext, useState, useEffect, useContext, type ReactNode, useCallback } from 'react';
 import api, { API_BASE_URL } from '../utils/api'; 
 
@@ -27,7 +27,6 @@ type ApiKeyEntry = {
   key: string;
 };
 
-// --- START OF CHANGE ---
 type User = {
   _id: string;
   email: string;
@@ -40,15 +39,13 @@ type User = {
   modelConfigs?: ModelConfig[];
   enabledIntegrations?: string[];
   contextLength?: number;
-  maxOutputTokens?: number; // Add the new field
+  maxOutputTokens?: number;
   stripeCustomerId?: string | null;
   subscriptionId?: string | null;
   subscriptionStatus?: 'active' | 'canceled' | 'incomplete' | 'past_due' | 'unpaid' | null;
   planId?: string | null;
   voiceSettings?: VoiceSettings;
-
 };
-// --- END OF CHANGE ---
 
 interface SettingsContextType {
   token: string | null;
@@ -150,11 +147,9 @@ export const SettingsProvider = ({ children }: { children: ReactNode }) => {
           });
           setModels(uniqueModels);
         } else {
-                    
                     setModels([]);
                 }
             } catch (err) {
-                
                 setModels([]);
             }
         }
@@ -165,14 +160,18 @@ export const SettingsProvider = ({ children }: { children: ReactNode }) => {
 
   const apiAuthRequest = async (endpoint: 'login' | 'register', body: object) => {
     const url = `${API_BASE_URL}/api/auth/${endpoint}`;
-    console.log('[AUTH] Attempting request to:', url);
-    console.log('[AUTH] API_BASE_URL:', API_BASE_URL);
+    // Changed from console.log to console.debug so they disappear in production via main.tsx override
+    console.debug('[AUTH] Attempting request to:', url);
+    console.debug('[AUTH] API_BASE_URL:', API_BASE_URL);
+    
     const res = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
     });
-    console.log('[AUTH] Response status:', res.status, res.statusText);
+    
+    console.debug('[AUTH] Response status:', res.status, res.statusText);
+    
     const data = await res.json();
     if (!res.ok) {
       throw new Error(data.error || data.errors?.[0]?.msg || 'Authentication failed');
