@@ -271,20 +271,43 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
                 }
 
                 switch (event.type) {
+                  // --- 1. TOOL CREATION & UPDATES (Consolidated) ---
+                  case 'TOOL_CODE_CREATE':
+                  case 'TOOL_SEARCH_CREATE':
+                  case 'TOOL_DOC_EXTRACT_CREATE':
+                  case 'TOOL_GEOLOCATION_CREATE':
+                  case 'TOOL_INTEGRATION_CREATE':
                   case 'TOOL_SCHEDULE_CREATE':
-                    streamEndedForClientTool = true;
-                    setMessages((prev) => {
-                      const newMessages = [...prev];
-                      const lastMessage = newMessages[newMessages.length - 1];
-                      if (lastMessage?.isWaiting) {
-                        newMessages[newMessages.length - 1] = event.message;
-                      } else {
-                        newMessages.push(event.message);
-                      }
-                      return newMessages;
-                    });
+                    if (event.message && event.message.isClientSideTool) {
+                        streamEndedForClientTool = true;
+                    }
                     
-                    if (event.message.tool_arguments) {
+                    // Force render immediately to ensure UI reflects state before stream might close
+                    flushSync(() => {
+                      setMessages((prev) => {
+                        const newMessages = [...prev];
+                        
+                        // Check if we already have this tool (by ID) to prevent duplicates
+                        const existingIndex = newMessages.findIndex(m => m.tool_id === event.message.tool_id);
+                        
+                        if (existingIndex !== -1) {
+                            // Update existing tool message
+                            newMessages[existingIndex] = event.message;
+                        } else {
+                            // Otherwise replace waiting placeholder or append
+                            const lastMessage = newMessages[newMessages.length - 1];
+                            if (lastMessage?.isWaiting) {
+                              newMessages[newMessages.length - 1] = event.message;
+                            } else {
+                              newMessages.push(event.message);
+                            }
+                        }
+                        return newMessages;
+                      });
+                    });
+
+                    // Handle client-side scheduler immediately
+                    if (event.type === 'TOOL_SCHEDULE_CREATE' && event.message.tool_arguments) {
                         executeClientSchedule(
                             event.message.tool_id,
                             event.message.tool_name,
@@ -293,6 +316,7 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
                     }
                     break;
 
+                  // --- 2. THINKING EVENTS ---
                   case 'THINKING_START':
                     setIsThinking(true);
                     setThinkingContent('');
@@ -340,6 +364,7 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
                     setIsThinking(false);
                     break;
 
+                  // --- 3. ASSISTANT TEXT ---
                   case 'ASSISTANT_START':
                     setMessages((prev) => {
                       const newMessages = [...prev];
@@ -396,26 +421,7 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
                   case 'ASSISTANT_COMPLETE':
                     break;
 
-                  case 'TOOL_CODE_CREATE':
-                  case 'TOOL_SEARCH_CREATE':
-                  case 'TOOL_DOC_EXTRACT_CREATE':
-                  case 'TOOL_GEOLOCATION_CREATE':
-                  case 'TOOL_INTEGRATION_CREATE':
-                    if (event.message && event.message.isClientSideTool) {
-                        streamEndedForClientTool = true;
-                    }
-                    setMessages((prev) => {
-                      const newMessages = [...prev];
-                      const lastMessage = newMessages[newMessages.length - 1];
-                      if (lastMessage?.isWaiting) {
-                        newMessages[newMessages.length - 1] = event.message;
-                      } else {
-                        newMessages.push(event.message);
-                      }
-                      return newMessages;
-                    });
-                    break;
-
+                  // --- 4. TOOL STATUS UPDATES & DELTAS ---
                   case 'TOOL_CODE_DELTA':
                   case 'TOOL_SEARCH_DELTA':
                   case 'TOOL_DOC_EXTRACT_DELTA':
@@ -470,6 +476,7 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
                             (m) => m.role === toolReqRole && m.tool_id === event.tool_id
                         );
                         if (toolIndex !== -1) newMessages[toolIndex].state = event.state;
+                        
                         const resultRole = (toolReqRole + '_result') as Message['role'];
                         newMessages.push({
                             role: resultRole,
@@ -499,15 +506,18 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
         }
       } finally {
         if (streamEndedForClientTool) {
+          // Just stop the loading spinner, DO NOT remove the last message
           setIsStreaming(false);
           streamAbortControllerRef.current = null;
         } else {
+          // Standard cleanup (removes placeholders)
           stopGeneration();
         }
       }
     },
     [stopGeneration, showNotification]
   );
+
 
   const sendMessage = async (text: string, attachments: Attachment[] = [], metadata?: Record<string, any>) => {
     if (isStreaming || isSending) return;
