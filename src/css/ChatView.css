@@ -90,18 +90,14 @@
   align-items: center;
   width: 100%;
   
-  /* Padding for the input box itself */
+  /* IMPORTANT: Fixes overflow issues when padding is added */
+  box-sizing: border-box; 
+  
   padding: 2rem 0 2.5rem 0; 
   margin: 0 auto;
   z-index: 10;
-
-  /* --- RESTORED GLOW EFFECT --- */
-  /* A gradient from transparent at the top to solid background at the bottom */
   background: linear-gradient(to top, var(--main-bg-color) 75%, rgba(var(--main-bg-rgb), 0.8) 90%, transparent 100%);
-  /* Fallback if RGB vars aren't set, using standard colors */
   background: linear-gradient(to top, var(--main-bg-color) 60%, transparent 100%);
-  
-  /* Ensure clicks pass through the transparent part if needed, though usually input covers it */
   pointer-events: auto; 
 }
 
@@ -164,14 +160,15 @@
 @media (max-width: 768px) {
   .chat-view-header { display: none; }
   
-  /* Mobile: Sticky bottom, solid background */
   .chat-view-container:not(.is-empty) .chat-input-area {
     position: fixed;
     bottom: 0;
-    background: var(--main-bg-color); /* Solid background on mobile */
+    background: var(--main-bg-color);
     border-top: 1px solid var(--border-color);
+    /* This padding provides the symmetric gap (16px on both sides) */
     padding: 0.75rem 1rem max(1rem, env(safe-area-inset-bottom));
     max-width: 100%;
+    box-sizing: border-box; /* Reinforce box-sizing on mobile */
   }
   
   .chat-content {
